@@ -1,0 +1,88 @@
+# Production deployment, behind the edge proxy.
+#
+# Identical to docker-compose_dev.yml except for the container names and the
+# network aliases. Both stacks join the same external `edge` network, where a
+# name can only belong to one container — reusing the dev names here would make
+# the prod hostname serve the dev containers.
+#
+# The nginx block for mbu-dsa.adm.aarhuskommune.dk must point
+# its two `set` directives at the aliases below.
+#
+# Selected per directory via COMPOSE_FILE in .env — see .env.example.
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dsa-prod-api
+    environment:
+      API_KEY: ${API_KEY}
+      API_KEY_HASHES: ${API_KEY_HASHES}
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
+      # Must be Azure B2C's /tfp/ path form, not ?p=<policy> — see
+      # backend/app/core/oidc.py for why the query form breaks login.
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL}
+      # Where the IdP returns the browser after logout. Required — B2C rejects a
+      # logout request that omits it (AADB2C90036), so an unset value turns every
+      # logout into an error page. Point it at this deployment's /logged-out.
+      OIDC_POST_LOGOUT_REDIRECT: ${OIDC_POST_LOGOUT_REDIRECT}
+      # IdP role claim values allowed to write; everyone else is read-only.
+      EDIT_ROLES: ${EDIT_ROLES:-admin,user-edit}
+      OIDC_SCOPES: ${OIDC_SCOPES}
+      OIDC_ENVIRONMENT: ${OIDC_ENVIRONMENT}
+      SESSION_SECRET: ${SESSION_SECRET}
+      GRAPH_CERT_PUBLIC: /run/secrets/graph_client.cer
+      GRAPH_CERT_PEM: /run/secrets/graph_client.pem
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      - /etc/ssl/private/sharepoint-graph-client.cer:/run/secrets/graph_client.cer:ro
+      - /etc/ssl/private/sharepoint-graph-client-combined.pem:/run/secrets/graph_client.pem:ro
+    networks:
+      edge:
+        aliases:
+          - dsa-prod-api
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dsa-prod-frontend
+    environment:
+      PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
+      # Browser-facing URL that starts the OIDC login flow. Defaults to the
+      # same-origin /api/auth/login, which assumes the edge proxy forwards /api
+      # to the backend. Set an absolute URL where it does not.
+      PUBLIC_OIDC_LOGIN_URL: ${PUBLIC_OIDC_LOGIN_URL:-}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      edge:
+        aliases:
+          - dsa-prod-frontend
+
+networks:
+  edge:
+    external: true

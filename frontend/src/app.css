@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* DSA theme — deep purple identity, soft lavender surfaces */
+@theme {
+  --color-dsa-50:  #f6f4fb;
+  --color-dsa-100: #ece8f7;
+  --color-dsa-200: #d9d0ef;
+  --color-dsa-300: #bba9e2;
+  --color-dsa-400: #9a7dd2;
+  --color-dsa-500: #7e57c2;
+  --color-dsa-600: #6a3fb5;
+  --color-dsa-700: #59339c;
+  --color-dsa-800: #4a2b80;
+  --color-dsa-900: #3b2168;
+  --color-dsa-950: #271347;
+}
+
+body {
+  background-color: #f4f2f9;
+  margin: 0;
+  color: #2a2438;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+th {
+  text-transform: none !important;
+}
