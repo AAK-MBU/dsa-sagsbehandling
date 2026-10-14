@@ -21,6 +21,10 @@ dependencies = [
     "sqlalchemy>=2.0.25",
     "uvicorn[standard]>=0.27.0",
     "itsdangerous>=2.2.0",
+    # DSA: Windows has no system time zone database, so zoneinfo needs this
+    # for "Europe/Copenhagen" (app/core/session_udloeb.py). befordringssystemet
+    # gets it transitively through pandas.
+    "tzdata",
 ]
 
 [tool.uv.sources]
