@@ -1,30 +1,76 @@
-"""Main FastAPI application entrypoint for the DSA (modtagelsesklasse) prototype.
+"""Main FastAPI application entrypoint.
 
-This is a mock-data prototype: there is no database yet, all endpoints
-return in-memory data from app/services/mock_data.py.
+This module creates and configures the FastAPI application.
+
+It is responsible for:
+
+- Creating the app instance
+- Setting API metadata for Swagger/OpenAPI
+- Configuring CORS
+- Registering the API routers
+- Exposing basic root and health-check endpoints
 """
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.sessions import SessionMiddleware
 
+from oidc_auth import IDTokenClaims
+from oidc_auth.integrations import create_oidc_router
+
+from app.api.dependencies import edit_role_names
 from app.api.v1.api import api_router
+from app.core.config import settings
+from app.api.dependencies import aktiv_session
+from app.utils.identitet import visningsnavn
+from app.core.oidc import oidc_config
+from app.middleware.audit_middleware import AuditLogMiddleware
 
 
 class UTF8JSONResponse(JSONResponse):
-    """JSON response class with explicit UTF-8 charset (for æ, ø, å)."""
+    """JSON response class with explicit UTF-8 charset.
+
+    Notes:
+        This makes API responses explicitly declare UTF-8 encoding.
+
+        That is useful when returning Danish characters such as æ, ø and å.
+    """
 
     media_type = "application/json; charset=utf-8"
 
 
+# Create the FastAPI application.
+#
+# The metadata below is shown in Swagger/OpenAPI docs.
 app = FastAPI(
-    title="DSA API",
-    description="API for DSA (modtagelsesklasse) prototype",
+    title="DSA",
+    description="API for DSA sagsbehandling",
     version="0.0.1",
     default_response_class=UTF8JSONResponse,
+    root_path="/api"
 )
 
 
+# Order matters, and it reads backwards: Starlette wraps the *last* middleware
+# added as the outermost layer.  So the audit middleware is added first to end
+# up innermost, with SessionMiddleware around it — that way request.session is
+# already populated when the audit middleware reads the caller's claims, and
+# scope["route"] is set by the router just inside it.
+app.add_middleware(AuditLogMiddleware)
+
+# Session middleware must be added before CORS so that it ends up as an inner
+# layer of the middleware stack.  The session cookie carries OIDC state between
+# the /auth/login redirect and the /auth/callback return.
+# same_site="lax" is required for the IdP redirect to send the cookie back.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret,
+    same_site="lax",
+)
+
+# allow_origins=["*"] is convenient in development and should be restricted
+# in production.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -34,14 +80,93 @@ app.add_middleware(
 )
 
 
+# Register OIDC login / callback / logout routes.
+#
+# create_oidc_router already applies the /auth prefix internally, so routes
+# are mounted at /auth/login, /auth/callback and /auth/logout.
+#
+# OIDC_REDIRECT_URI points at the *frontend's* /callback, not at the
+# /auth/callback below. The frontend owns the return leg so it can restore the
+# page the user originally asked for, then forwards the code here.
+#
+# DSA: only while OIDC_ENABLED is on — oidc_config is None otherwise, and the
+# loud print is there so nobody mistakes a login-less API for a protected one.
+if oidc_config is not None:
+    app.include_router(
+        create_oidc_router(
+            oidc_config,
+            post_logout_redirect=settings.oidc_post_logout_redirect,
+        )
+    )
+else:
+    print(
+        "[DSA] OIDC_ENABLED is off: every browser request is treated as "
+        "'Lokal udvikler (OIDC slået fra)'. Never run like this with real data."
+    )
+
+# Register all API v1 routers. See app/api/v1/api.py for the list.
 app.include_router(api_router)
 
 
 @app.get("/")
 def root():
+    """Root endpoint.
+
+    Returns:
+        A simple message confirming that the API is running.
+
+    Notes:
+        This is useful for quickly checking the API in a browser.
+    """
+
     return {"message": "DSA API is running"}
+
+
+@app.get("/me", tags=["auth"])
+def me(user: IDTokenClaims = Depends(aktiv_session)) -> dict:
+    """Return the OIDC claims for the currently logged-in user.
+
+    Raises 401 if there is no active OIDC session, or if the session has
+    passed its nightly 01:00 boundary — aktiv_session rather than
+    get_current_user, because the frontend decides whether someone is logged
+    in by probing this endpoint.
+    """
+    return {
+        "sub": user.sub,
+        # visningsnavn, not user.name: the prod IdP has no "name" claim and
+        # spells it "displayname", so the user menu showed an email address
+        # there while dev showed a name. See app/utils/identitet.
+        "name": visningsnavn(user),
+        "email": user.email,
+        "roles": list(user.roles),
+        "groups": list(user.groups),
+        "organisation": user.organisation,
+        "mapped_claims": user.mapped_claims,
+        # Resolved here so the UI does not have to re-implement the rule and
+        # drift from it: EDIT_ROLES is configurable, and this is the same
+        # comparison require_edit performs when a write actually arrives.
+        # Purely for presentation — hiding a control is not enforcement.
+        "can_edit": bool(
+            {str(role).lower() for role in user.roles} & edit_role_names()
+        ),
+        # DSA: can_act_as_ppr omitted — PPR is befordring domain.
+        # The whole validated ID token payload. The curated fields above cover
+        # the common cases; this is what to read when an expected claim is
+        # missing from them because the IdP names it something else.
+        "raw": user.raw,
+    }
 
 
 @app.get("/health", tags=["health"])
 async def health_check():
+    """Health-check endpoint.
+
+    Returns:
+        A simple status response.
+
+    Notes:
+        This endpoint can be used by Docker, monitoring tools, load balancers,
+        or deployment systems to check whether the API is alive.
+    """
+
     return {"status": "ok"}

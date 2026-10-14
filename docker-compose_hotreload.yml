@@ -1,6 +1,12 @@
-# Local development overrides — layer on top of docker-compose.yml.
+# Hot-reload overrides — layer on top of docker-compose_local.yml.
 #
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# In .env (COMPOSE_FILE takes a list, separated by ":" — ";" on Windows):
+#
+#   COMPOSE_FILE=docker-compose_local.yml:docker-compose_hotreload.yml
+#
+# or one-off:
+#
+#   docker compose -f docker-compose_local.yml -f docker-compose_hotreload.yml up
 #
 # Source is bind-mounted and the servers run in watch/reload mode, so editing
 # code hot-reloads instead of needing `docker compose ... up --build`.
@@ -10,7 +16,7 @@
 #   - frontend: package.json / package-lock.json
 #
 # This file is opt-in (not docker-compose.override.yml) so it never activates
-# automatically — the plain compose keeps running the production build.
+# automatically — the plain local compose keeps running the production build.
 
 services:
   api:

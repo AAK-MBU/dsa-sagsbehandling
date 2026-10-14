@@ -1,0 +1,80 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dsa-api
+    environment:
+      API_KEY: ${API_KEY}
+      API_KEY_HASHES: ${API_KEY_HASHES}
+      # DSA: fails closed when unset — see OIDC_ENABLED in .env.example.
+      OIDC_ENABLED: ${OIDC_ENABLED:-true}
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      # Where the IdP sends the browser back after login. .env holds the
+      # deployed value; using it here would hand the IdP a redirect_uri on the
+      # real host, so a local login would leave localhost and 404 on the edge
+      # proxy. Point it at the frontend this file publishes on :80 instead —
+      # /callback is the SvelteKit route that finishes the flow.
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI_LOCAL:-http://localhost/callback}
+      # Must be the /tfp/ path form, not ?p=<policy> — see backend/app/core/oidc.py.
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL}
+      OIDC_SCOPES: ${OIDC_SCOPES}
+      # IdP role claim values allowed to write; everyone else is read-only.
+      EDIT_ROLES: ${EDIT_ROLES:-admin,user-edit}
+      # Landing page after logout, served by the frontend on :80. Required —
+      # B2C errors out on a logout request that omits it.
+      OIDC_POST_LOGOUT_REDIRECT: ${OIDC_POST_LOGOUT_REDIRECT_LOCAL:-http://localhost/logged-out}
+      OIDC_ENVIRONMENT: ${OIDC_ENVIRONMENT}
+      SESSION_SECRET: ${SESSION_SECRET}
+      # Point requests at the CA bundle *inside* the container (Linux path),
+      # overriding the Windows path in .env. The file is mounted below.
+      REQUESTS_CA_BUNDLE: /app/certs/aarhus_root.pem
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Mount the host cert dir into the container so REQUESTS_CA_BUNDLE resolves.
+      - C:/tmp/certs:/app/certs:ro
+    restart: unless-stopped
+    networks:
+      - dsa-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dsa-frontend
+    environment:
+      PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
+      # Browser-facing URL that starts the OIDC login flow. Defaults to the
+      # same-origin /api/auth/login, which assumes the edge proxy forwards /api
+      # to the backend. Set an absolute URL where it does not.
+      PUBLIC_OIDC_LOGIN_URL: ${PUBLIC_OIDC_LOGIN_URL:-}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - dsa-network
+
+networks:
+  dsa-network: {}

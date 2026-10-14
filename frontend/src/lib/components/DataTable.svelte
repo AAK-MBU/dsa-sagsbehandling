@@ -1,6 +1,6 @@
-<script lang="ts">
-  import { goto } from "$app/navigation";
-
+<script module lang="ts">
+  // Module script: a type exported from the instance script is a compile error,
+  // which svelte-check reports even though vite build lets it through.
   export type DataTableColumn = {
     key: string;
     label: string;
@@ -8,6 +8,10 @@
     render?: (row: any) => string;
     class?: string;
   };
+</script>
+
+<script lang="ts">
+  import { goto } from "$app/navigation";
 
   export let pageSize = 15;
   export let data: any[] = [];

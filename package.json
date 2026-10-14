@@ -1,5 +1,5 @@
 {
-  "name": "befordrings-applikation",
+  "name": "dsa-sagsbehandling",
   "private": true,
   "scripts": {
     "dev": "concurrently --names \"API,WEB\" --prefix-colors \"cyan,magenta\" \"uv run --directory backend uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload\" \"npm run dev --prefix frontend\""

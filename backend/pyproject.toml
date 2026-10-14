@@ -1,11 +1,47 @@
 [project]
-name = "dsa-backend"
+name = "api-dsa-sagsbehandling"
 version = "0.0.1"
-requires-python = ">=3.11"
+description = "API for DSA sagsbehandling"
+authors = [
+    {name = "MBU", email = "dadj@aarhus.dk"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+license = {text = "MIT"}
+keywords = ["fastapi", "dsa-api", "api"]
+
 dependencies = [
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.30",
+    # DSA: the subset of befordringssystemet's dependencies the skeleton uses.
+    # Add the others from there as the features that need them are ported.
+    "oidc-auth @ git+https://github.com/AAK-MBU/oidc-auth.git",
+    "fastapi>=0.109.0",
+    "pydantic>=2.5.3",
+    "pyodbc>=5.0.1",
+    "python-dotenv>=1.0.0",
+    "sqlalchemy>=2.0.25",
+    "uvicorn[standard]>=0.27.0",
+    "itsdangerous>=2.2.0",
 ]
 
+[tool.uv.sources]
+oidc-auth = { git = "https://github.com/AAK-MBU/oidc-auth.git", rev = "f79b58d96ecb8d0470cc2a5f5c34b6af0aefb64d" }
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
 [tool.uv]
-package = false
+dev-dependencies = [
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]

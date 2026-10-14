@@ -1,10 +1,11 @@
 import { error } from "@sveltejs/kit";
-import { backendApiFetch } from "$lib/server/backendApi";
+import { backendUserFetcher } from "$lib/server/backendApi";
 import type { PageServerLoad } from "./$types";
 import type { Ansoegning } from "$lib/types";
 
-export const load: PageServerLoad = async ({ fetch, params }) => {
-  const res = await backendApiFetch(fetch, `/ansoegninger/${params.id}`);
+export const load: PageServerLoad = async (event) => {
+  const api = backendUserFetcher(event);
+  const res = await api(`/ansoegninger/${event.params.id}`);
 
   if (res.status === 404) {
     throw error(404, "Elevmappe ikke fundet");

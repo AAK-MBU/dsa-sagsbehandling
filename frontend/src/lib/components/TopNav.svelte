@@ -4,6 +4,11 @@
 
   const currentPath = $derived($page.url.pathname);
 
+  // From +layout.server.ts, which every page inherits.
+  const user = $derived($page.data.user);
+  const logoutUrl = $derived($page.data.logoutUrl);
+  const displayName = $derived(user?.name || user?.email || user?.sub || "Ukendt bruger");
+
   function isActive(href?: string): boolean {
     if (!href) return false;
     return currentPath === href || currentPath.startsWith(href + "/");
@@ -49,6 +54,25 @@
         {/if}
       {/each}
     </nav>
+
+    <!-- Bruger -->
+    {#if user}
+      <div class="ml-auto flex items-center gap-3 pl-4 shrink-0 text-[13px]">
+        {#if user.roles.includes("oidc-disabled")}
+          <!-- Must be impossible to miss: nobody is actually logged in. -->
+          <span
+            class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold text-[11px]"
+            title="Backend kører med OIDC_ENABLED=false — ingen rigtig login"
+          >
+            Login slået fra
+          </span>
+        {/if}
+        <span class="text-gray-600">{displayName}</span>
+        {#if !user.roles.includes("oidc-disabled") && logoutUrl}
+          <a href={logoutUrl} class="text-dsa-700 font-medium hover:underline">Log ud</a>
+        {/if}
+      </div>
+    {/if}
 
   </div>
 </header>

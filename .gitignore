@@ -216,4 +216,3 @@ frontend/.svelte-kit/
 
 # Root-level Node (concurrently orchestration)
 node_modules/
-package-lock.json
