@@ -1,6 +1,8 @@
 // The 6 "områder" (areas of work) shown on the front page and in the top nav.
 // Single source of truth so the launcher cards and the nav bar stay in sync.
-// Only Skoleskiftere og tilflyttere is wired up so far; the rest are "Kommer snart".
+// None is wired up right now: the Skoleskiftere pages were the modtagelsesklasse
+// mock-up and went with the mock data. Skolebegynderscreeninger is next, on the
+// real database.
 
 export type AreaLink = { label: string; href?: string };
 
@@ -31,9 +33,8 @@ export const areas: Area[] = [
     accent: "#4e7c3a",
     bg: "#eef5e9",
     ring: "#cfe2c2",
-    href: "/skoleskiftere",
-    links: [{ label: "Forside", href: "/skoleskiftere" }, { label: "Rapport" }],
-    enabled: true,
+    links: [{ label: "Forside" }, { label: "Rapport" }],
+    enabled: false,
   },
   {
     title: "Skolebegynderscreeninger",

@@ -15,7 +15,7 @@ single api_router instead of importing every endpoint router individually.
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import require_auth
-from app.api.v1.endpoints import ansoegninger
+from app.api.v1.endpoints import aktivitet, citizen, lookup, skolebegynder
 from app.core.security import verify_api_key
 
 
@@ -25,7 +25,7 @@ api_router = APIRouter()
 # Human-facing routes accept either a valid API key (X-API-Key header) or an
 # active OIDC browser session. RPA bots and integration partners use API keys;
 # human users logging in via the browser use OIDC. While OIDC_ENABLED is off,
-# browser calls resolve to a placeholder developer — see require_auth.
+# browser calls resolve to a placeholder developer — see aktiv_session.
 human_dependencies = [Depends(require_auth)]
 
 # Automated / webhook routes require an API key and nothing else, e.g. an
@@ -34,10 +34,29 @@ human_dependencies = [Depends(require_auth)]
 rpa_dependencies = [Depends(verify_api_key)]
 
 
-# Register ansøgning routes. Mock data — see app/services/mock_data.py.
+# Register skolebegynder routes (Skolebegynderscreeninger).
 api_router.include_router(
-    ansoegninger.router,
-    prefix="/ansoegninger",
-    tags=["ansoegninger"],
+    skolebegynder.router,
+    dependencies=human_dependencies,
+)
+
+
+# Register citizen routes — the Elevmappe.
+api_router.include_router(
+    citizen.router,
+    dependencies=human_dependencies,
+)
+
+
+# Register aktivitet routes — the case log (Sagsforløb).
+api_router.include_router(
+    aktivitet.router,
+    dependencies=human_dependencies,
+)
+
+
+# Register lookup routes.
+api_router.include_router(
+    lookup.router,
     dependencies=human_dependencies,
 )

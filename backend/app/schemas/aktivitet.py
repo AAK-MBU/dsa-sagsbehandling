@@ -1,0 +1,28 @@
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
+
+class SagsaktivitetCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    aktivitetstype: str
+    kommentar: str | None = None
+    udfoert_af: str | None = None
+    # DSA: a case is (fagomraade_id, relateret_sag_id), not a bevilling_id.
+    fagomraade_id: int | None = None
+    relateret_sag_id: int | None = None
+
+
+class SagsaktivitetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    aktivitet_id: int
+    cpr: str
+    aktivitetstype: str
+    type_kode: str | None = None  # machine-readable key from SagsaktivitetType
+    kommentar: str | None = None
+    udfoert_af: str | None = None
+    oprettet_tidspunkt: datetime
+    fagomraade_id: int | None = None
+    relateret_sag_id: int | None = None
