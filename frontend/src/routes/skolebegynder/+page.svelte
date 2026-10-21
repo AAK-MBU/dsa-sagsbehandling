@@ -71,6 +71,12 @@
   const toOptions = (list: { id: number; label: string }[]) =>
     list.map((o) => ({ value: o.id, label: o.label }));
 
+  // DataTable cells are nowrap, so one long value ("Henvist til anden skole
+  // end distriktsskolen") widens its whole column. Wrapped text keeps the
+  // default view inside a normal screen width.
+  const ombryd = (html: string, maxRem = 10) =>
+    `<span style="white-space: normal; display: inline-block; max-width: ${maxRem}rem;">${html}</span>`;
+
   // Every value from the API goes through esc() — DataTable renders these
   // strings as HTML. See $lib/html.
   $: alleKolonner = [
@@ -79,13 +85,18 @@
       label: "Navn",
       filterType: "text",
       render: (row: SkolebegynderRow) =>
+        ombryd(
         `<a href="/skolebegynder/${row.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
         (row.navne_adresse_beskyttelse
           ? ` <span title="Navne- og adressebeskyttelse" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">Beskyttet</span>`
           : "") +
         (row.aabne_aendringer > 0
           ? ` <span title="${row.aabne_aendringer} uhåndteret ændring(er)" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">!</span>`
-          : "")
+          : "") +
+        (row.skoler_afviger
+          ? ` <span title="Distriktsskole, ønsket skole og skoletilbud er ikke den samme skole" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-fuchsia-100 text-fuchsia-800">≠</span>`
+          : ""),
+        14)
     },
     { key: "cpr", label: "CPR", filterType: "text", render: (row: SkolebegynderRow) => esc(formatCpr(row.cpr)) },
     {
@@ -97,18 +108,35 @@
         `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusBadgeClass(row.status_tekst)}">${esc(row.status_tekst)}</span>`
     },
     { key: "screeningsdato", label: "Screeningsdato", filterType: "text", render: (row: SkolebegynderRow) => esc(dato(row.screeningsdato)) },
-    { key: "samlet_resultat", label: "Samlet resultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.samlet_resultat) },
+    { key: "samlet_resultat", label: "Samlet resultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(esc(row.samlet_resultat)) },
     {
       key: "puf_screeningsresultat",
       label: "PUF-screeningsresultat",
       filterType: "select",
       multiSelect: true,
       editable: true,
-      render: (row: SkolebegynderRow) => esc(row.puf_screeningsresultat)
+      render: (row: SkolebegynderRow) => ombryd(esc(row.puf_screeningsresultat))
     },
     { key: "dagtilbud", label: "Indmeldt dagtilbud", filterType: "text", render: (row: SkolebegynderRow) => esc(row.dagtilbud) },
-    { key: "distriktsskole", label: "Distriktsskole", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.distriktsskole) },
-    { key: "oensket_skole", label: "Ønsket skole", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.oensket_skole) },
+    { key: "distriktsskole", label: "Distriktsskole", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(esc(row.distriktsskole)) },
+    {
+      key: "oensket_skole",
+      label: "Ønsket skole",
+      filterType: "select",
+      multiSelect: true,
+      // The sibling's school sits under the wish rather than in a column of
+      // its own: it matters for the decision only as "does the sibling
+      // guarantee apply here".
+      render: (row: SkolebegynderRow) =>
+        ombryd(
+          esc(row.oensket_skole) +
+            (row.soeskende_skole
+              ? row.soeskende_skolekode === row.oensket_skolekode
+                ? `<br><span class="text-[11px] text-emerald-700">Søskende går her</span>`
+                : `<br><span class="text-[11px] text-gray-500">Søskende på ${esc(row.soeskende_skole)}</span>`
+              : "")
+        )
+    },
     { key: "soeskende_skole", label: "Skoleønske søskende", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.soeskende_skole) },
     {
       key: "skoletilbud_matrikel_id",
@@ -118,7 +146,7 @@
       editable: true,
       selectOptions: toOptions(lookups.skolematrikel),
       filterValues: (row: SkolebegynderRow) => [row.skoletilbud_matrikel ?? ""],
-      render: (row: SkolebegynderRow) => esc(row.skoletilbud_matrikel)
+      render: (row: SkolebegynderRow) => ombryd(esc(row.skoletilbud_matrikel))
     },
     {
       key: "skoletilbudstype_id",
@@ -128,7 +156,7 @@
       editable: true,
       selectOptions: toOptions(lookups.skoletilbudstyper),
       filterValues: (row: SkolebegynderRow) => [row.skoletilbudstype_tekst ?? ""],
-      render: (row: SkolebegynderRow) => esc(row.skoletilbudstype_tekst)
+      render: (row: SkolebegynderRow) => ombryd(esc(row.skoletilbudstype_tekst))
     },
     {
       key: "skoleplaceringsaarsag_id",
@@ -193,15 +221,17 @@
   // Column chooser — per tab, remembered in this browser
   // -----------------------------
 
-  // The tab columns from the sketch: Overblik is the full work grid, the
-  // other two the short lists ("Navn, CPR, PUF screeningsresultat,
-  // Bemærkning, Tilflyttet til DK" for Nærmere afklaring).
+  // Overblik is where the placement decision is made, so by default it shows
+  // what that decision needs and nothing else — who, the result, the schools
+  // in play and what was decided — and fits a normal screen without
+  // scrolling. Letter-step fields (skabelon, krav på befordring), daycare and
+  // remarks are one click away in "Kolonner" and on the case page.
+  // Nærmere afklaring follows the sketch: "Navn, CPR, PUF screeningsresultat,
+  // Bemærkning, Tilflyttet til DK".
   const STANDARD_KOLONNER: Record<Exclude<Fane, "aendringer">, string[]> = {
     overblik: [
-      "navn", "cpr", "status_tekst", "samlet_resultat", "puf_screeningsresultat", "dagtilbud",
-      "distriktsskole", "oensket_skole", "soeskende_skole", "skoletilbud_matrikel_id",
-      "skoletilbudstype_id", "skoleplaceringsaarsag_id", "krav_paa_befordring", "brevskabelon_id",
-      "bemaerkning", "skoler_afviger"
+      "navn", "cpr", "status_tekst", "samlet_resultat", "puf_screeningsresultat",
+      "distriktsskole", "oensket_skole", "skoletilbud_matrikel_id", "skoletilbudstype_id"
     ],
     "naermere-afklaring": [
       "navn", "cpr", "screeningsdato", "samlet_resultat", "puf_screeningsresultat", "bemaerkning", "tilflyttet_dk_dato"
@@ -209,7 +239,9 @@
     "ikke-screenet": ["navn", "cpr", "distriktsskole", "dagtilbud", "ppr_status", "tilflyttet_dk_dato", "bemaerkning"]
   };
 
-  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v1";
+  // v2: the Overblik default changed (16 -> 9 columns). A new key so choices
+  // saved against the old default do not bring the 16 back.
+  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v2";
 
   let synlige: Record<string, string[]> = { ...STANDARD_KOLONNER };
   let visKolonnevaelger = false;
@@ -364,14 +396,10 @@
     skoletilbud_matrikel_id: MasseFelt;
     skoletilbudstype_id: MasseFelt;
     skoleplaceringsaarsag_id: MasseFelt;
-    brevskabelon_id: MasseFelt;
-    krav_paa_befordring: "" | "ja" | "nej";
   } = {
     skoletilbud_matrikel_id: "",
     skoletilbudstype_id: "",
-    skoleplaceringsaarsag_id: "",
-    brevskabelon_id: "",
-    krav_paa_befordring: ""
+    skoleplaceringsaarsag_id: ""
   };
 
   function masseFelter(): SkolebegynderFelter {
@@ -379,8 +407,6 @@
     if (masse.skoletilbud_matrikel_id !== "") felter.skoletilbud_matrikel_id = Number(masse.skoletilbud_matrikel_id);
     if (masse.skoletilbudstype_id !== "") felter.skoletilbudstype_id = Number(masse.skoletilbudstype_id);
     if (masse.skoleplaceringsaarsag_id !== "") felter.skoleplaceringsaarsag_id = Number(masse.skoleplaceringsaarsag_id);
-    if (masse.brevskabelon_id !== "") felter.brevskabelon_id = Number(masse.brevskabelon_id);
-    if (masse.krav_paa_befordring !== "") felter.krav_paa_befordring = masse.krav_paa_befordring === "ja";
     return felter;
   }
 
@@ -410,7 +436,7 @@
       const resultat = await res.json();
       vis("ok", `${resultat.opdaterede} sag(er) opdateret, ${resultat.statusaendringer} statusændring(er).`);
       valgte = [];
-      masse = { skoletilbud_matrikel_id: "", skoletilbudstype_id: "", skoleplaceringsaarsag_id: "", brevskabelon_id: "", krav_paa_befordring: "" };
+      masse = { skoletilbud_matrikel_id: "", skoletilbudstype_id: "", skoleplaceringsaarsag_id: "" };
       await invalidateAll();
     } finally {
       masseopdaterer = false;
@@ -663,26 +689,8 @@
             </label>
           {/if}
 
-          {#if lookups.brevskabeloner.length > 0}
-            <label class="flex flex-col text-xs text-gray-600">
-              Skabelon
-              <select class="mt-1 border border-gray-300 rounded px-2 py-1 text-sm bg-white min-w-40" bind:value={masse.brevskabelon_id}>
-                <option value="">— uændret —</option>
-                {#each lookups.brevskabeloner as o}
-                  <option value={o.id}>{o.label}</option>
-                {/each}
-              </select>
-            </label>
-          {/if}
-
-          <label class="flex flex-col text-xs text-gray-600">
-            Krav på befordring
-            <select class="mt-1 border border-gray-300 rounded px-2 py-1 text-sm bg-white" bind:value={masse.krav_paa_befordring}>
-              <option value="">— uændret —</option>
-              <option value="ja">Ja</option>
-              <option value="nej">Nej</option>
-            </select>
-          </label>
+          <!-- Skabelon and krav på befordring belong to the letter step, which
+               gets its own view; they stay settable on the case page. -->
 
           <div class="flex gap-2 ml-auto">
             <button
