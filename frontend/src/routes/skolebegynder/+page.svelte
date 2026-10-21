@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  import { goto, invalidateAll } from "$app/navigation";
+  import { beforeNavigate, goto, invalidateAll } from "$app/navigation";
   import { page } from "$app/stores";
 
   import DataTable, { type DataTableColumn } from "$lib/components/DataTable.svelte";
@@ -328,78 +328,116 @@
 
 
   // -----------------------------
-  // Inline editing of one row (DataTable's Redigér / Gem)
+  // Editing in the grid
+  //
+  // No Redigér button: the editable columns are inputs on every open case.
+  // Changes are held here as drafts, marked yellow in the grid, and saved
+  // together from the bar under it. Nothing reaches the database before Gem
+  // — the caseworkers are not all at home in spreadsheets, so an explicit
+  // save is the safe default. (Double-click to edit a single cell was the
+  // alternative considered; see the decision 2026-10-21.)
   // -----------------------------
 
-  let editingRowId: number | null = null;
-  let editableRow: Record<string, any> | null = null;
+  type Kladde = Record<string, any>;
+  let kladder: Record<number, Kladde> = {};
 
-  function startRedigering(row: SkolebegynderRow) {
-    if (row.status_tekst === "Afsluttet") {
-      vis("fejl", `${row.navn ?? "Sagen"} er afsluttet. Åbn sagen og genåbn den, før den kan ændres.`);
-      return;
+  /** The value a cell's input shows for a stored row. Ja/Nej works in numbers. */
+  function redigeringsvaerdi(row: SkolebegynderRow, key: string): any {
+    const v = (row as Record<string, any>)[key];
+    if (key === "krav_paa_befordring") return v === null || v === undefined ? null : v ? 1 : 0;
+    return v ?? null;
+  }
+
+  function aendrCelle(row: SkolebegynderRow, key: string, value: any) {
+    const id = row.skolebegynder_id;
+    const original = redigeringsvaerdi(row, key);
+    // Text is compared as typed (trimmed only on save), so the input never
+    // rewrites what the caseworker is in the middle of typing.
+    const somFoer = typeof value === "string" ? value === (original ?? "") : value === original;
+
+    const kladde = { ...(kladder[id] ?? {}) };
+    if (somFoer) delete kladde[key];
+    else kladde[key] = value;
+
+    const naeste = { ...kladder };
+    if (Object.keys(kladde).length > 0) naeste[id] = kladde;
+    else delete naeste[id];
+    kladder = naeste;
+  }
+
+  $: antalAendringer = Object.values(kladder).reduce((n, k) => n + Object.keys(k).length, 0);
+  $: antalSager = Object.keys(kladder).length;
+
+  function tilFelter(kladde: Kladde): SkolebegynderFelter {
+    const felter: Record<string, any> = {};
+    for (const [key, v] of Object.entries(kladde)) {
+      if (key === "krav_paa_befordring") felter[key] = v === null ? null : v === 1;
+      else if (typeof v === "string") felter[key] = v.trim() || null;
+      else felter[key] = v;
     }
-    besked = null;
-    editingRowId = row.skolebegynder_id;
-    editableRow = {
-      puf_screeningsresultat: row.puf_screeningsresultat,
-      skoletilbud_matrikel_id: row.skoletilbud_matrikel_id,
-      skoletilbudstype_id: row.skoletilbudstype_id,
-      skoleplaceringsaarsag_id: row.skoleplaceringsaarsag_id,
-      // The Ja/Nej select works in numbers; mapped back on save.
-      krav_paa_befordring: row.krav_paa_befordring === null ? null : row.krav_paa_befordring ? 1 : 0,
-      brevskabelon_id: row.brevskabelon_id,
-      afklaring: row.afklaring,
-      bemaerkning: row.bemaerkning
-    };
-  }
-
-  function annullerRedigering() {
-    editingRowId = null;
-    editableRow = null;
-  }
-
-  function aendrFelt(key: string, value: any) {
-    if (editableRow) editableRow = { ...editableRow, [key]: value };
+    return felter;
   }
 
   let gemmer = false;
 
-  async function gemRaekke(row: SkolebegynderRow) {
-    if (!editableRow || gemmer) return;
+  // One PUT per case, each with only its changed fields. A case that fails
+  // keeps its drafts, so the caseworker sees what did not get saved.
+  async function gemAendringer() {
+    if (gemmer || antalSager === 0) return;
     gemmer = true;
+    besked = null;
 
-    const felter: SkolebegynderFelter = {
-      puf_screeningsresultat: editableRow.puf_screeningsresultat || null,
-      skoletilbud_matrikel_id: editableRow.skoletilbud_matrikel_id,
-      skoletilbudstype_id: editableRow.skoletilbudstype_id,
-      skoleplaceringsaarsag_id: editableRow.skoleplaceringsaarsag_id,
-      krav_paa_befordring: editableRow.krav_paa_befordring === null ? null : editableRow.krav_paa_befordring === 1,
-      brevskabelon_id: editableRow.brevskabelon_id,
-      afklaring: editableRow.afklaring || null,
-      bemaerkning: editableRow.bemaerkning || null
-    };
+    const navne = new Map(sager.map((s) => [s.skolebegynder_id, s.navn ?? "Sagen"]));
+    const tilbage = { ...kladder };
+    const fejl: string[] = [];
+    let gemt = 0;
 
     try {
-      const res = await backendFetch(`/skolebegynder/${row.skolebegynder_id}`, {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(felter)
-      });
-
-      if (!res.ok) {
-        vis("fejl", await fejltekst(res));
-        return;
+      for (const [id, kladde] of Object.entries(kladder)) {
+        const res = await backendFetch(`/skolebegynder/${id}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(tilFelter(kladde))
+        });
+        if (res.ok) {
+          gemt++;
+          delete tilbage[Number(id)];
+        } else {
+          fejl.push(`${navne.get(Number(id))}: ${await fejltekst(res)}`);
+        }
       }
-
-      const opdateret = await res.json();
-      annullerRedigering();
-      vis("ok", `${opdateret.navn ?? "Sagen"} er gemt — status: ${opdateret.status_tekst}.`);
+      kladder = tilbage;
       await invalidateAll();
     } finally {
       gemmer = false;
     }
+
+    if (fejl.length > 0) {
+      vis("fejl", `${gemt} sag(er) gemt. Kunne ikke gemme: ${fejl.join(" · ")}`);
+    } else {
+      vis("ok", `${gemt} sag(er) gemt.`);
+    }
   }
+
+  function fortrydAendringer() {
+    if (antalAendringer > 3 && !confirm(`Fortryd alle ${antalAendringer} ændringer?`)) return;
+    kladder = {};
+  }
+
+  // Leaving the page drops the drafts, so ask first. Switching tab or year
+  // stays on the page and keeps them.
+  beforeNavigate((navigation) => {
+    if (antalAendringer === 0) return;
+    if (navigation.type === "leave") {
+      // Closing or reloading the tab: the browser shows its own warning.
+      navigation.cancel();
+      return;
+    }
+    if (navigation.to?.url.pathname === $page.url.pathname) return;
+    if (!confirm(`Du har ${antalAendringer} ugemt(e) ændring(er). Vil du forlade siden uden at gemme?`)) {
+      navigation.cancel();
+    }
+  });
 
 
   // -----------------------------
@@ -415,7 +453,6 @@
   $: if (visningsNoegle !== forrigeVisning) {
     forrigeVisning = visningsNoegle;
     valgte = [];
-    annullerRedigering();
   }
 
   // Only ids actually in the current tab are ever sent.
@@ -441,7 +478,9 @@
     return felter;
   }
 
-  $: masseKlar = Object.values(masse).some((v) => v !== "") && valgteIFane.length > 0;
+  // Not alongside unsaved drafts: two pending ways of changing the same
+  // cases at once is one too many to keep track of.
+  $: masseKlar = Object.values(masse).some((v) => v !== "") && valgteIFane.length > 0 && antalAendringer === 0;
 
   let masseopdaterer = false;
 
@@ -649,6 +688,9 @@
       <div class="flex items-center justify-between gap-4 mb-3 flex-wrap">
         <p class="text-[13px] text-gray-500">
           Viser {filteredCount} af {faneSager.length} sager
+          {#if kanRedigere}
+            · Ret felterne direkte i tabellen, og tryk <span class="font-medium text-gray-700">Gem ændringer</span>.
+          {/if}
         </p>
 
         <div class="relative">
@@ -720,7 +762,10 @@
           <!-- Skabelon and krav på befordring belong to the letter step, which
                gets its own view; they stay settable on the case page. -->
 
-          <div class="flex gap-2 ml-auto">
+          <div class="flex gap-2 ml-auto items-center">
+            {#if antalAendringer > 0}
+              <span class="text-xs text-amber-800">Gem eller fortryd dine ændringer i tabellen først.</span>
+            {/if}
             <button
               type="button"
               class="px-3 py-1.5 rounded-full text-sm text-gray-600 hover:bg-white"
@@ -749,18 +794,49 @@
           getRowId={(row) => row.skolebegynder_id}
           selectable={kanRedigere}
           bind:selectedIds={valgte}
-          editable={kanRedigere}
-          {editingRowId}
-          {editableRow}
-          onEdit={startRedigering}
-          onSave={gemRaekke}
-          onCancel={annullerRedigering}
-          onInputChange={aendrFelt}
+          alwaysEditable={kanRedigere}
+          drafts={kladder}
+          isRowEditable={(row) => row.status_tekst !== "Afsluttet"}
+          getEditValue={redigeringsvaerdi}
+          onCellChange={aendrCelle}
           bind:filteredCount
           emptyMessage="Ingen sager i denne fane"
         />
       </div>
 
+    {/if}
+
+
+    <!-- Unsaved changes: on every tab, since drafts survive a tab switch -->
+    {#if antalAendringer > 0}
+      <div
+        class="sticky bottom-4 z-30 mt-4 mx-auto max-w-3xl px-5 py-3 rounded-2xl bg-amber-50 border border-amber-300 flex items-center gap-4 flex-wrap"
+        style="box-shadow: 0 6px 20px rgba(39,19,71,0.15);"
+        role="status"
+      >
+        <span class="text-sm text-amber-900">
+          <strong>{antalAendringer} ugemt{antalAendringer === 1 ? "" : "e"} ændring{antalAendringer === 1 ? "" : "er"}</strong>
+          i {antalSager} sag{antalSager === 1 ? "" : "er"}. Ændrede felter er markeret med gult.
+        </span>
+        <div class="ml-auto flex gap-2">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-full text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40"
+            disabled={gemmer}
+            on:click={fortrydAendringer}
+          >
+            Fortryd
+          </button>
+          <button
+            type="button"
+            class="px-5 py-2 rounded-full text-sm font-semibold text-white bg-dsa-600 hover:bg-dsa-700 disabled:opacity-40"
+            disabled={gemmer}
+            on:click={gemAendringer}
+          >
+            {gemmer ? "Gemmer…" : "Gem ændringer"}
+          </button>
+        </div>
+      </div>
     {/if}
 
   {/if}

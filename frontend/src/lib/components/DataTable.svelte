@@ -64,6 +64,19 @@
 
   export let rowStyle: ((row: any) => string) | null = null;
 
+  // DSA: always-editable mode, instead of a Redigér button per row. The
+  // editable columns are inputs on every row; each change is reported
+  // through onCellChange and held by the caller (`drafts`, keyed by
+  // getRowId, then column key) until the caller saves it, and a changed cell
+  // is highlighted. isRowEditable keeps a row read-only (a closed case);
+  // getEditValue maps a stored value to what the input shows (a boolean as
+  // 1/0 for a Ja/Nej select). Leave `editable` off when this is on.
+  export let alwaysEditable = false;
+  export let drafts: Record<string | number, Record<string, any>> = {};
+  export let isRowEditable: (row: any) => boolean = () => true;
+  export let getEditValue: (row: any, key: string) => any = (row, key) => row[key];
+  export let onCellChange: (row: any, key: string, value: any) => void = () => {};
+
   // DSA: row selection, for mass updates. Keyed by getRowId, so give the
   // table a real id (the index default would select different rows as the
   // filter changes). The header checkbox selects every FILTERED row, not
@@ -477,9 +490,48 @@
 
             {#each columns as column}
 
-              <td class={`px-4 py-3 whitespace-nowrap ${column.class ?? ""}`}>
+              {@const cellEditable = alwaysEditable && column.editable === true && isRowEditable(row)}
+              {@const changed = cellEditable && drafts[rowId] !== undefined && column.key in drafts[rowId]}
 
-                {#if isEditing && column.editable === true}
+              <td class={`whitespace-nowrap ${cellEditable ? "px-2 py-1.5" : "px-4 py-3"} ${changed ? "bg-amber-100" : ""} ${column.class ?? ""}`}>
+
+                {#if cellEditable}
+
+                  <!-- DSA: always-editable cell -->
+                  {@const value = changed ? drafts[rowId][column.key] : getEditValue(row, column.key)}
+                  {#if column.selectOptions}
+                    <!-- Narrow so a grid of them still fits the screen; the
+                         title shows a long value in full on hover. -->
+                    <select
+                      title={column.selectOptions.find((o) => o.value === value)?.label ?? ""}
+                      class={`w-36 border rounded px-1.5 py-1 text-[13px] focus:ring-0 ${changed ? "border-amber-500 bg-amber-50" : "border-gray-300 bg-white focus:border-dsa-500"}`}
+                      aria-label={column.label}
+                      value={value ?? ""}
+                      on:change={(event) => {
+                        const target = event.target as HTMLSelectElement;
+                        onCellChange(row, column.key, target.value === "" ? null : Number(target.value));
+                      }}
+                    >
+                      <option value="">—</option>
+                      {#each column.selectOptions as opt}
+                        <option value={opt.value}>{opt.label}</option>
+                      {/each}
+                    </select>
+                  {:else}
+                    <input
+                      type={column.inputType ?? "text"}
+                      class={`w-32 border rounded px-1.5 py-1 text-[13px] focus:ring-0 ${changed ? "border-amber-500 bg-amber-50" : "border-gray-300 bg-white focus:border-dsa-500"}`}
+                      title={value ?? ""}
+                      aria-label={column.label}
+                      value={value ?? ""}
+                      on:input={(event) => {
+                        const target = event.target as HTMLInputElement;
+                        onCellChange(row, column.key, target.value);
+                      }}
+                    />
+                  {/if}
+
+                {:else if isEditing && column.editable === true}
 
                   {#if column.selectOptions}
                     <select
