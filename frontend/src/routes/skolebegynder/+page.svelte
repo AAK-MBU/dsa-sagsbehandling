@@ -248,18 +248,19 @@
   // in play and what was decided — and fits a normal screen without
   // scrolling. Letter-step fields (skabelon, krav på befordring), daycare and
   // remarks are one click away in "Kolonner" and on the case page.
-  // Screening afviklet follows the sketch's Nærmere afklaring ("Navn, CPR,
-  // PUF screeningsresultat, Bemærkning, Tilflyttet til DK"), with the
-  // caseworkers' afklaring column in place of the general remark. Ikke
-  // screenet shows the booked screening time.
+  // Screening afviklet is the queue those decisions are made from, so it
+  // gets Overblik's columns — derived from them, so the two cannot drift —
+  // with Afklaring in place of Status: every row there has the same status,
+  // and the afklaring note belongs to exactly this step. Ikke screenet shows
+  // the booked screening time.
+  const OVERBLIK_KOLONNER = [
+    "navn", "cpr", "status_tekst", "screeningsdato", "samlet_resultat", "puf_screeningsresultat",
+    "distriktsskole", "oensket_skole", "skoletilbud_matrikel_id", "skoletilbudstype_id"
+  ];
+
   const STANDARD_KOLONNER: Record<Exclude<Fane, "aendringer">, string[]> = {
-    overblik: [
-      "navn", "cpr", "status_tekst", "screeningsdato", "samlet_resultat", "puf_screeningsresultat",
-      "distriktsskole", "oensket_skole", "skoletilbud_matrikel_id", "skoletilbudstype_id"
-    ],
-    "screening-afviklet": [
-      "navn", "cpr", "screeningsdato", "samlet_resultat", "puf_screeningsresultat", "afklaring", "tilflyttet_dk_dato"
-    ],
+    overblik: OVERBLIK_KOLONNER,
+    "screening-afviklet": [...OVERBLIK_KOLONNER.filter((k) => k !== "status_tekst"), "afklaring"],
     "ikke-screenet": [
       "navn", "cpr", "status_tekst", "screening_booket_tidspunkt", "distriktsskole", "dagtilbud", "ppr_status",
       "tilflyttet_dk_dato", "bemaerkning"
@@ -269,8 +270,9 @@
   // Bumped whenever a default changes, so choices saved against the old
   // default do not hide the new one. v2: Overblik 16 -> 9 columns.
   // v3: Screeningsdato added to Overblik. v4: the caseworkers' statuses —
-  // tab "naermere-afklaring" became "screening-afviklet".
-  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v4";
+  // tab "naermere-afklaring" became "screening-afviklet". v5: Screening
+  // afviklet gets Overblik's columns.
+  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v5";
 
   let synlige: Record<string, string[]> = { ...STANDARD_KOLONNER };
   let visKolonnevaelger = false;
