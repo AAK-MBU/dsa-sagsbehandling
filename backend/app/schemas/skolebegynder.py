@@ -32,6 +32,7 @@ class SkolebegynderOverviewRecord(BaseModel):
     status_dato: date | None = None
     modtaget_tidspunkt: datetime
 
+    screening_booket_tidspunkt: datetime | None = None
     screeningsdato: date | None = None
     samlet_resultat: str | None = None
     puf_screeningsresultat: str | None = None
@@ -46,6 +47,8 @@ class SkolebegynderOverviewRecord(BaseModel):
     distriktsskole: str | None = None
     oensket_skolekode: int | None = None
     oensket_skole: str | None = None
+    oensket_skolekode_2: int | None = None
+    oensket_skole_2: str | None = None
     soeskende_skolekode: int | None = None
     soeskende_skole: str | None = None
     ansoeger_anden_skole: bool | None = None
@@ -63,6 +66,7 @@ class SkolebegynderOverviewRecord(BaseModel):
     gaaafstand_distriktsskole_km: float | None = None
     gaaafstand_oensket_skole_km: float | None = None
     gaaafstand_skoletilbud_km: float | None = None
+    afklaring: str | None = None
     bemaerkning: str | None = None
     sagsbehandlingsdato: date | None = None
     afsluttet_dato: date | None = None
@@ -128,6 +132,7 @@ class SkolebegynderUpdateRequest(BaseModel):
     skoleplaceringsaarsag_id: int | None = None
     brevskabelon_id: int | None = None
     krav_paa_befordring: bool | None = None
+    afklaring: str | None = None
     bemaerkning: str | None = None
     sagsbehandlingsdato: date | None = None
 

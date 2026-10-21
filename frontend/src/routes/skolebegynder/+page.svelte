@@ -58,7 +58,7 @@
 
   $: antal = {
     overblik: aarSager.filter((s) => iFane(s, "overblik")).length,
-    "naermere-afklaring": aarSager.filter((s) => iFane(s, "naermere-afklaring")).length,
+    "screening-afviklet": aarSager.filter((s) => iFane(s, "screening-afviklet")).length,
     "ikke-screenet": aarSager.filter((s) => iFane(s, "ikke-screenet")).length,
     aendringer: aarAendringer.length
   } as Record<Fane, number>;
@@ -112,6 +112,12 @@
       render: (row: SkolebegynderRow) =>
         `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusBadgeClass(row.status_tekst)}">${esc(row.status_tekst)}</span>`
     },
+    {
+      key: "screening_booket_tidspunkt",
+      label: "Booket tid",
+      filterType: "text",
+      render: (row: SkolebegynderRow) => esc(row.screening_booket_tidspunkt ? tidspunkt(row.screening_booket_tidspunkt) : "")
+    },
     { key: "screeningsdato", label: "Screenet", filterType: "text", render: (row: SkolebegynderRow) => esc(dato(row.screeningsdato)) },
     { key: "samlet_resultat", label: "Samlet resultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(esc(row.samlet_resultat)) },
     {
@@ -133,12 +139,18 @@
       label: "Ønsket skole",
       filterType: "select",
       multiSelect: true,
-      // The sibling's school sits under the wish rather than in a column of
-      // its own: it matters for the decision only as "does the sibling
-      // guarantee apply here".
+      // Parents can give two schools; the second goes under the first,
+      // numbered, and the filter finds a school given as either. The
+      // sibling's school sits under the wishes rather than in a column of its
+      // own: it matters for the decision only as "does the sibling guarantee
+      // apply here".
+      filterValues: (row: SkolebegynderRow) =>
+        row.oensket_skole_2 ? [row.oensket_skole ?? "", row.oensket_skole_2] : [row.oensket_skole ?? ""],
       render: (row: SkolebegynderRow) =>
         ombryd(
-          esc(row.oensket_skole) +
+          (row.oensket_skole_2
+            ? `1. ${esc(row.oensket_skole)}<br><span class="text-gray-600">2. ${esc(row.oensket_skole_2)}</span>`
+            : esc(row.oensket_skole)) +
             (row.soeskende_skole
               ? row.soeskende_skolekode === row.oensket_skolekode
                 ? `<br><span class="text-[11px] text-emerald-700">Søskende går her</span>`
@@ -196,6 +208,7 @@
       filterValues: (row: SkolebegynderRow) => [row.brevskabelon_tekst ?? ""],
       render: (row: SkolebegynderRow) => esc(row.brevskabelon_tekst)
     },
+    { key: "afklaring", label: "Afklaring", filterType: "text", editable: true, render: (row: SkolebegynderRow) => ombryd(esc(row.afklaring), 16) },
     { key: "bemaerkning", label: "Bemærkning", filterType: "text", editable: true, render: (row: SkolebegynderRow) => esc(row.bemaerkning) },
     {
       key: "skoler_afviger",
@@ -235,23 +248,29 @@
   // in play and what was decided — and fits a normal screen without
   // scrolling. Letter-step fields (skabelon, krav på befordring), daycare and
   // remarks are one click away in "Kolonner" and on the case page.
-  // Nærmere afklaring follows the sketch: "Navn, CPR, PUF screeningsresultat,
-  // Bemærkning, Tilflyttet til DK".
+  // Screening afviklet follows the sketch's Nærmere afklaring ("Navn, CPR,
+  // PUF screeningsresultat, Bemærkning, Tilflyttet til DK"), with the
+  // caseworkers' afklaring column in place of the general remark. Ikke
+  // screenet shows the booked screening time.
   const STANDARD_KOLONNER: Record<Exclude<Fane, "aendringer">, string[]> = {
     overblik: [
       "navn", "cpr", "status_tekst", "screeningsdato", "samlet_resultat", "puf_screeningsresultat",
       "distriktsskole", "oensket_skole", "skoletilbud_matrikel_id", "skoletilbudstype_id"
     ],
-    "naermere-afklaring": [
-      "navn", "cpr", "screeningsdato", "samlet_resultat", "puf_screeningsresultat", "bemaerkning", "tilflyttet_dk_dato"
+    "screening-afviklet": [
+      "navn", "cpr", "screeningsdato", "samlet_resultat", "puf_screeningsresultat", "afklaring", "tilflyttet_dk_dato"
     ],
-    "ikke-screenet": ["navn", "cpr", "distriktsskole", "dagtilbud", "ppr_status", "tilflyttet_dk_dato", "bemaerkning"]
+    "ikke-screenet": [
+      "navn", "cpr", "status_tekst", "screening_booket_tidspunkt", "distriktsskole", "dagtilbud", "ppr_status",
+      "tilflyttet_dk_dato", "bemaerkning"
+    ]
   };
 
   // Bumped whenever a default changes, so choices saved against the old
   // default do not hide the new one. v2: Overblik 16 -> 9 columns.
-  // v3: Screeningsdato added to Overblik.
-  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v3";
+  // v3: Screeningsdato added to Overblik. v4: the caseworkers' statuses —
+  // tab "naermere-afklaring" became "screening-afviklet".
+  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v4";
 
   let synlige: Record<string, string[]> = { ...STANDARD_KOLONNER };
   let visKolonnevaelger = false;
@@ -330,6 +349,7 @@
       // The Ja/Nej select works in numbers; mapped back on save.
       krav_paa_befordring: row.krav_paa_befordring === null ? null : row.krav_paa_befordring ? 1 : 0,
       brevskabelon_id: row.brevskabelon_id,
+      afklaring: row.afklaring,
       bemaerkning: row.bemaerkning
     };
   }
@@ -356,6 +376,7 @@
       skoleplaceringsaarsag_id: editableRow.skoleplaceringsaarsag_id,
       krav_paa_befordring: editableRow.krav_paa_befordring === null ? null : editableRow.krav_paa_befordring === 1,
       brevskabelon_id: editableRow.brevskabelon_id,
+      afklaring: editableRow.afklaring || null,
       bemaerkning: editableRow.bemaerkning || null
     };
 

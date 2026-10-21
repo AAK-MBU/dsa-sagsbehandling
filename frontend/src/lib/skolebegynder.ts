@@ -21,6 +21,7 @@ export type SkolebegynderRow = {
   status_sortering: number | null;
   status_dato: string | null;
   modtaget_tidspunkt: string;
+  screening_booket_tidspunkt: string | null;
   screeningsdato: string | null;
   samlet_resultat: string | null;
   puf_screeningsresultat: string | null;
@@ -34,6 +35,8 @@ export type SkolebegynderRow = {
   distriktsskole: string | null;
   oensket_skolekode: number | null;
   oensket_skole: string | null;
+  oensket_skolekode_2: number | null;
+  oensket_skole_2: string | null;
   soeskende_skolekode: number | null;
   soeskende_skole: string | null;
   ansoeger_anden_skole: boolean | null;
@@ -50,6 +53,7 @@ export type SkolebegynderRow = {
   gaaafstand_distriktsskole_km: number | null;
   gaaafstand_oensket_skole_km: number | null;
   gaaafstand_skoletilbud_km: number | null;
+  afklaring: string | null;
   bemaerkning: string | null;
   sagsbehandlingsdato: string | null;
   afsluttet_dato: string | null;
@@ -138,6 +142,7 @@ export type SkolebegynderFelter = {
   skoleplaceringsaarsag_id?: number | null;
   brevskabelon_id?: number | null;
   krav_paa_befordring?: boolean | null;
+  afklaring?: string | null;
   bemaerkning?: string | null;
   sagsbehandlingsdato?: string | null;
 };
@@ -147,22 +152,25 @@ export type SkolebegynderFelter = {
 // Tabs
 // -----------------------------
 
-export type Fane = "overblik" | "naermere-afklaring" | "ikke-screenet" | "aendringer";
+export type Fane = "overblik" | "screening-afviklet" | "ikke-screenet" | "aendringer";
 
 // Ordered by how much the caseworker has to DO in each, not by process step:
-// Overblik (the decision) -> Nærmere afklaring (PUF's assessment is missing)
-// -> Ændringer (a decision may need reviewing) -> Ikke screenet (mostly
-// waiting on the screening in SX). The skolebegynder sketch also puts
-// Ændringer next to Overblik and Ikke screenet last.
+// Overblik (the decision) -> Screening afviklet (screened, still to be
+// placed — the work queue) -> Ændringer (a decision may need reviewing) ->
+// Ikke screenet (mostly waiting on the screening in SX). The skolebegynder
+// sketch also puts Ændringer next to Overblik and Ikke screenet last.
 export const FANER: { id: Fane; label: string }[] = [
   { id: "overblik", label: "Overblik" },
-  { id: "naermere-afklaring", label: "Nærmere afklaring" },
+  { id: "screening-afviklet", label: "Screening afviklet" },
   { id: "aendringer", label: "Ændringer" },
   { id: "ikke-screenet", label: "Ikke screenet" }
 ];
 
 /** Statuses on the Overblik tab: every screened child ("Alle screenet"). */
-const OVERBLIK_STATUSSER = new Set(["Under behandling", "Skoletilbud", "Afsluttet"]);
+const OVERBLIK_STATUSSER = new Set(["Screening afviklet", "Skoleplaceret", "Afsluttet"]);
+
+/** Statuses on the Ikke screenet tab: on the list, with or without a booking. */
+const IKKE_SCREENET_STATUSSER = new Set(["Potentiel skolestarter", "Tid booket"]);
 
 /**
  * Which cases a tab shows. Ændringer is a different list (changes, not
@@ -172,10 +180,10 @@ export function iFane(row: SkolebegynderRow, fane: Fane): boolean {
   switch (fane) {
     case "overblik":
       return OVERBLIK_STATUSSER.has(row.status_tekst);
-    case "naermere-afklaring":
-      return row.status_tekst === "Nærmere afklaring";
+    case "screening-afviklet":
+      return row.status_tekst === "Screening afviklet";
     case "ikke-screenet":
-      return row.status_tekst === "Ikke screenet";
+      return IKKE_SCREENET_STATUSSER.has(row.status_tekst);
     default:
       return false;
   }

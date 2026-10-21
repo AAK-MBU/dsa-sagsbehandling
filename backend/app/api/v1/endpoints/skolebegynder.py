@@ -32,7 +32,7 @@ def get_overview(
 ):
     """All active cases for the overview grid, newest screening first.
 
-    The Overblik / Ikke screenet / Nærmere afklaring tabs are filters on this
+    The Overblik / Screening afviklet / Ikke screenet tabs are filters on this
     one list — by status_tekst — so the page fetches it once.
     """
 

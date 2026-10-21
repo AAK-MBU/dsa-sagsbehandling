@@ -41,6 +41,7 @@
     brevskabelon_id: number | "";
     krav_paa_befordring: "" | "ja" | "nej";
     sagsbehandlingsdato: string;
+    afklaring: string;
     bemaerkning: string;
   };
 
@@ -57,6 +58,7 @@
       brevskabelon_id: sag.brevskabelon_id ?? "",
       krav_paa_befordring: sag.krav_paa_befordring === null ? "" : sag.krav_paa_befordring ? "ja" : "nej",
       sagsbehandlingsdato: sag.sagsbehandlingsdato ?? "",
+      afklaring: sag.afklaring ?? "",
       bemaerkning: sag.bemaerkning ?? ""
     };
   }
@@ -93,6 +95,7 @@
       brevskabelon_id: idEllerNull(form.brevskabelon_id),
       krav_paa_befordring: form.krav_paa_befordring === "" ? null : form.krav_paa_befordring === "ja",
       sagsbehandlingsdato: form.sagsbehandlingsdato || null,
+      afklaring: form.afklaring.trim() || null,
       bemaerkning: form.bemaerkning.trim() || null
     };
 
@@ -238,8 +241,8 @@
           <button
             type="button"
             class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40"
-            disabled={arbejder || sag.status_tekst !== "Skoletilbud"}
-            title={sag.status_tekst !== "Skoletilbud" ? "Kun sager med et skoletilbud kan afsluttes" : "Afslut, når brevet er sendt"}
+            disabled={arbejder || sag.status_tekst !== "Skoleplaceret"}
+            title={sag.status_tekst !== "Skoleplaceret" ? "Kun sager med et skoletilbud kan afsluttes" : "Afslut, når brevet er sendt"}
             on:click={afslut}
           >
             Afslut sag
@@ -293,7 +296,13 @@
         <h2 class="font-bold text-[15px]" style="color: #1f5d6e;">Screening</h2>
       </div>
       {#if sag.samlet_resultat === null && sag.screeningsdato === null}
-        <p class="px-6 py-5 text-sm text-gray-500">Barnet er ikke screenet endnu.</p>
+        <p class="px-6 py-5 text-sm text-gray-500">
+          {#if sag.screening_booket_tidspunkt}
+            Ikke screenet endnu. Tid booket: <span class="font-medium text-gray-700">{tidspunkt(sag.screening_booket_tidspunkt)}</span>
+          {:else}
+            Barnet er ikke screenet endnu, og der er ikke booket en tid.
+          {/if}
+        </p>
       {:else}
         <dl class="px-6 py-5 grid grid-cols-[170px_1fr] gap-y-2.5 gap-x-4 text-[13px]">
           <dt class="text-gray-500">Screeningsdato</dt><dd>{dato(sag.screeningsdato)}</dd>
@@ -345,7 +354,8 @@
       </div>
       <dl class="px-6 py-5 grid grid-cols-[170px_1fr] gap-y-2.5 gap-x-4 text-[13px]">
         <dt class="text-gray-500">Distriktsskole</dt><dd>{sag.distriktsskole ?? "—"}</dd>
-        <dt class="text-gray-500">Ønsket skole</dt><dd>{sag.oensket_skole ?? "—"}</dd>
+        <dt class="text-gray-500">Ønsket skole 1</dt><dd>{sag.oensket_skole ?? "—"}</dd>
+        <dt class="text-gray-500">Ønsket skole 2</dt><dd>{sag.oensket_skole_2 ?? "—"}</dd>
         <dt class="text-gray-500">Søskende på skolen</dt><dd>{sag.soeskende_skole ?? "—"}</dd>
         <dt class="text-gray-500">Ansøgt anden skole</dt><dd>{jaNej(sag.ansoeger_anden_skole)}</dd>
         {#if sag.skoler_afviger}
@@ -439,6 +449,11 @@
         </label>
 
         <label class="flex flex-col gap-1 md:col-span-2">
+          <span class="text-gray-600">Afklaring</span>
+          <textarea class="border border-gray-300 rounded px-2.5 py-1.5 min-h-16" placeholder="Hvis screeningsresultatet ikke er entydigt" bind:value={form.afklaring}></textarea>
+        </label>
+
+        <label class="flex flex-col gap-1 md:col-span-2">
           <span class="text-gray-600">Bemærkning</span>
           <textarea class="border border-gray-300 rounded px-2.5 py-1.5 min-h-20" bind:value={form.bemaerkning}></textarea>
         </label>
@@ -447,7 +462,7 @@
       {#if kanRedigere && !afsluttet}
         <div class="md:col-span-2 flex items-center justify-between gap-4">
           <p class="text-xs text-gray-500">
-            Status følger felterne: skoletilbud + skoletilbudstype giver "Skoletilbud".
+            Status følger felterne: skoletilbud + skoletilbudstype giver "Skoleplaceret".
           </p>
           <button type="submit" class="px-5 py-2 rounded-full text-sm font-semibold text-white bg-dsa-600 hover:bg-dsa-700 disabled:opacity-40" disabled={arbejder}>
             {arbejder ? "Gemmer…" : "Gem"}

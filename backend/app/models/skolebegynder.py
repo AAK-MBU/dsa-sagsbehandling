@@ -52,6 +52,8 @@ class Skolebegynder(Base):
     )
 
     # --- Screening, from SX ---
+    # The booked screening time (migration 002) — drives "Tid booket".
+    screening_booket_tidspunkt: Mapped[datetime | None] = mapped_column(DATETIME2(0), nullable=True)
     screeningsdato: Mapped[date | None] = mapped_column(Date, nullable=True)
     testtype: Mapped[str | None] = mapped_column(Unicode(100), nullable=True)
     navn_konsulent: Mapped[str | None] = mapped_column(Unicode(200), nullable=True)
@@ -93,6 +95,8 @@ class Skolebegynder(Base):
     email_distriktsskole: Mapped[str | None] = mapped_column(Unicode(255), nullable=True)
     # Schools, not campuses: skolekode, no FK — see view_Skoler.
     oensket_skolekode: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Parents can give two schools at skoleindskrivning (migration 002).
+    oensket_skolekode_2: Mapped[int | None] = mapped_column(Integer, nullable=True)
     soeskende_skolekode: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ansoeger_anden_skole: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
@@ -121,6 +125,8 @@ class Skolebegynder(Base):
     gaaafstand_distriktsskole_km: Mapped[float | None] = mapped_column(Float, nullable=True)
     gaaafstand_oensket_skole_km: Mapped[float | None] = mapped_column(Float, nullable=True)
     gaaafstand_skoletilbud_km: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # The caseworker's note on a screening result that is not clear-cut.
+    afklaring: Mapped[str | None] = mapped_column(Unicode, nullable=True)
     bemaerkning: Mapped[str | None] = mapped_column(Unicode, nullable=True)
     sagsbehandlingsdato: Mapped[date | None] = mapped_column(Date, nullable=True)
     journalfil_dannet: Mapped[date | None] = mapped_column(Date, nullable=True)
