@@ -149,10 +149,13 @@ export type SkolebegynderFelter = {
 
 export type Fane = "overblik" | "naermere-afklaring" | "ikke-screenet" | "aendringer";
 
+// Overblik first — it is the landing page, where the placement is decided.
+// Then the earlier steps in process order (not screened yet -> screened but
+// not assessed by PUF), and Ændringer last, as it runs alongside the flow.
 export const FANER: { id: Fane; label: string }[] = [
   { id: "overblik", label: "Overblik" },
-  { id: "naermere-afklaring", label: "Nærmere afklaring" },
   { id: "ikke-screenet", label: "Ikke screenet" },
+  { id: "naermere-afklaring", label: "Nærmere afklaring" },
   { id: "aendringer", label: "Ændringer" }
 ];
 
