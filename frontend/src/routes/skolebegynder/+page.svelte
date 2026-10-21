@@ -5,6 +5,7 @@
   import { page } from "$app/stores";
 
   import DataTable, { type DataTableColumn } from "$lib/components/DataTable.svelte";
+  import ReadOnlyNotice from "$lib/components/ReadOnlyNotice.svelte";
   import { backendFetch } from "$lib/client/backendFetch";
   import { esc } from "$lib/html";
   import {
@@ -477,12 +478,9 @@
 </script>
 
 
-<svelte:head>
-  <title>DSA – Skolebegynderscreeninger</title>
-</svelte:head>
-
-
 <section class="w-full">
+
+  <ReadOnlyNotice />
 
   <!-- Header -->
   <div class="flex items-end justify-between gap-4 mb-6 flex-wrap">

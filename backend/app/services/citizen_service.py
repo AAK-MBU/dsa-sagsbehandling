@@ -1,21 +1,26 @@
-"""Service layer for citizen (Elev) data — the "Elevmappe".
+"""Service layer for citizen-related business logic.
 
-The citizen's master data and every case DSA holds on them, across areas.
-Only skolebegynder cases exist so far; each new area adds its own list here.
+This module contains database operations related to citizens/students.
 
-Citizen data is maintained by external systems (LIS / TEA) and is read-only
-in this application, as in befordringssystemet.
+The service is responsible for:
+
+- Fetching citizen stamdata
+- Fetching parent/guardian data
+
+Ported from befordringssystemet's CitizenService: the same methods, reading
+the same-named views (view_Stamdata, view_ParentData). DSA: create_elev and
+genberegn_skole are omitted — they belong to befordring's conversion bot and
+its walking-distance calculation.
+
+Stamdata itself is maintained by external systems and is read-only here.
 """
 
-from sqlalchemy import select, text
-from sqlalchemy.orm import Session, joinedload
-
-from app.models.citizen import Elev, Foraelder
-from app.services.skolebegynder_service import SkolebegynderService
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 
 class CitizenService:
-    """Service class for citizen-related database reads.
+    """Service class for citizen-related operations.
 
     Args:
         db:
@@ -28,82 +33,97 @@ class CitizenService:
         self.db = db
 
 
-    def _skolenavn(self, skolekode: int | None) -> str | None:
-        """A school's name by skolekode, through view_Skoler."""
+    def _rows_to_dicts(self, result):
+        """Convert SQLAlchemy result rows into normal dictionaries.
 
-        if skolekode is None:
-            return None
+        Args:
+            result:
+                SQLAlchemy result object.
 
-        return self.db.execute(
-            text("SELECT skolenavn FROM [dsa].[view_Skoler] WHERE skolekode = :skolekode"),
-            {"skolekode": skolekode},
-        ).scalar_one_or_none()
+        Returns:
+            A list of dictionaries.
+
+        Notes:
+            This is useful when reading from SQL views using raw SQL.
+        """
+
+        return [dict(row) for row in result.mappings().all()]
 
 
-    def get_stamdata(self, cpr: str) -> dict | None:
-        """Master data for a child: themselves, custody holders and cases.
+    def get_stamdata(self, cpr: str):
+        """Get stamdata for a citizen/student.
 
         Args:
             cpr:
-                CPR number of the child.
+                CPR number of the citizen/student.
 
         Returns:
-            None if DSA holds no child with this CPR, otherwise:
-
-                {
-                    "elev": {...},
-                    "foraeldre": [{...}, ...],
-                    "skolebegynder_sager": [{...}, ...],
-                }
+            A dictionary containing stamdata if found.
+            Otherwise None.
 
         Notes:
-            navne_adresse_beskyttelse and maa_vide_barns_adresse are returned
-            as they are. What a protected child's or parent's data may show is
-            for the screen to decide, and it must decide before it renders.
+            Data is read from view_Stamdata, not directly from the Elev table.
+            This means the returned object may contain joined/calculated fields
+            that are not present directly on the Elev model.
         """
 
-        elev = self.db.execute(
-            select(Elev).options(joinedload(Elev.adresse)).where(Elev.cpr == cpr)
-        ).scalar_one_or_none()
+        sql = text("""
+            SELECT
+                *
+            FROM
+                [dsa].[view_Stamdata]
+            WHERE
+                cpr = :cpr
+        """)
 
-        if elev is None:
+        result = self.db.execute(sql, {"cpr": cpr})
+        records = self._rows_to_dicts(result)
+
+        # No stamdata was found for this CPR.
+        if not records:
             return None
 
-        foraeldre = self.db.execute(
-            select(Foraelder)
-            .options(joinedload(Foraelder.adresse))
-            .where(Foraelder.cpr_elev == cpr)
-            .order_by(Foraelder.adresseringsnavn)
-        ).scalars().all()
+        # CPR should identify one citizen/student, so return the first row.
+        return records[0]
 
-        return {
-            "elev": {
-                "cpr": elev.cpr,
-                "navn": elev.adresseringsnavn,
-                "navne_adresse_beskyttelse": elev.navne_adresse_beskyttelse,
-                "adresse_tekst": elev.adresse.adresse_tekst if elev.adresse else None,
-                "koen": elev.koen,
-                "modersmaal": elev.modersmaal,
-                "distriktsskolekode": elev.distriktsskolekode,
-                "distriktsskole": self._skolenavn(elev.distriktsskolekode),
-                "skolekode": elev.skolekode,
-                "skole": self._skolenavn(elev.skolekode),
-                "elevklassetrin": elev.elevklassetrin,
-                "klassebetegnelse": elev.klassebetegnelse,
-                "sprogstoettebehov": elev.sprogstoettebehov,
-                "ppr_status": elev.ppr_status,
-                "tilflyttet_dk_dato": elev.tilflyttet_dk_dato,
-            },
-            "foraeldre": [
-                {
-                    "cpr": f.cpr_foraelder,
-                    "navn": f.adresseringsnavn,
-                    "relation": f.relation,
-                    "navne_adresse_beskyttelse": f.navne_adresse_beskyttelse,
-                    "maa_vide_barns_adresse": f.maa_vide_barns_adresse,
-                    "adresse_tekst": f.adresse.adresse_tekst if f.adresse else None,
-                }
-                for f in foraeldre
-            ],
-            "skolebegynder_sager": SkolebegynderService(db=self.db).get_for_cpr(cpr),
-        }
+
+    def get_parent_data(self, cpr: str):
+        """Get parent/guardian data for a citizen/student.
+
+        Args:
+            cpr:
+                CPR number of the citizen/student.
+
+        Returns:
+            A list of parent/guardian records.
+
+        Notes:
+            Data is read from view_ParentData.
+
+            The result is ordered by:
+            1. foraelderrolle_sortering
+            2. adresseringsnavn
+
+            This gives the frontend a stable and predictable display order.
+        """
+
+        sql = text("""
+            SELECT
+                adresseringsnavn,
+                cpr_foraelder,
+                adresse_tekst,
+                relation,
+                navne_adresse_beskyttelse,
+                maa_vide_barns_adresse
+            FROM
+                [dsa].[view_ParentData]
+            WHERE
+                cpr_elev = :cpr
+            ORDER BY
+                foraelderrolle_sortering,
+                adresseringsnavn
+        """)
+
+        result = self.db.execute(sql, {"cpr": cpr})
+
+        return self._rows_to_dicts(result)

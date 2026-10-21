@@ -1,35 +1,63 @@
-"""API router for citizen (Elev) endpoints — the Elevmappe.
+"""API router for citizen-related endpoints.
 
-Citizen data is read-only here; it is maintained in LIS / TEA.
+This module contains endpoints for citizen stamdata and parent data.
 
-The CPR is in the path on purpose, as in befordringssystemet: PortalAuditLog
-records the path, and who looked up which child is what the trail is for.
+Ported from befordringssystemet. DSA: create_elev and genberegn_skole are
+omitted (befordring's conversion bot and walking-distance calculation).
+
+Stamdata and parent data themselves are maintained by external systems and are
+read-only here.
+
+The CPR is in the path on purpose: PortalAuditLog records the path, and who
+looked up which child is what the trail is for.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from app.api.dependencies import DbSession
 from app.services.citizen_service import CitizenService
 
 
+# All routes in this file are grouped under /citizen.
+# The tag is used by Swagger/OpenAPI to group the endpoints visually.
 router = APIRouter(prefix="/citizen", tags=["Citizen"])
 
 
 @router.get("/stamdata/{cpr}")
 def get_stamdata(cpr: str, db: DbSession):
-    """Get master data for a child: the child, custody holders and cases.
+    """Get stamdata for a citizen/student.
 
     Args:
         cpr:
-            CPR number of the child.
+            The CPR number of the citizen/student.
 
-    Raises:
-        HTTPException: 404 if DSA holds no child with this CPR.
+        db:
+            The database session injected by FastAPI.
+
+    Returns:
+        Stamdata for the provided CPR.
     """
 
-    stamdata = CitizenService(db=db).get_stamdata(cpr=cpr)
+    service = CitizenService(db=db)
 
-    if stamdata is None:
-        raise HTTPException(status_code=404, detail="Elev ikke fundet")
+    return service.get_stamdata(cpr=cpr)
 
-    return stamdata
+
+@router.get("/stamdata/{cpr}/parents")
+def get_parent_data(cpr: str, db: DbSession):
+    """Get parent/guardian data for a citizen/student.
+
+    Args:
+        cpr:
+            The CPR number of the citizen/student.
+
+        db:
+            The database session injected by FastAPI.
+
+    Returns:
+        Parent/guardian data connected to the provided CPR.
+    """
+
+    service = CitizenService(db=db)
+
+    return service.get_parent_data(cpr=cpr)

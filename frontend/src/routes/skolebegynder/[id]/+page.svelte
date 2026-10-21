@@ -1,7 +1,10 @@
 <script lang="ts">
   import { invalidateAll } from "$app/navigation";
 
+  import ReadOnlyNotice from "$lib/components/ReadOnlyNotice.svelte";
   import { backendFetch } from "$lib/client/backendFetch";
+  import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate } from "$lib/dates";
+  import { erEgenKommentar } from "$lib/kommentarEjer";
   import {
     dato,
     fejltekst,
@@ -92,6 +95,17 @@
       bemaerkning: form.bemaerkning.trim() || null
     };
 
+    // As befordringssystemet's forms: min/max on the input only bound the
+    // picker; a typed or pasted value still reaches bind:value, so the check
+    // that actually stops a "202365" year is this one.
+    const ugyldig =
+      firstInvalidDate(felter, ["sagsbehandlingsdato"]) ??
+      firstOutOfRangeDate(felter, ["sagsbehandlingsdato"]);
+    if (ugyldig) {
+      besked = { type: "fejl", tekst: `Ugyldig sagsbehandlingsdato: ${ugyldig[1]}` };
+      return;
+    }
+
     kald(
       `/skolebegynder/${sag.skolebegynder_id}`,
       { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(felter) },
@@ -142,9 +156,42 @@
     );
   }
 
-  function sletKommentar(aktivitetId: number) {
-    if (!confirm("Slet kommentaren?")) return;
-    kald(`/aktivitet/kommentar/${aktivitetId}`, { method: "DELETE" }, () => "Kommentaren er slettet.");
+  // Comment deletion, as on befordringssystemet's sag page: permanent —
+  // Sagsaktivitet has no aktiv flag — so a confirmation dialog first, and the
+  // backend's own message shown in it if the delete is refused.
+  let confirmingDeleteAktivitetId: number | null = null;
+  let deletingAktivitet = false;
+  let deleteAktivitetError: string | null = null;
+
+  async function doDeleteKommentar() {
+    if (deletingAktivitet || confirmingDeleteAktivitetId === null) {
+      return;
+    }
+
+    const aktivitetId = confirmingDeleteAktivitetId;
+
+    deletingAktivitet = true;
+    deleteAktivitetError = null;
+
+    try {
+      const response = await backendFetch(`/aktivitet/kommentar/${aktivitetId}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        // The backend says in Danish why it refused (not a comment / not
+        // yours); keep the dialog open so the reason is read where it was
+        // triggered.
+        deleteAktivitetError = await fejltekst(response);
+        return;
+      }
+
+      confirmingDeleteAktivitetId = null;
+
+      await invalidateAll();
+    } finally {
+      deletingAktivitet = false;
+    }
   }
 
   const procent = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)} %`);
@@ -152,12 +199,9 @@
 </script>
 
 
-<svelte:head>
-  <title>{sag.navn ?? "Sag"} – Skolebegynder {sag.skoleaar}</title>
-</svelte:head>
-
-
 <section class="w-full max-w-6xl">
+
+  <ReadOnlyNotice />
 
   <a href="/skolebegynder?aar={sag.skoleaar}" class="inline-flex items-center gap-1.5 text-[13px] text-dsa-600 hover:text-dsa-800 mb-4">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -263,7 +307,8 @@
           {/if}
         </dl>
 
-        <table class="mx-6 mb-5 text-[13px] w-[calc(100%-3rem)]">
+        <div class="mx-6 mb-5 overflow-x-auto">
+        <table class="screeningstabel w-full border-collapse text-[13px]">
           <thead>
             <tr class="text-left text-gray-500 border-b border-gray-100">
               <th class="py-1.5 font-medium"></th>
@@ -288,6 +333,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       {/if}
     </div>
 
@@ -339,7 +385,7 @@
 
         <label class="flex flex-col gap-1">
           <span class="text-gray-600">Sagsbehandlingsdato</span>
-          <input type="date" class="border border-gray-300 rounded px-2.5 py-1.5" bind:value={form.sagsbehandlingsdato} />
+          <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 rounded px-2.5 py-1.5" bind:value={form.sagsbehandlingsdato} />
         </label>
 
         <label class="flex flex-col gap-1">
@@ -443,8 +489,19 @@
               </p>
               {#if a.kommentar}<p class="text-gray-700 mt-0.5 whitespace-pre-line">{a.kommentar}</p>{/if}
             </div>
-            {#if a.type_kode === "kommentar" && brugerNavn && a.udfoert_af === brugerNavn}
-              <button type="button" class="text-xs text-red-600 hover:underline self-start" on:click={() => sletKommentar(a.aktivitet_id)}>Slet</button>
+            <!-- Only comments can be deleted, and only your own — erEgenKommentar
+                 mirrors the backend's samme_bruger, which is what decides. -->
+            {#if (a.type_kode === "kommentar" || a.aktivitetstype === "Kommentar") && erEgenKommentar(a.udfoert_af, brugerNavn)}
+              <button
+                type="button"
+                title="Slet din kommentar"
+                class="p-1 text-gray-400 hover:text-red-600 transition-colors self-start"
+                on:click={() => { confirmingDeleteAktivitetId = a.aktivitet_id; deleteAktivitetError = null; }}
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             {/if}
           </li>
         {/each}
@@ -453,3 +510,71 @@
   </div>
 
 </section>
+
+
+<!-- Delete kommentar confirmation modal — markup from befordringssystemet's
+     sag page. -->
+{#if confirmingDeleteAktivitetId !== null}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+    role="presentation"
+  >
+    <div
+      class="w-[420px] bg-white rounded-lg shadow-2xl"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
+      <div class="px-6 py-5 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900">Slet kommentar</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Kommentar #{confirmingDeleteAktivitetId}</p>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4">
+        <p class="text-sm text-gray-700">
+          Er du sikker på, at du vil slette denne kommentar?
+          Den slettes permanent fra databasen og kan ikke gendannes.
+        </p>
+        {#if deleteAktivitetError}
+          <p class="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{deleteAktivitetError}</p>
+        {/if}
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+        <button
+          type="button"
+          class="px-4 py-2 text-sm font-medium border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+          on:click={() => confirmingDeleteAktivitetId = null}
+        >
+          Annullér
+        </button>
+        <button
+          type="button"
+          disabled={deletingAktivitet}
+          class="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded transition-colors disabled:opacity-50"
+          on:click={doDeleteKommentar}
+        >
+          {deletingAktivitet ? "Sletter…" : "Slet kommentar"}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+
+<style>
+  /* The global td/th rule (app.css, from befordringssystemet) pads every cell
+     0.75rem — too much for a seven-column table inside a half-width card.
+     Compact here, as DataTable does for its own cells. */
+  .screeningstabel :global(th),
+  .screeningstabel :global(td) {
+    padding: 0.375rem 0.4rem;
+  }
+</style>

@@ -4,9 +4,10 @@
 
   export let data;
 
-  $: elev = data.stamdata.elev;
-  $: foraeldre = data.stamdata.foraeldre as any[];
-  $: sager = data.stamdata.skolebegynder_sager as SkolebegynderRow[];
+  // Field names follow befordringssystemet's view_Stamdata / view_ParentData.
+  $: elev = data.stamdata;
+  $: foraeldre = data.parents as any[];
+  $: sager = data.skolebegynderSager as SkolebegynderRow[];
 
   $: aabne = sager.filter((s) => s.status_tekst !== "Afsluttet");
   $: afsluttede = sager.filter((s) => s.status_tekst === "Afsluttet");
@@ -19,17 +20,12 @@
 </script>
 
 
-<svelte:head>
-  <title>Elevmappe – {elev.navn ?? formatCpr(elev.cpr)}</title>
-</svelte:head>
-
-
 <section class="w-full max-w-6xl px-6 md:px-10 py-8">
 
   <div class="flex items-center gap-3 mb-8 flex-wrap">
     <h1 class="text-[26px] font-bold" style="color: #271347;">Elevmappe</h1>
     <span class="text-[15px] text-gray-400">·</span>
-    <span class="text-[18px] font-semibold" style="color: #3b2168;">{elev.navn ?? "—"}</span>
+    <span class="text-[18px] font-semibold" style="color: #3b2168;">{elev.adresseringsnavn ?? "—"}</span>
     {#if elev.navne_adresse_beskyttelse}
       <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">Navne- og adressebeskyttet</span>
     {/if}
@@ -44,13 +40,13 @@
         <h3 class="font-bold text-[15px]" style="color: #2f5325;">Elev</h3>
       </div>
       <dl class="px-6 py-5 grid grid-cols-[150px_1fr] gap-y-2.5 gap-x-4 text-[13px]">
-        <dt class="text-gray-500">Navn</dt><dd class="font-semibold" style="color:#271347;">{elev.navn ?? "—"}</dd>
+        <dt class="text-gray-500">Navn</dt><dd class="font-semibold" style="color:#271347;">{elev.adresseringsnavn ?? "—"}</dd>
         <dt class="text-gray-500">CPR</dt><dd class="font-mono">{formatCpr(elev.cpr)}</dd>
-        <dt class="text-gray-500">Adresse</dt><dd>{adresse(elev.navne_adresse_beskyttelse, elev.adresse_tekst)}</dd>
+        <dt class="text-gray-500">Adresse</dt><dd>{adresse(elev.navne_adresse_beskyttelse, elev.folkeregister_adresse)}</dd>
         <dt class="text-gray-500">Køn</dt><dd>{elev.koen ?? "—"}</dd>
         <dt class="text-gray-500">Modersmål</dt><dd>{elev.modersmaal ?? "—"}</dd>
         <dt class="text-gray-500">Distriktsskole</dt><dd>{elev.distriktsskole ?? "—"}</dd>
-        <dt class="text-gray-500">Aktuel skole</dt><dd>{elev.skole ?? "—"}</dd>
+        <dt class="text-gray-500">Aktuel skole</dt><dd>{elev.skole_navn ?? "—"}</dd>
         <dt class="text-gray-500">Klassetrin</dt><dd>{elev.elevklassetrin ?? "—"}</dd>
         <dt class="text-gray-500">Sprogstøttebehov</dt><dd>{jaNej(elev.sprogstoettebehov)}</dd>
         <dt class="text-gray-500">PPR</dt><dd>{jaNej(elev.ppr_status)}</dd>
@@ -69,8 +65,8 @@
           {#each foraeldre as f, i}
             <li>
               <p class="text-gray-500 text-xs mb-0.5">Forældremyndighed {i + 1}{f.relation ? ` · ${f.relation}` : ""}</p>
-              <p class="font-semibold" style="color:#271347;">{f.navn ?? "—"}</p>
-              <p class="font-mono text-gray-500">{formatCpr(f.cpr)}</p>
+              <p class="font-semibold" style="color:#271347;">{f.adresseringsnavn ?? "—"}</p>
+              <p class="font-mono text-gray-500">{formatCpr(f.cpr_foraelder)}</p>
               <p class="text-gray-600">{adresse(f.navne_adresse_beskyttelse, f.adresse_tekst)}</p>
               {#if f.maa_vide_barns_adresse === false}
                 <p class="mt-1 inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700">Må ikke kende barnets adresse</p>

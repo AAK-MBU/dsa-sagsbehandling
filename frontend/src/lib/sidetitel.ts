@@ -1,0 +1,59 @@
+/**
+ * The browser tab title for a route.
+ *
+ * Set once in +layout.svelte rather than per page. A <title> that only some
+ * routes declare is sticky: <svelte:head> replaces what a route sets, so a
+ * route that sets nothing keeps whatever the last one left behind. Landing on
+ * Overblik or on a student's sag from Nye ansøgninger kept saying "Nye
+ * ansøgninger" for exactly that reason.
+ *
+ * It is not only cosmetic. The browser names a copied link after the title, so
+ * a sag sent to a colleague arrived labelled as the list it was opened from.
+ *
+ * The specific part comes first because that is the half that survives: a tab
+ * truncates from the end, and so does a pasted link in a narrow column.
+ */
+
+const APP = "DSA";
+
+// DSA: DSA's routes. Keep in step with $lib/areas (the top bar).
+/** Route id -> title. */
+const FASTE_TITLER: Record<string, string> = {
+  "/": "Forside",
+  "/skolebegynder": "Skolebegynderscreeninger",
+};
+
+/**
+ * Routes about one student. The value is the action, or "" for the sag itself;
+ * the student is named by the caller, since only the page knows who it is.
+ */
+// DSA: a skolebegynder case is named after its child, as befordringssystemet
+// names a sag; the Elevmappe says what it is.
+const SAGS_HANDLINGER: Record<string, string> = {
+  "/skolebegynder/[id]": "",
+  "/elevmappe/[cpr]": "Elevmappe",
+};
+
+export function sidetitel(
+  routeId: string | null | undefined,
+  sag?: { navn?: string | null; cpr?: string | null },
+): string {
+  const fast = routeId ? FASTE_TITLER[routeId] : undefined;
+
+  if (fast) return `${fast} – ${APP}`;
+
+  if (routeId && routeId in SAGS_HANDLINGER) {
+    // Falls back to the CPR where the page has no name (befordringssystemet's
+    // /sag/[cpr] renders client-side only, so its first render has none).
+    const hvem =
+      (sag?.navn ?? "").trim() || (sag?.cpr ?? "").trim() || "Sag";
+
+    const handling = SAGS_HANDLINGER[routeId];
+
+    return handling
+      ? `${handling} – ${hvem} – ${APP}`
+      : `${hvem} – ${APP}`;
+  }
+
+  return APP;
+}

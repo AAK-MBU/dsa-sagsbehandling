@@ -25,3 +25,35 @@ body {
 th {
   text-transform: none !important;
 }
+
+/* Gør alle datatable-celler synlige
+ *
+ * From befordringssystemet's app.css: the cell borders are what show where
+ * one column's value ends and the next begins. DataTable's own scoped style
+ * tightens the padding inside the grid; this is the default for every other
+ * table. max-width also caps a single wide value at 20rem. */
+td, th {
+  border: 1px solid #e5e7eb; /* gray-200 */
+  padding: 0.75rem;   /* Better padding */
+  text-align: left;
+  max-width: 20rem;
+}
+
+/* Table rows with better hover */
+tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+/* DSA: the DSA lavender (dsa-50) rather than befordringssystemet's blue. */
+tbody tr:hover {
+  background-color: #f6f4fb !important;
+}
+
+/* Alternating row colors for better readability */
+tbody tr:nth-child(odd) {
+  background-color: #f8fafc;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #ffffff;
+}

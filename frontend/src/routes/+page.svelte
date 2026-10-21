@@ -7,11 +7,6 @@
 </script>
 
 
-<svelte:head>
-  <title>DSA – Forside</title>
-</svelte:head>
-
-
 <div class="flex-1 flex flex-col">
 
   <!-- Top bar -->
