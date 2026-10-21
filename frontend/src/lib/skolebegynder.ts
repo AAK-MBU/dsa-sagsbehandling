@@ -149,14 +149,16 @@ export type SkolebegynderFelter = {
 
 export type Fane = "overblik" | "naermere-afklaring" | "ikke-screenet" | "aendringer";
 
-// Overblik first — it is the landing page, where the placement is decided.
-// Then the earlier steps in process order (not screened yet -> screened but
-// not assessed by PUF), and Ændringer last, as it runs alongside the flow.
+// Ordered by how much the caseworker has to DO in each, not by process step:
+// Overblik (the decision) -> Nærmere afklaring (PUF's assessment is missing)
+// -> Ændringer (a decision may need reviewing) -> Ikke screenet (mostly
+// waiting on the screening in SX). The skolebegynder sketch also puts
+// Ændringer next to Overblik and Ikke screenet last.
 export const FANER: { id: Fane; label: string }[] = [
   { id: "overblik", label: "Overblik" },
-  { id: "ikke-screenet", label: "Ikke screenet" },
   { id: "naermere-afklaring", label: "Nærmere afklaring" },
-  { id: "aendringer", label: "Ændringer" }
+  { id: "aendringer", label: "Ændringer" },
+  { id: "ikke-screenet", label: "Ikke screenet" }
 ];
 
 /** Statuses on the Overblik tab: every screened child ("Alle screenet"). */
@@ -184,10 +186,24 @@ export function faneFraQuery(value: string | null): Fane {
   return FANER.some((f) => f.id === value) ? (value as Fane) : "overblik";
 }
 
-/** Parse ?aar=…; null means "use the newest year in the data". */
+/** Parse ?aar=…; null means "use the coming school year". */
 export function aarFraQuery(value: string | null): number | null {
   const aar = Number(value);
   return Number.isInteger(aar) && aar >= 2000 && aar <= 2100 ? aar : null;
+}
+
+/**
+ * The school start the casework is for: the children starting school next
+ * August — this year before August, next year from August on. The same rule
+ * as befordringssystemet's skoleaarSlutter and the seed's @skoleaar.
+ */
+export function kommendeSkoleaar(today: Date = new Date()): number {
+  return today.getMonth() >= 7 ? today.getFullYear() + 1 : today.getFullYear();
+}
+
+/** skoleaar is the year school starts; shown as the school year, "2027/2028". */
+export function skoleaarTekst(aar: number): string {
+  return `${aar}/${aar + 1}`;
 }
 
 

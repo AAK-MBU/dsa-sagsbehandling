@@ -9,6 +9,7 @@
     dato,
     fejltekst,
     jaNej,
+    skoleaarTekst,
     tidspunkt,
     type AendringRow,
     type SkolebegynderDetail,
@@ -222,7 +223,7 @@
       </div>
       <p class="text-[13px] text-gray-500 mt-1">
         <span class="font-mono">{formatCpr(sag.cpr)}</span>
-        · Skolestart {sag.skoleaar}
+        · Skoleår {skoleaarTekst(sag.skoleaar)}
         · <a href="/elevmappe/{sag.cpr}" class="text-dsa-700 hover:underline">Elevmappe</a>
       </p>
     </div>

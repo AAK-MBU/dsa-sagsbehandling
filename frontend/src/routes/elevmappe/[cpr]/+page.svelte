@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { dato, jaNej, type SkolebegynderRow } from "$lib/skolebegynder";
+  import { dato, jaNej, skoleaarTekst, type SkolebegynderRow } from "$lib/skolebegynder";
   import { formatCpr, getStatusBadgeClass } from "$lib/tableColumnConfig";
 
   export let data;
@@ -89,7 +89,7 @@
     <div class="px-4 pb-4 space-y-2">
       {#each aabne as s (s.skolebegynder_id)}
         <a href="/skolebegynder/{s.skolebegynder_id}" class="bg-white rounded-xl px-5 py-3.5 flex items-center gap-4 hover:shadow-sm">
-          <span class="font-semibold text-[14px]" style="color:#271347;">Skolebegynder {s.skoleaar}</span>
+          <span class="font-semibold text-[14px]" style="color:#271347;">Skolebegynder {skoleaarTekst(s.skoleaar)}</span>
           <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold {getStatusBadgeClass(s.status_tekst)}">{s.status_tekst}</span>
           <span class="ml-auto text-[12px] text-gray-500">{s.skoletilbud_matrikel ? `Skoletilbud: ${s.skoletilbud_matrikel}` : "Intet skoletilbud endnu"}</span>
         </a>
@@ -106,7 +106,7 @@
     <div class="px-4 pb-4 space-y-2">
       {#each afsluttede as s (s.skolebegynder_id)}
         <a href="/skolebegynder/{s.skolebegynder_id}" class="bg-white/80 rounded-xl px-5 py-3.5 flex items-center gap-4 hover:shadow-sm">
-          <span class="font-semibold text-[14px]" style="color:#271347;">Skolebegynder {s.skoleaar}</span>
+          <span class="font-semibold text-[14px]" style="color:#271347;">Skolebegynder {skoleaarTekst(s.skoleaar)}</span>
           <span class="text-[13px]">{s.skoletilbudstype_tekst ?? "—"}</span>
           <span class="text-[13px] text-gray-600">{s.skoletilbud_matrikel ?? ""}</span>
           <span class="ml-auto text-[12px] text-gray-500">Afsluttet {dato(s.afsluttet_dato)}</span>

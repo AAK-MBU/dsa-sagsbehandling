@@ -16,6 +16,8 @@
     fejltekst,
     iFane,
     jaNej,
+    kommendeSkoleaar,
+    skoleaarTekst,
     tidspunkt,
     type AendringRow,
     type Fane,
@@ -37,8 +39,10 @@
   // the same view.
   // -----------------------------
 
-  $: aarListe = [...new Set(sager.map((s) => s.skoleaar))].sort((a, b) => b - a);
-  $: aar = aarFraQuery($page.url.searchParams.get("aar")) ?? aarListe[0] ?? null;
+  // The coming school year is always offered and is the default, also before
+  // its first case arrives.
+  $: aarListe = [...new Set([kommendeSkoleaar(), ...sager.map((s) => s.skoleaar)])].sort((a, b) => b - a);
+  $: aar = aarFraQuery($page.url.searchParams.get("aar")) ?? kommendeSkoleaar();
   $: fane = faneFraQuery($page.url.searchParams.get("fane"));
 
   function skiftVisning(nyAar: number | null, nyFane: Fane) {
@@ -495,7 +499,7 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <label class="text-[13px] text-gray-600" for="skoleaar">Skolestart</label>
+      <label class="text-[13px] text-gray-600" for="skoleaar">Skoleår</label>
       <select
         id="skoleaar"
         class="border border-dsa-200 rounded-full bg-white px-3 py-1.5 text-sm"
@@ -503,7 +507,7 @@
         on:change={(e) => skiftVisning(Number((e.target as HTMLSelectElement).value), fane)}
       >
         {#each aarListe as a}
-          <option value={a}>{a}</option>
+          <option value={a}>{skoleaarTekst(a)}</option>
         {/each}
       </select>
 
