@@ -108,11 +108,15 @@
       render: (row: SkolebegynderRow) =>
         `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusBadgeClass(row.status_tekst)}">${esc(row.status_tekst)}</span>`
     },
-    { key: "screeningsdato", label: "Screeningsdato", filterType: "text", render: (row: SkolebegynderRow) => esc(dato(row.screeningsdato)) },
+    { key: "screeningsdato", label: "Screenet", filterType: "text", render: (row: SkolebegynderRow) => esc(dato(row.screeningsdato)) },
     { key: "samlet_resultat", label: "Samlet resultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(esc(row.samlet_resultat)) },
     {
       key: "puf_screeningsresultat",
-      label: "PUF-screeningsresultat",
+      // Short header labels where the long word would set the column width
+      // (the header does not wrap inside a word): "Screenet" for the date,
+      // "PUF-resultat" for "PUF-screeningsresultat". The export keeps the full
+      // names.
+      label: "PUF-resultat",
       filterType: "select",
       multiSelect: true,
       editable: true,
@@ -231,7 +235,7 @@
   // Bemærkning, Tilflyttet til DK".
   const STANDARD_KOLONNER: Record<Exclude<Fane, "aendringer">, string[]> = {
     overblik: [
-      "navn", "cpr", "status_tekst", "samlet_resultat", "puf_screeningsresultat",
+      "navn", "cpr", "status_tekst", "screeningsdato", "samlet_resultat", "puf_screeningsresultat",
       "distriktsskole", "oensket_skole", "skoletilbud_matrikel_id", "skoletilbudstype_id"
     ],
     "naermere-afklaring": [
@@ -240,9 +244,10 @@
     "ikke-screenet": ["navn", "cpr", "distriktsskole", "dagtilbud", "ppr_status", "tilflyttet_dk_dato", "bemaerkning"]
   };
 
-  // v2: the Overblik default changed (16 -> 9 columns). A new key so choices
-  // saved against the old default do not bring the 16 back.
-  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v2";
+  // Bumped whenever a default changes, so choices saved against the old
+  // default do not hide the new one. v2: Overblik 16 -> 9 columns.
+  // v3: Screeningsdato added to Overblik.
+  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v3";
 
   let synlige: Record<string, string[]> = { ...STANDARD_KOLONNER };
   let visKolonnevaelger = false;
