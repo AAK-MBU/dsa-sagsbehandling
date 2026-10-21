@@ -249,7 +249,9 @@ class SkolebegynderService:
         Returns:
             view_Skolebegyndere rows, newest screening first and unscreened
             children last — the sketch asks for "nyeste screeningsresultater
-            øverst".
+            øverst". Within a date, by status in process order (so Afsluttet
+            comes after the cases still being worked on), then by wanted
+            school, school offer and name.
         """
 
         result = self.db.execute(
@@ -263,6 +265,9 @@ class SkolebegynderService:
                 ORDER BY
                     skoleaar DESC,
                     screeningsdato DESC,
+                    status_sortering,
+                    oensket_skole,
+                    skoletilbud_matrikel,
                     navn
             """),
             {"skoleaar": skoleaar},
