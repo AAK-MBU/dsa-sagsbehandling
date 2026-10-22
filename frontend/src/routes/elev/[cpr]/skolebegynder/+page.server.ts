@@ -3,6 +3,7 @@ import { error } from "@sveltejs/kit";
 import { backendUserFetcher } from "$lib/server/backendApi";
 import {
   TOMME_LOOKUPS,
+  kommendeSkoleaar,
   type AendringRow,
   type Lookups,
   type SkolebegynderDetail
@@ -16,9 +17,12 @@ import type { PageServerLoad } from "./$types";
  * cases, with what the page around it needs — the lookups for the case-work
  * form, the case's own log entries and its open changes.
  *
- * Which case: ?sag={id} when given (a link from the overview names it),
- * otherwise the newest. A child whose school start was postponed has one
- * case per school year; the page lets the caseworker switch between them.
+ * Which case: ?sag={id} when given (a link from the overview names it).
+ * Otherwise the child's current case — the one for the coming school year,
+ * the same year the overview opens on — else the newest open one, else the
+ * newest. A child whose school start was postponed has one case per school
+ * year; last year's closed postponement must not be what opens first. The
+ * page lets the caseworker switch between them.
  */
 export const load: PageServerLoad = async (event) => {
   const { skolebegynderSager } = await event.parent();
@@ -27,12 +31,22 @@ export const load: PageServerLoad = async (event) => {
     return { sag: null, lookups: TOMME_LOOKUPS, sagsforloeb: [], aendringer: [], fagomraadeId: null };
   }
 
-  const oensket = Number(event.url.searchParams.get("sag"));
-  // The cases come newest school year first.
-  const valgt = skolebegynderSager.find((s) => s.skolebegynder_id === oensket) ?? skolebegynderSager[0];
+  let valgt;
 
-  if (event.url.searchParams.has("sag") && valgt.skolebegynder_id !== oensket) {
-    throw error(404, "Sagen findes ikke for denne elev");
+  if (event.url.searchParams.has("sag")) {
+    const oensket = Number(event.url.searchParams.get("sag"));
+    valgt = skolebegynderSager.find((s) => s.skolebegynder_id === oensket);
+
+    if (!valgt) {
+      throw error(404, "Sagen findes ikke for denne elev");
+    }
+  } else {
+    // The cases come newest school year first.
+    const kommende = kommendeSkoleaar();
+    valgt =
+      skolebegynderSager.find((s) => s.skoleaar === kommende) ??
+      skolebegynderSager.find((s) => s.status_tekst !== "Afsluttet") ??
+      skolebegynderSager[0];
   }
 
   const id = valgt.skolebegynder_id;
