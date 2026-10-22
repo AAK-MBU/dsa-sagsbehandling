@@ -91,7 +91,7 @@
       filterType: "text",
       render: (row: SkolebegynderRow) =>
         ombryd(
-        `<a href="/skolebegynder/${row.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
+        `<a href="/elev/${esc(row.cpr)}/skolebegynder?sag=${row.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
         (row.navne_adresse_beskyttelse
           ? ` <span title="Navne- og adressebeskyttelse" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">Beskyttet</span>`
           : "") +
@@ -655,7 +655,7 @@
               {#each aarAendringer as a (a.aendring_id)}
                 <tr class="border-b border-gray-100 last:border-0">
                   <td class="px-4 py-3">
-                    <a href="/skolebegynder/{a.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">{a.navn ?? "—"}</a>
+                    <a href="/elev/{a.cpr}/skolebegynder?sag={a.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">{a.navn ?? "—"}</a>
                   </td>
                   <td class="px-4 py-3 font-mono text-[13px]">{formatCpr(a.cpr)}</td>
                   <td class="px-4 py-3">{a.navne_adresse_beskyttelse ? "Beskyttet" : (a.adresse_tekst ?? "—")}</td>

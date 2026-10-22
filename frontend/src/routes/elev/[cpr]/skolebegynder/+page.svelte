@@ -1,7 +1,6 @@
 <script lang="ts">
   import { invalidateAll } from "$app/navigation";
 
-  import ReadOnlyNotice from "$lib/components/ReadOnlyNotice.svelte";
   import { backendFetch } from "$lib/client/backendFetch";
   import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate } from "$lib/dates";
   import { erEgenKommentar } from "$lib/kommentarEjer";
@@ -13,18 +12,23 @@
     tidspunkt,
     type AendringRow,
     type SkolebegynderDetail,
-    type SkolebegynderFelter
+    type SkolebegynderFelter,
+    type SkolebegynderRow
   } from "$lib/skolebegynder";
-  import { formatCpr, getStatusBadgeClass } from "$lib/tableColumnConfig";
+  import { getStatusBadgeClass } from "$lib/tableColumnConfig";
 
   export let data;
 
-  $: sag = data.sag as SkolebegynderDetail;
+  // The Skolebegynder tab of the student page (/elev/[cpr]). The child, their
+  // stamdata and the protection warnings are the page's, above; this is the
+  // case. sag is null when the child has no skolebegynder case.
+  $: sag = data.sag as SkolebegynderDetail | null;
+  $: sager = data.skolebegynderSager as SkolebegynderRow[];
   $: lookups = data.lookups;
   $: sagsforloeb = data.sagsforloeb as any[];
   $: aendringer = data.aendringer as AendringRow[];
   $: kanRedigere = data.user?.can_edit === true;
-  $: afsluttet = sag.status_tekst === "Afsluttet";
+  $: afsluttet = sag?.status_tekst === "Afsluttet";
   $: brugerNavn = data.user?.name ?? null;
 
 
@@ -48,7 +52,7 @@
   let form: Form;
   let formFor = "";
 
-  $: if (`${sag.skolebegynder_id}-${sag.updated_at}` !== formFor) {
+  $: if (sag && `${sag.skolebegynder_id}-${sag.updated_at}` !== formFor) {
     formFor = `${sag.skolebegynder_id}-${sag.updated_at}`;
     form = {
       puf_screeningsresultat: sag.puf_screeningsresultat ?? "",
@@ -111,7 +115,7 @@
     }
 
     kald(
-      `/skolebegynder/${sag.skolebegynder_id}`,
+      `/skolebegynder/${sag!.skolebegynder_id}`,
       { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(felter) },
       (svar) => `Gemt — status: ${svar.status_tekst}.`
     );
@@ -119,12 +123,12 @@
 
   function afslut() {
     if (!confirm("Afslut sagen? Gør det, når afgørelsesbrevet er sendt.")) return;
-    kald(`/skolebegynder/${sag.skolebegynder_id}/afslut`, { method: "POST" }, () => "Sagen er afsluttet.");
+    kald(`/skolebegynder/${sag!.skolebegynder_id}/afslut`, { method: "POST" }, () => "Sagen er afsluttet.");
   }
 
   function genaabn() {
     if (!confirm("Genåbn sagen, så den kan ændres?")) return;
-    kald(`/skolebegynder/${sag.skolebegynder_id}/genaabn`, { method: "POST" }, (svar) => `Sagen er genåbnet — status: ${svar.status_tekst}.`);
+    kald(`/skolebegynder/${sag!.skolebegynder_id}/genaabn`, { method: "POST" }, (svar) => `Sagen er genåbnet — status: ${svar.status_tekst}.`);
   }
 
   function haandter(a: AendringRow) {
@@ -142,7 +146,7 @@
     const tekst = kommentar.trim();
     if (!tekst) return;
     kald(
-      `/aktivitet/${sag.cpr}`,
+      `/aktivitet/${sag!.cpr}`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -150,7 +154,7 @@
           aktivitetstype: "Kommentar",
           kommentar: tekst,
           fagomraade_id: data.fagomraadeId,
-          relateret_sag_id: sag.skolebegynder_id
+          relateret_sag_id: sag!.skolebegynder_id
         })
       },
       () => {
@@ -205,30 +209,44 @@
 
 <section class="w-full">
 
-  <ReadOnlyNotice />
+  {#if !sag}
 
-  <a href="/skolebegynder?aar={sag.skoleaar}" class="inline-flex items-center gap-1.5 text-[13px] text-dsa-600 hover:text-dsa-800 mb-4">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-    </svg>
-    Tilbage til overblik
-  </a>
+    <div class="bg-white rounded-2xl px-6 py-10 text-center text-gray-500" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
+      Barnet har ingen skolebegyndersager.
+    </div>
 
-  <!-- Header -->
-  <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
-    <div>
-      <div class="flex items-center gap-3 flex-wrap">
-        <h1 class="text-[26px] font-bold" style="color: #271347;">{sag.navn ?? "—"}</h1>
-        <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold {getStatusBadgeClass(sag.status_tekst)}">{sag.status_tekst}</span>
-        {#if sag.navne_adresse_beskyttelse}
-          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">Navne- og adressebeskyttet</span>
-        {/if}
-      </div>
-      <p class="text-[13px] text-gray-500 mt-1">
-        <span class="font-mono">{formatCpr(sag.cpr)}</span>
-        · Skoleår {skoleaarTekst(sag.skoleaar)}
-        · <a href="/elevmappe/{sag.cpr}" class="text-dsa-700 hover:underline">Elevmappe</a>
-      </p>
+  {:else}
+
+  <!-- Case strip: which case, its status, and closing it -->
+  <div class="flex items-center justify-between gap-4 mb-5 flex-wrap">
+    <div class="flex items-center gap-3 flex-wrap">
+      <a href="/skolebegynder?aar={sag.skoleaar}" class="inline-flex items-center gap-1 text-[13px] text-dsa-600 hover:text-dsa-800 mr-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        Overblik
+      </a>
+
+      <h2 class="text-[18px] font-bold" style="color: #271347;">Skolebegynder {skoleaarTekst(sag.skoleaar)}</h2>
+      <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold {getStatusBadgeClass(sag.status_tekst)}">{sag.status_tekst}</span>
+
+      <!-- A postponed child has a case per school year -->
+      {#if sager.length > 1}
+        <div class="flex items-center gap-1 ml-2 text-[13px]">
+          <span class="text-gray-500 mr-1">Sager:</span>
+          {#each sager as s (s.skolebegynder_id)}
+            <a
+              href="?sag={s.skolebegynder_id}"
+              class="px-2.5 py-1 rounded-full border {s.skolebegynder_id === sag.skolebegynder_id
+                ? 'border-dsa-600 bg-dsa-50 text-dsa-800 font-semibold'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-50'}"
+              aria-current={s.skolebegynder_id === sag.skolebegynder_id ? "page" : undefined}
+            >
+              {skoleaarTekst(s.skoleaar)} · {s.status_tekst}
+            </a>
+          {/each}
+        </div>
+      {/if}
     </div>
 
     {#if kanRedigere}
@@ -373,9 +391,6 @@
         </dd>
         <dt class="text-gray-500">E-mail (PL)</dt><dd>{sag.email_pl ?? "—"}</dd>
         <dt class="text-gray-500">E-mail distriktsskole</dt><dd>{sag.email_distriktsskole ?? "—"}</dd>
-        <dt class="text-gray-500">Modersmål</dt><dd>{sag.modersmaal ?? "—"}</dd>
-        <dt class="text-gray-500">Tilflyttet DK</dt><dd>{sag.tilflyttet_dk_dato ? dato(sag.tilflyttet_dk_dato) : "—"}</dd>
-        <dt class="text-gray-500">PPR</dt><dd>{jaNej(sag.ppr_status)}</dd>
       </dl>
     </div>
 
@@ -529,6 +544,8 @@
   </div>
 
   </div>
+
+  {/if}
 
 </section>
 

@@ -27,11 +27,11 @@ const FASTE_TITLER: Record<string, string> = {
  * Routes about one student. The value is the action, or "" for the sag itself;
  * the student is named by the caller, since only the page knows who it is.
  */
-// DSA: a skolebegynder case is named after its child, as befordringssystemet
-// names a sag; the Elevmappe says what it is.
+// DSA: the student page (/elev/[cpr]) is named after its child, as
+// befordringssystemet names a sag; a tab other than an area's says what it is.
 const SAGS_HANDLINGER: Record<string, string> = {
-  "/skolebegynder/[id]": "",
-  "/elevmappe/[cpr]": "Elevmappe",
+  "/elev/[cpr]/skolebegynder": "",
+  "/elev/[cpr]/foraeldremyndighed": "Forældremyndighed",
 };
 
 export function sidetitel(

@@ -22,11 +22,11 @@
 
 <!-- One title for every route, from $lib/sidetitel — as in befordringssystemet,
      where per-page titles "stuck" on routes that set none. Case pages are
-     named after the child: data.sag on a skolebegynder case, data.stamdata
-     on the Elevmappe. -->
+     named after the child: data.stamdata on the student page (/elev/[cpr]),
+     data.sag where only a case is loaded. -->
 <svelte:head>
   <title>{sidetitel($page.route.id, {
-    navn: $page.data.sag?.navn ?? $page.data.stamdata?.adresseringsnavn,
+    navn: $page.data.stamdata?.adresseringsnavn ?? $page.data.sag?.navn,
     cpr: $page.data.sag?.cpr ?? $page.params.cpr,
   })}</title>
 </svelte:head>

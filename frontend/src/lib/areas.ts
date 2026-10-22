@@ -12,6 +12,9 @@ export type Area = {
   bg: string; // card background
   ring: string; // card border
   href?: string; // where the area navigates (when enabled)
+  // The area's tab on the student page: /elev/[cpr]/<elevside>. Areas about a
+  // child have one (shown as "Kommer snart" until enabled); Dataudtræk does not.
+  elevside?: string;
   links: AreaLink[];
   enabled: boolean;
 };
@@ -19,6 +22,7 @@ export type Area = {
 export const areas: Area[] = [
   {
     title: "Nyankomne i Modtagelsesklasse",
+    elevside: "modtagelsesklasse",
     short: "Modtagelsesklasse",
     accent: "#8a2b2b",
     bg: "#f9ecec",
@@ -28,6 +32,7 @@ export const areas: Area[] = [
   },
   {
     title: "Skoleskiftere og tilflyttere",
+    elevside: "skoleskiftere",
     short: "Skoleskiftere",
     accent: "#4e7c3a",
     bg: "#eef5e9",
@@ -37,6 +42,7 @@ export const areas: Area[] = [
   },
   {
     title: "Skolebegynderscreeninger",
+    elevside: "skolebegynder",
     short: "Screeninger",
     accent: "#2c7d90",
     bg: "#e7f2f5",
@@ -47,6 +53,7 @@ export const areas: Area[] = [
   },
   {
     title: "Udslusning basisundervisning",
+    elevside: "udslusning",
     short: "Udslusning",
     accent: "#6a4a9c",
     bg: "#efeaf6",
@@ -56,6 +63,7 @@ export const areas: Area[] = [
   },
   {
     title: "Sproglig udvikling",
+    elevside: "sproglig-udvikling",
     short: "Sproglig udvikling",
     accent: "#c2591a",
     bg: "#f9efe6",
