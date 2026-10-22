@@ -203,7 +203,7 @@
 </script>
 
 
-<section class="w-full max-w-6xl">
+<section class="w-full">
 
   <ReadOnlyNotice />
 
@@ -288,7 +288,11 @@
   {/if}
 
 
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-6">
+  <!-- Full width from xl: the facts (screening, wishes) side by side with the
+       case work under them, and the case log running down the right, where
+       it stays in view while the form is filled in. Below xl the cards stack
+       in reading order. -->
+  <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-5 items-start">
 
     <!-- Screening -->
     <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #2c7d90;">
@@ -375,11 +379,9 @@
       </dl>
     </div>
 
-  </div>
-
 
   <!-- Case work -->
-  <div class="bg-white rounded-2xl overflow-hidden mb-6" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #6a3fb5;">
+  <div class="bg-white rounded-2xl overflow-hidden xl:col-span-2" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #6a3fb5;">
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
       <h2 class="font-bold text-[15px]" style="color: #3b2168;">Sagsbehandling</h2>
       {#if afsluttet}
@@ -387,18 +389,9 @@
       {/if}
     </div>
 
-    <form class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-[13px]" on:submit|preventDefault={gem}>
+    <!-- Placement first: skoletilbud + type is what moves the case on. -->
+    <form class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4 text-[13px]" on:submit|preventDefault={gem}>
       <fieldset class="contents" disabled={!kanRedigere || afsluttet || arbejder}>
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">PUF-screeningsresultat</span>
-          <input class="border border-gray-300 rounded px-2.5 py-1.5" maxlength="100" bind:value={form.puf_screeningsresultat} />
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Sagsbehandlingsdato</span>
-          <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 rounded px-2.5 py-1.5" bind:value={form.sagsbehandlingsdato} />
-        </label>
-
         <label class="flex flex-col gap-1">
           <span class="text-gray-600">Skoletilbud (matrikel)</span>
           <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.skoletilbud_matrikel_id}>
@@ -430,13 +423,13 @@
         </label>
 
         <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Skabelon (til brev)</span>
-          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.brevskabelon_id}>
-            <option value="">{lookups.brevskabeloner.length ? "— Vælg —" : "Ingen skabeloner oprettet endnu"}</option>
-            {#each lookups.brevskabeloner as o}
-              <option value={o.id}>{o.label}</option>
-            {/each}
-          </select>
+          <span class="text-gray-600">PUF-screeningsresultat</span>
+          <input class="border border-gray-300 rounded px-2.5 py-1.5" maxlength="100" bind:value={form.puf_screeningsresultat} />
+        </label>
+
+        <label class="flex flex-col gap-1">
+          <span class="text-gray-600">Sagsbehandlingsdato</span>
+          <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 rounded px-2.5 py-1.5" bind:value={form.sagsbehandlingsdato} />
         </label>
 
         <label class="flex flex-col gap-1">
@@ -448,19 +441,29 @@
           </select>
         </label>
 
-        <label class="flex flex-col gap-1 md:col-span-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-gray-600">Skabelon (til brev)</span>
+          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.brevskabelon_id}>
+            <option value="">{lookups.brevskabeloner.length ? "— Vælg —" : "Ingen skabeloner oprettet endnu"}</option>
+            {#each lookups.brevskabeloner as o}
+              <option value={o.id}>{o.label}</option>
+            {/each}
+          </select>
+        </label>
+
+        <label class="flex flex-col gap-1 md:col-span-2 xl:col-span-3">
           <span class="text-gray-600">Afklaring</span>
           <textarea class="border border-gray-300 rounded px-2.5 py-1.5 min-h-16" placeholder="Hvis screeningsresultatet ikke er entydigt" bind:value={form.afklaring}></textarea>
         </label>
 
-        <label class="flex flex-col gap-1 md:col-span-2">
+        <label class="flex flex-col gap-1 md:col-span-2 xl:col-span-3">
           <span class="text-gray-600">Bemærkning</span>
           <textarea class="border border-gray-300 rounded px-2.5 py-1.5 min-h-20" bind:value={form.bemaerkning}></textarea>
         </label>
       </fieldset>
 
       {#if kanRedigere && !afsluttet}
-        <div class="md:col-span-2 flex items-center justify-between gap-4">
+        <div class="md:col-span-2 xl:col-span-3 flex items-center justify-between gap-4">
           <p class="text-xs text-gray-500">
             Status følger felterne: skoletilbud + skoletilbudstype giver "Skoleplaceret".
           </p>
@@ -473,8 +476,8 @@
   </div>
 
 
-  <!-- Sagsforløb -->
-  <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #bd9b16;">
+  <!-- Sagsforløb — the right-hand column from xl -->
+  <div class="bg-white rounded-2xl overflow-hidden xl:col-start-3 xl:row-start-1 xl:row-span-2" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #bd9b16;">
     <div class="px-6 py-4 border-b border-gray-100">
       <h2 class="font-bold text-[15px]" style="color: #8a7210;">Sagsforløb</h2>
     </div>
@@ -496,8 +499,8 @@
     {:else}
       <ol class="px-6 py-4 space-y-3">
         {#each sagsforloeb as a (a.aktivitet_id)}
-          <li class="flex gap-4 text-[13px]">
-            <span class="w-32 shrink-0 text-gray-500">{tidspunkt(a.oprettet_tidspunkt)}</span>
+          <li class="flex gap-3 text-[13px]">
+            <span class="w-28 shrink-0 text-gray-500">{tidspunkt(a.oprettet_tidspunkt)}</span>
             <div class="flex-1">
               <p>
                 <span class="font-semibold {a.type_kode === 'kommentar' ? 'text-dsa-800' : 'text-gray-800'}">{a.aktivitetstype}</span>
@@ -523,6 +526,8 @@
         {/each}
       </ol>
     {/if}
+  </div>
+
   </div>
 
 </section>
@@ -587,7 +592,7 @@
 
 <style>
   /* The global td/th rule (app.css, from befordringssystemet) pads every cell
-     0.75rem — too much for a seven-column table inside a half-width card.
+     0.75rem — too much for a seven-column table inside a column-wide card.
      Compact here, as DataTable does for its own cells. */
   .screeningstabel :global(th),
   .screeningstabel :global(td) {

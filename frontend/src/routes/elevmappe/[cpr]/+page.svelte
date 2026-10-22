@@ -20,7 +20,7 @@
 </script>
 
 
-<section class="w-full max-w-6xl px-6 md:px-10 py-8">
+<section class="w-full px-6 md:px-10 py-8">
 
   <div class="flex items-center gap-3 mb-8 flex-wrap">
     <h1 class="text-[26px] font-bold" style="color: #271347;">Elevmappe</h1>
