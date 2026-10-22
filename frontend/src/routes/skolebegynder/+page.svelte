@@ -89,6 +89,10 @@
       key: "navn",
       label: "Navn",
       filterType: "text",
+      // The CPR sits under the name rather than in a column of its own — one
+      // column less, which is what lets the grid fit a 13" laptop — and the
+      // Navn search finds either, typed with or without the dash.
+      filterValues: (row: SkolebegynderRow) => [row.navn ?? "", row.cpr, formatCpr(row.cpr)],
       render: (row: SkolebegynderRow) =>
         ombryd(
         `<a href="/elev/${esc(row.cpr)}/skolebegynder?sag=${row.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
@@ -100,8 +104,9 @@
           : "") +
         (row.skoler_afviger
           ? ` <span title="Distriktsskole, ønsket skole og skoletilbud er ikke den samme skole" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-fuchsia-100 text-fuchsia-800">≠</span>`
-          : ""),
-        14)
+          : "") +
+        `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(row.cpr))}</span>`,
+        12)
     },
     { key: "cpr", label: "CPR", filterType: "text", render: (row: SkolebegynderRow) => esc(formatCpr(row.cpr)) },
     {
@@ -110,7 +115,9 @@
       filterType: "select",
       multiSelect: true,
       render: (row: SkolebegynderRow) =>
-        `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusBadgeClass(row.status_tekst)}">${esc(row.status_tekst)}</span>`
+        // Below 2xl a long status ("Screening afviklet") may wrap rather than
+        // set the column's width — the rows are two lines tall there anyway.
+        `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium whitespace-normal max-w-[6.5rem] 2xl:whitespace-nowrap 2xl:max-w-none ${getStatusBadgeClass(row.status_tekst)}">${esc(row.status_tekst)}</span>`
     },
     {
       key: "screening_booket_tidspunkt",
@@ -254,7 +261,7 @@
   // and the afklaring note belongs to exactly this step. Ikke screenet shows
   // the booked screening time.
   const OVERBLIK_KOLONNER = [
-    "navn", "cpr", "status_tekst", "screeningsdato", "samlet_resultat", "puf_screeningsresultat",
+    "navn", "status_tekst", "screeningsdato", "samlet_resultat", "puf_screeningsresultat",
     "distriktsskole", "oensket_skole", "skoletilbud_matrikel_id", "skoletilbudstype_id"
   ];
 
@@ -262,7 +269,7 @@
     overblik: OVERBLIK_KOLONNER,
     "screening-afviklet": [...OVERBLIK_KOLONNER.filter((k) => k !== "status_tekst"), "afklaring"],
     "ikke-screenet": [
-      "navn", "cpr", "status_tekst", "screening_booket_tidspunkt", "distriktsskole", "dagtilbud", "ppr_status",
+      "navn", "status_tekst", "screening_booket_tidspunkt", "distriktsskole", "dagtilbud", "ppr_status",
       "tilflyttet_dk_dato", "bemaerkning"
     ]
   };
@@ -271,8 +278,9 @@
   // default do not hide the new one. v2: Overblik 16 -> 9 columns.
   // v3: Screeningsdato added to Overblik. v4: the caseworkers' statuses —
   // tab "naermere-afklaring" became "screening-afviklet". v5: Screening
-  // afviklet gets Overblik's columns.
-  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v5";
+  // afviklet gets Overblik's columns. v6: CPR under the name, not a column
+  // of its own (13" laptops).
+  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v6";
 
   let synlige: Record<string, string[]> = { ...STANDARD_KOLONNER };
   let visKolonnevaelger = false;
@@ -796,6 +804,8 @@
           getRowId={(row) => row.skolebegynder_id}
           selectable={kanRedigere}
           bind:selectedIds={valgte}
+          compact
+          stickyFirstColumn
           alwaysEditable={kanRedigere}
           drafts={kladder}
           isRowEditable={(row) => row.status_tekst !== "Afsluttet"}
