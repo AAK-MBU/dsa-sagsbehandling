@@ -12,7 +12,7 @@ The CPR is in the path on purpose: PortalAuditLog records the path, and who
 looked up which child is what the trail is for.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.api.dependencies import DbSession
 from app.services.citizen_service import CitizenService
@@ -21,6 +21,19 @@ from app.services.citizen_service import CitizenService
 # All routes in this file are grouped under /citizen.
 # The tag is used by Swagger/OpenAPI to group the endpoints visually.
 router = APIRouter(prefix="/citizen", tags=["Citizen"])
+
+
+# DSA: befordringssystemet has this as /overview/search on its overview
+# router; DSA has no overview router, and the search is about citizens.
+@router.get("/search")
+def search_elever(db: DbSession, q: str = Query(default="", min_length=0)):
+    """Global search box: find a student by CPR or name.
+
+    Not gated by RequireEdit — anyone with access to the system may look a
+    student up; only writing is restricted.
+    """
+
+    return CitizenService(db=db).search_elever(q)
 
 
 @router.get("/stamdata/{cpr}")

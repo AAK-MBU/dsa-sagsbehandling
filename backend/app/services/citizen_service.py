@@ -50,6 +50,98 @@ class CitizenService:
         return [dict(row) for row in result.mappings().all()]
 
 
+    @staticmethod
+    def _escape_like(value: str) -> str:
+        """Neutralise LIKE wildcards in user input.
+
+        Without this a caseworker typing "%" matches every student in the
+        municipality. Bracket-escaping avoids needing an ESCAPE clause; "["
+        must be handled first or it would re-escape the brackets added after.
+        """
+
+        return (
+            value.replace("[", "[[]")
+            .replace("%", "[%]")
+            .replace("_", "[_]")
+        )
+
+
+    # DSA: befordringssystemet's OverviewService.search_elever, moved here with
+    # the endpoint (see endpoints/citizen.py). Otherwise verbatim but for the
+    # schema.
+    def search_elever(self, q: str):
+        """Search students by CPR or name, for the global search box.
+
+        Args:
+            q:
+                Search string. Must be at least 2 characters.
+
+        Returns:
+            Up to 20 students, each with ``cpr_elev`` and ``adresseringsnavn``.
+
+        Notes:
+            Reads [Elev] directly rather than view_Stamdata, which joins in
+            what the search does not need.
+
+            Digits and text are handled as separate statements so each can use an
+            index:
+
+            * CPR is matched as a prefix, which seeks the primary key. Nobody
+              searches a CPR by its middle digits.
+            * Names are matched as a WORD prefix — "starts with" OR "contains a
+              word starting with" — because adresseringsnavn is stored as
+              "Fornavn Efternavn" and searching by surname has to work. The
+              second pattern keeps a leading wildcard, so it scans; an index on
+              adresseringsnavn keeps that scan narrow. If it ever gets too slow,
+              a full-text index with CONTAINS(..., '"q*"') is the proper fix.
+        """
+
+        query = (q or "").strip()
+
+        if len(query) < 2:
+            return []
+
+        digits = "".join(ch for ch in query if ch.isdigit())
+
+        # A CPR may be typed with or without its hyphen.
+        if digits and not any(ch.isalpha() for ch in query):
+            sql = text("""
+                SELECT TOP 20
+                    e.cpr AS cpr_elev,
+                    e.adresseringsnavn
+                FROM
+                    [dsa].[Elev] e
+                WHERE
+                    e.cpr LIKE :prefix
+                ORDER BY
+                    e.cpr
+            """)
+
+            params = {"prefix": f"{self._escape_like(digits)}%"}
+
+        else:
+            escaped = self._escape_like(query)
+
+            sql = text("""
+                SELECT TOP 20
+                    e.cpr AS cpr_elev,
+                    e.adresseringsnavn
+                FROM
+                    [dsa].[Elev] e
+                WHERE
+                    e.adresseringsnavn LIKE :prefix
+                    OR e.adresseringsnavn LIKE :word_prefix
+                ORDER BY
+                    e.adresseringsnavn
+            """)
+
+            params = {"prefix": f"{escaped}%", "word_prefix": f"% {escaped}%"}
+
+        result = self.db.execute(sql, params)
+
+        return self._rows_to_dicts(result)
+
+
     def get_stamdata(self, cpr: str):
         """Get stamdata for a citizen/student.
 

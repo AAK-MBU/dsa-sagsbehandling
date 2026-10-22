@@ -67,19 +67,25 @@
 
     <ReadOnlyNotice />
 
-    {#if stamdata.navne_adresse_beskyttelse}
-      <div class="mb-4 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 text-red-900">
-        <p class="text-xs">Vær opmærksom på at barnet har navne- og/eller adressebeskyttelse.</p>
-      </div>
-    {/if}
-
-    {#if fratagne.length > 0}
-      <div class="mb-4 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 text-red-900">
-        <p class="text-xs">
-          {fratagne.map((p) => `${p.adresseringsnavn ?? ""} (${formatCpr(p.cpr_foraelder)})`).join(", ")}
-          må ikke kende barnets adresse, og I må derfor <strong>ikke</strong> på nogen måde videregive
-          oplysninger om barnets opholdssted til {fratagne.length === 1 ? "denne forælder" : "disse forældre"}.
-        </p>
+    <!-- Protection: one warning, a line per reason — impossible to miss,
+         without two full-width boxes above the child's name. -->
+    {#if stamdata.navne_adresse_beskyttelse || fratagne.length > 0}
+      <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-900 flex gap-3" role="alert">
+        <svg class="w-5 h-5 shrink-0 text-red-600 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+        <ul class="text-[13px] space-y-1">
+          {#if stamdata.navne_adresse_beskyttelse}
+            <li>Barnet har <strong>navne- og/eller adressebeskyttelse</strong>.</li>
+          {/if}
+          {#if fratagne.length > 0}
+            <li>
+              {fratagne.map((p) => `${p.adresseringsnavn ?? ""} (${formatCpr(p.cpr_foraelder)})`).join(", ")}
+              må ikke kende barnets adresse, og I må derfor <strong>ikke</strong> på nogen måde videregive
+              oplysninger om barnets opholdssted til {fratagne.length === 1 ? "denne forælder" : "disse forældre"}.
+            </li>
+          {/if}
+        </ul>
       </div>
     {/if}
 
@@ -123,8 +129,9 @@
         <Elevoplysninger elev={stamdata} />
       </div>
 
-      <!-- Area tabs. Each is a route; areas not built yet are shown, dimmed,
-           so the page reads as the child's page in every area. -->
+      <!-- Area tabs. Each is a route; areas not built yet are shown, dimmed
+           ("Kommer snart" on hover), so the page reads as the child's page in
+           every area. -->
       <nav class="flex gap-1 border-b border-dsa-100 mb-5 flex-wrap" aria-label="Områder">
         {#each elevFaner as a}
           {#if a.enabled}
@@ -144,7 +151,6 @@
           {:else}
             <span class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 border-transparent text-gray-300 cursor-default" title="Kommer snart">
               {a.short}
-              <span class="ml-1 text-[11px] font-normal">· Kommer snart</span>
             </span>
           {/if}
         {/each}

@@ -258,7 +258,7 @@
         {:else}
           <button
             type="button"
-            class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40"
+            class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
             disabled={arbejder || sag.status_tekst !== "Skoleplaceret"}
             title={sag.status_tekst !== "Skoleplaceret" ? "Kun sager med et skoletilbud kan afsluttes" : "Afslut, når brevet er sendt"}
             on:click={afslut}

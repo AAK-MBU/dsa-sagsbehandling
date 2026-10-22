@@ -530,6 +530,73 @@
 
   let haandterer: number | null = null;
 
+  // The Ændringer grid. Same DataTable as the other tabs; its cells are HTML
+  // strings, so the "Markér som håndteret" button carries its id in a data
+  // attribute and one click handler around the grid acts on it.
+  $: aendringsKolonner = [
+    {
+      key: "navn",
+      label: "Navn",
+      filterType: "text",
+      filterValues: (a: AendringRow) => [a.navn ?? "", a.cpr, formatCpr(a.cpr)],
+      render: (a: AendringRow) =>
+        ombryd(
+          `<a href="/elev/${esc(a.cpr)}/skolebegynder?sag=${a.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(a.navn ?? "—")}</a>` +
+            `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(a.cpr))}</span>`,
+          12
+        )
+    },
+    {
+      key: "adresse_tekst",
+      label: "Adresse",
+      filterType: "text",
+      render: (a: AendringRow) => ombryd(esc(a.navne_adresse_beskyttelse ? "Beskyttet" : (a.adresse_tekst ?? "—")), 14)
+    },
+    { key: "distriktsskole", label: "Distriktsskole", filterType: "select", multiSelect: true, render: (a: AendringRow) => esc(a.distriktsskole ?? "—") },
+    {
+      key: "aendringsaarsag_tekst",
+      label: "Ændringsårsag",
+      filterType: "select",
+      multiSelect: true,
+      render: (a: AendringRow) =>
+        ombryd(`<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 leading-6">${esc(a.aendringsaarsag_tekst)}</span>`, 14)
+    },
+    { key: "beskrivelse", label: "Beskrivelse", filterType: "text", render: (a: AendringRow) => ombryd(esc(a.beskrivelse ?? ""), 20) },
+    {
+      key: "status_tekst",
+      label: "Status",
+      filterType: "select",
+      multiSelect: true,
+      render: (a: AendringRow) =>
+        `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium whitespace-normal max-w-[6.5rem] 2xl:whitespace-nowrap 2xl:max-w-none ${getStatusBadgeClass(a.status_tekst)}">${esc(a.status_tekst)}</span>`
+    },
+    { key: "registreret_tidspunkt", label: "Registreret", filterType: "text", render: (a: AendringRow) => esc(tidspunkt(a.registreret_tidspunkt)) },
+    ...(kanRedigere
+      ? [
+          {
+            key: "_haandter",
+            label: "",
+            filterable: false,
+            sortable: false,
+            render: (a: AendringRow) =>
+              `<button type="button" data-haandter="${a.aendring_id}" ${haandterer !== null ? "disabled" : ""}
+                 class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border border-dsa-200 bg-white text-dsa-700 hover:bg-dsa-50 disabled:opacity-50">
+                 ${haandterer === a.aendring_id ? "Markerer…" : "Markér som håndteret"}
+               </button>`
+          }
+        ]
+      : [])
+  ] satisfies DataTableColumn[];
+
+  function klikIAendringer(event: MouseEvent) {
+    const knap = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-haandter]");
+    if (!knap || knap.disabled) return;
+    const aendring = aarAendringer.find((a) => a.aendring_id === Number(knap.dataset.haandter));
+    if (aendring) haandter(aendring);
+  }
+
+  let aendringerFiltreret = 0;
+
   async function haandter(aendring: AendringRow) {
     if (haandterer !== null) return;
     haandterer = aendring.aendring_id;
@@ -642,54 +709,20 @@
     {#if fane === "aendringer"}
 
       <!-- Ændringer -->
-      <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
-        {#if aarAendringer.length === 0}
-          <p class="px-6 py-10 text-center text-gray-500 text-sm">Ingen uhåndterede ændringer.</p>
-        {:else}
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-white text-left" style="background-color: #271347;">
-                <th class="px-4 py-3 font-semibold">Navn</th>
-                <th class="px-4 py-3 font-semibold">CPR</th>
-                <th class="px-4 py-3 font-semibold">Adresse</th>
-                <th class="px-4 py-3 font-semibold">Distriktsskole</th>
-                <th class="px-4 py-3 font-semibold">Ændringsårsag</th>
-                <th class="px-4 py-3 font-semibold">Beskrivelse</th>
-                <th class="px-4 py-3 font-semibold">Registreret</th>
-                <th class="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each aarAendringer as a (a.aendring_id)}
-                <tr class="border-b border-gray-100 last:border-0">
-                  <td class="px-4 py-3">
-                    <a href="/elev/{a.cpr}/skolebegynder?sag={a.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">{a.navn ?? "—"}</a>
-                  </td>
-                  <td class="px-4 py-3 font-mono text-[13px]">{formatCpr(a.cpr)}</td>
-                  <td class="px-4 py-3">{a.navne_adresse_beskyttelse ? "Beskyttet" : (a.adresse_tekst ?? "—")}</td>
-                  <td class="px-4 py-3">{a.distriktsskole ?? "—"}</td>
-                  <td class="px-4 py-3">
-                    <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">{a.aendringsaarsag_tekst}</span>
-                  </td>
-                  <td class="px-4 py-3 text-gray-600">{a.beskrivelse ?? ""}</td>
-                  <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{tidspunkt(a.registreret_tidspunkt)}</td>
-                  <td class="px-4 py-3 text-right">
-                    {#if kanRedigere}
-                      <button
-                        type="button"
-                        class="px-3 py-1.5 rounded-full text-xs font-medium text-dsa-700 hover:bg-dsa-50 disabled:opacity-50"
-                        disabled={haandterer !== null}
-                        on:click={() => haandter(a)}
-                      >
-                        Markér som håndteret
-                      </button>
-                    {/if}
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        {/if}
+      <p class="text-[13px] text-gray-500 mb-3">
+        Viser {aendringerFiltreret} af {aarAendringer.length} uhåndterede ændringer
+      </p>
+      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+      <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);" on:click={klikIAendringer}>
+        <DataTable
+          data={aarAendringer}
+          columns={aendringsKolonner}
+          getRowId={(row) => row.aendring_id}
+          compact
+          stickyFirstColumn
+          bind:filteredCount={aendringerFiltreret}
+          emptyMessage="Ingen uhåndterede ændringer"
+        />
       </div>
 
     {:else}

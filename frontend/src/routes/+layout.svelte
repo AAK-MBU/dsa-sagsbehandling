@@ -5,16 +5,12 @@
   import { sidetitel } from "$lib/sidetitel";
 
   let { children } = $props();
-
-  // The front page is itself the område-launcher, so the top nav is only
-  // shown once you're inside an area.
-  const showTopNav = $derived($page.url.pathname !== "/");
 </script>
 
+<!-- The top bar is on every page, the front page included: it carries the
+     global student search, which must be reachable from anywhere. -->
 <div class="flex flex-col min-h-screen">
-  {#if showTopNav}
-    <TopNav />
-  {/if}
+  <TopNav />
   <div class="flex-1 flex flex-col min-h-0">
     {@render children()}
   </div>
