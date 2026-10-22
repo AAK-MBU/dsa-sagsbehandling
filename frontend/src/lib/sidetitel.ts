@@ -21,6 +21,7 @@ const APP = "DSA";
 const FASTE_TITLER: Record<string, string> = {
   "/": "Forside",
   "/skolebegynder": "Skolebegynderscreeninger",
+  "/skoleskiftere": "Skoleskiftere og -tilflyttere",
 };
 
 /**
@@ -31,6 +32,7 @@ const FASTE_TITLER: Record<string, string> = {
 // befordringssystemet names a sag; a tab other than an area's says what it is.
 const SAGS_HANDLINGER: Record<string, string> = {
   "/elev/[cpr]/skolebegynder": "",
+  "/elev/[cpr]/skoleskiftere": "Skoleskiftere",
   "/elev/[cpr]/foraeldremyndighed": "Forældremyndighed",
 };
 

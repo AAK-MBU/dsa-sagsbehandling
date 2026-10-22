@@ -50,8 +50,11 @@ export const areas: Area[] = [
     accent: "#4e7c3a",
     bg: "#eef5e9",
     ring: "#cfe2c2",
-    links: [{ label: "Forside" }, { label: "Rapport" }],
-    enabled: false,
+    // Placeholder: enabled with "Kommer snart" pages (/skoleskiftere and the
+    // student page tab) to test the area switching before the area is built.
+    href: "/skoleskiftere",
+    links: [{ label: "Forside", href: "/skoleskiftere" }, { label: "Rapport" }],
+    enabled: true,
   },
   {
     title: "Sproglig udvikling",
