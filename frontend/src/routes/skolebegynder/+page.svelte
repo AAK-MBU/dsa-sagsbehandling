@@ -11,6 +11,7 @@
   import {
     FANER,
     aarFraQuery,
+    brydResultat,
     dato,
     faneFraQuery,
     fejltekst,
@@ -83,6 +84,11 @@
   const ombryd = (html: string, maxRem = 10) =>
     `<span style="white-space: normal; display: inline-block; max-width: ${maxRem}rem;">${html}</span>`;
 
+  // Columns whose values have a known, short width (dates, Ja/Nej, numbers):
+  // width 1px makes the browser size them to their content and give the
+  // spare width to the columns that can use it (names, schools, remarks).
+  const FAST = "w-px";
+
   // Every value from the API goes through esc() — DataTable renders these
   // strings as HTML. See $lib/html.
   $: alleKolonner = [
@@ -109,7 +115,7 @@
         `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(row.cpr))}</span>`,
         12)
     },
-    { key: "cpr", label: "CPR", filterType: "text", render: (row: SkolebegynderRow) => esc(formatCpr(row.cpr)) },
+    { key: "cpr", class: FAST, label: "CPR", filterType: "text", render: (row: SkolebegynderRow) => esc(formatCpr(row.cpr)) },
     {
       key: "status_tekst",
       label: "Status",
@@ -122,12 +128,13 @@
     },
     {
       key: "screening_booket_tidspunkt",
+      class: FAST,
       label: "Booket tid",
       filterType: "text",
       render: (row: SkolebegynderRow) => esc(row.screening_booket_tidspunkt ? tidspunkt(row.screening_booket_tidspunkt) : "")
     },
-    { key: "screeningsdato", label: "Screenet", filterType: "text", render: (row: SkolebegynderRow) => esc(dato(row.screeningsdato)) },
-    { key: "samlet_resultat", label: "Samlet resultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(esc(row.samlet_resultat)) },
+    { key: "screeningsdato", class: FAST, label: "Screenet", filterType: "text", render: (row: SkolebegynderRow) => esc(dato(row.screeningsdato)) },
+    { key: "samlet_resultat", label: "Samlet resultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(brydResultat(esc(row.samlet_resultat))) },
     {
       key: "puf_screeningsresultat",
       // Short header labels where the long word would set the column width
@@ -138,7 +145,7 @@
       filterType: "select",
       multiSelect: true,
       editable: true,
-      render: (row: SkolebegynderRow) => ombryd(esc(row.puf_screeningsresultat))
+      render: (row: SkolebegynderRow) => ombryd(brydResultat(esc(row.puf_screeningsresultat)))
     },
     { key: "dagtilbud", label: "Indmeldt dagtilbud", filterType: "text", render: (row: SkolebegynderRow) => esc(row.dagtilbud) },
     { key: "distriktsskole", label: "Distriktsskole", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(esc(row.distriktsskole)) },
@@ -199,6 +206,7 @@
     },
     {
       key: "krav_paa_befordring",
+      class: FAST,
       label: "Krav på befordring",
       filterType: "select",
       editable: true,
@@ -220,6 +228,7 @@
     { key: "bemaerkning", label: "Bemærkning", filterType: "text", editable: true, render: (row: SkolebegynderRow) => esc(row.bemaerkning) },
     {
       key: "skoler_afviger",
+      class: FAST,
       label: "Skoler afviger",
       filterType: "select",
       filterValues: (row: SkolebegynderRow) => [jaNej(row.skoler_afviger)],
@@ -228,22 +237,23 @@
           ? `<span title="Distriktsskole, ønsket skole og skoletilbud er ikke den samme skole" class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-fuchsia-100 text-fuchsia-800">Afviger</span>`
           : ""
     },
-    { key: "gaaafstand_distriktsskole_km", label: "Gåafstand distriktsskole (km)", filterType: "text" },
-    { key: "gaaafstand_oensket_skole_km", label: "Gåafstand ønsket skole (km)", filterType: "text" },
-    { key: "gaaafstand_skoletilbud_km", label: "Gåafstand skoletilbud (km)", filterType: "text" },
+    { key: "gaaafstand_distriktsskole_km", class: FAST, label: "Gåafstand distriktsskole (km)", filterType: "text" },
+    { key: "gaaafstand_oensket_skole_km", class: FAST, label: "Gåafstand ønsket skole (km)", filterType: "text" },
+    { key: "gaaafstand_skoletilbud_km", class: FAST, label: "Gåafstand skoletilbud (km)", filterType: "text" },
     { key: "modersmaal", label: "Modersmål", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.modersmaal) },
-    { key: "tilflyttet_dk_dato", label: "Tilflyttet DK", filterType: "text", render: (row: SkolebegynderRow) => esc(row.tilflyttet_dk_dato ? dato(row.tilflyttet_dk_dato) : "") },
+    { key: "tilflyttet_dk_dato", class: FAST, label: "Tilflyttet DK", filterType: "text", render: (row: SkolebegynderRow) => esc(row.tilflyttet_dk_dato ? dato(row.tilflyttet_dk_dato) : "") },
     {
       key: "ppr_status",
+      class: FAST,
       label: "PPR",
       filterType: "select",
       filterValues: (row: SkolebegynderRow) => [jaNej(row.ppr_status)],
       render: (row: SkolebegynderRow) => esc(row.ppr_status ? "Ja" : "")
     },
     { key: "navn_konsulent", label: "Konsulent", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.navn_konsulent) },
-    { key: "of_percentil", label: "Ordforråd (percentil)", filterType: "text", render: (row: SkolebegynderRow) => esc(row.of_percentil === null ? "" : percentil(row.of_percentil)) },
-    { key: "sf_percentil", label: "Sprogforståelse (percentil)", filterType: "text", render: (row: SkolebegynderRow) => esc(row.sf_percentil === null ? "" : percentil(row.sf_percentil)) },
-    { key: "sagsbehandlingsdato", label: "Sagsbehandlingsdato", filterType: "text", render: (row: SkolebegynderRow) => esc(row.sagsbehandlingsdato ? dato(row.sagsbehandlingsdato) : "") }
+    { key: "of_percentil", class: FAST, label: "Ordforråd (percentil)", filterType: "text", render: (row: SkolebegynderRow) => esc(row.of_percentil === null ? "" : percentil(row.of_percentil)) },
+    { key: "sf_percentil", class: FAST, label: "Sprogforståelse (percentil)", filterType: "text", render: (row: SkolebegynderRow) => esc(row.sf_percentil === null ? "" : percentil(row.sf_percentil)) },
+    { key: "sagsbehandlingsdato", class: FAST, label: "Sagsbehandlingsdato", filterType: "text", render: (row: SkolebegynderRow) => esc(row.sagsbehandlingsdato ? dato(row.sagsbehandlingsdato) : "") }
   ] satisfies DataTableColumn[];
 
 
@@ -571,7 +581,7 @@
       render: (a: AendringRow) =>
         `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium whitespace-normal max-w-[6.5rem] 2xl:whitespace-nowrap 2xl:max-w-none ${getStatusBadgeClass(a.status_tekst)}">${esc(a.status_tekst)}</span>`
     },
-    { key: "registreret_tidspunkt", label: "Registreret", filterType: "text", render: (a: AendringRow) => esc(tidspunkt(a.registreret_tidspunkt)) },
+    { key: "registreret_tidspunkt", class: FAST, label: "Registreret", filterType: "text", render: (a: AendringRow) => esc(tidspunkt(a.registreret_tidspunkt)) },
     ...(kanRedigere
       ? [
           {
@@ -666,7 +676,7 @@
 
 
   {#if sager.length === 0}
-    <div class="bg-white rounded-2xl px-6 py-10 text-center text-gray-500" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
+    <div class="rounded-2xl px-6 py-10 text-center text-gray-500 kort">
       Der er ingen skolebegyndere i systemet endnu.
     </div>
   {:else}
@@ -714,7 +724,7 @@
         Viser {aendringerFiltreret} af {aarAendringer.length} uhåndterede ændringer
       </p>
       <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-      <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);" on:click={klikIAendringer}>
+      <div class="rounded-2xl overflow-hidden kort" on:click={klikIAendringer}>
         <DataTable
           data={aarAendringer}
           columns={aendringsKolonner}
@@ -831,7 +841,7 @@
 
 
       <!-- Grid -->
-      <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
+      <div class="rounded-2xl overflow-hidden kort">
         <DataTable
           data={faneSager}
           columns={kolonner}

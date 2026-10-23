@@ -214,7 +214,7 @@
 
   {#if !sag}
 
-    <div class="bg-white rounded-2xl px-6 py-10 text-center text-gray-500" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
+    <div class="rounded-2xl px-6 py-10 text-center text-gray-500 kort">
       Barnet har ingen skolebegyndersager.
     </div>
 
@@ -261,7 +261,7 @@
         {:else}
           <button
             type="button"
-            class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
+            class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-white disabled:text-gray-400 disabled:border disabled:border-gray-300 disabled:cursor-not-allowed"
             disabled={arbejder || sag.status_tekst !== "Skoleplaceret"}
             title={sag.status_tekst !== "Skoleplaceret" ? "Kun sager med et skoletilbud kan afsluttes" : "Afslut, når brevet er sendt"}
             on:click={afslut}
@@ -316,7 +316,7 @@
   <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-5 items-start">
 
     <!-- Screening -->
-    <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #2c7d90;">
+    <div class="rounded-2xl overflow-hidden kort" style="border-left: 5px solid #2c7d90;">
       <div class="px-6 py-4 border-b border-gray-100">
         <h2 class="font-bold text-[15px]" style="color: #1f5d6e;">Screening</h2>
       </div>
@@ -376,7 +376,7 @@
     </div>
 
     <!-- Wishes and daycare -->
-    <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #4e7c3a;">
+    <div class="rounded-2xl overflow-hidden kort" style="border-left: 5px solid #4e7c3a;">
       <div class="px-6 py-4 border-b border-gray-100">
         <h2 class="font-bold text-[15px]" style="color: #2f5325;">Skoleønsker og dagtilbud</h2>
       </div>
@@ -402,7 +402,7 @@
 
 
   <!-- Case work -->
-  <div class="bg-white rounded-2xl overflow-hidden xl:col-span-2" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #6a3fb5;">
+  <div class="rounded-2xl overflow-hidden xl:col-span-2 kort" style="border-left: 5px solid #6a3fb5;">
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
       <h2 class="font-bold text-[15px]" style="color: #3b2168;">Sagsbehandling</h2>
       {#if afsluttet}
@@ -498,7 +498,7 @@
 
 
   <!-- Sagsforløb — the right-hand column from xl -->
-  <div class="bg-white rounded-2xl overflow-hidden xl:col-start-3 xl:row-start-1 xl:row-span-2" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #bd9b16;">
+  <div class="rounded-2xl overflow-hidden xl:col-start-3 xl:row-start-1 xl:row-span-2 kort" style="border-left: 5px solid #bd9b16;">
     <div class="px-6 py-4 border-b border-gray-100">
       <h2 class="font-bold text-[15px]" style="color: #8a7210;">Sagsforløb</h2>
     </div>

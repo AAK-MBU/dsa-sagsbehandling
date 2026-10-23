@@ -95,7 +95,12 @@
   $: editPad = compact ? "px-1.5 py-1.5 2xl:px-2" : "px-2 py-1.5";
   $: filterPad = compact ? "px-2 py-2 2xl:px-3" : "px-3 py-2";
   $: selectBredde = compact ? "w-28 2xl:w-36" : "w-36";
-  $: inputBredde = compact ? "w-24 2xl:w-32" : "w-32";
+  // Text fields fill their cell, so a remark column that the table widens
+  // gives a wider field; the minimum keeps a narrow column usable. Selects
+  // stay fixed — their options can be far longer than the cell. The input
+  // carries size="1": its built-in width (about 20 characters) would
+  // otherwise count as the column's minimum and widen the grid.
+  $: inputBredde = compact ? "w-full min-w-20 2xl:min-w-32" : "w-full min-w-32";
 
   // The sticky first column starts where the (fixed-width) checkbox column ends.
   $: stickyVenstre = selectable ? "left: 2.25rem;" : "left: 0;";
@@ -559,6 +564,7 @@
                   {:else}
                     <input
                       type={column.inputType ?? "text"}
+                      size="1"
                       class={`${inputBredde} border rounded px-1.5 py-1 text-[13px] focus:ring-0 ${changed ? "border-amber-500 bg-amber-50" : "border-gray-300 bg-white focus:border-dsa-500"}`}
                       title={value ?? ""}
                       aria-label={column.label}

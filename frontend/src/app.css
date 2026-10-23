@@ -15,8 +15,10 @@
   --color-dsa-950: #271347;
 }
 
+/* DSA: as befordringssystemet (#dde3ec), the page is a clearly tinted
+   backdrop, so white cards and tables stand off it — in DSA's lavender. */
 body {
-  background-color: #f4f2f9;
+  background-color: #e6e3ef;
   margin: 0;
   color: #2a2438;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -56,4 +58,15 @@ tbody tr:nth-child(odd) {
 
 tbody tr:nth-child(even) {
   background-color: #ffffff;
+}
+
+
+/* DSA: a card or table surface — white, with a real border and shadow, as
+   befordringssystemet's "bg-white border border-gray-300 rounded-lg shadow".
+   Without the border, white on the light backdrop blurred together. A
+   coloured border-left set inline still wins on that side. */
+.kort {
+  background-color: #ffffff;
+  border: 1px solid #d3cce2;
+  box-shadow: 0 1px 3px rgba(39, 19, 71, 0.12), 0 1px 2px -1px rgba(39, 19, 71, 0.10);
 }

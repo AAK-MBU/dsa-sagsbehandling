@@ -91,7 +91,7 @@
 
 
     <!-- Person header -->
-    <div class="bg-white rounded-2xl px-4 md:px-6 py-5 mb-4 flex flex-col md:flex-row md:items-center gap-4 justify-between" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
+    <div class="rounded-2xl px-4 md:px-6 py-5 mb-4 flex flex-col md:flex-row md:items-center gap-4 justify-between kort">
       <div class="flex items-center gap-4">
         <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0" style="background-color: #3b2168;">
           {initial}
@@ -125,7 +125,7 @@
     {:else}
 
       <!-- Stamdata, for every area -->
-      <div class="bg-white rounded-2xl px-4 md:px-6 py-5 mb-6" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
+      <div class="rounded-2xl px-4 md:px-6 py-5 mb-6 kort">
         <Elevoplysninger elev={stamdata} />
       </div>
 
@@ -149,7 +149,7 @@
               </span>
             </a>
           {:else}
-            <span class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 border-transparent text-gray-300 cursor-default" title="Kommer snart">
+            <span class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 border-transparent text-gray-400 cursor-default" title="Kommer snart">
               {a.short}
             </span>
           {/if}

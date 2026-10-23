@@ -231,6 +231,22 @@ export function erScreenet(row: { samlet_resultat: string | null }): boolean {
   return row.samlet_resultat !== null && row.samlet_resultat !== EJ_SPROGSCREENET;
 }
 
+/**
+ * The SX results are long Danish compounds ("Sprogstøttebehov",
+ * "Alderssvarende") that cannot wrap, so in a narrow grid column they set its
+ * width. Soft hyphens let the browser break them ("Sprog-støtte-behov") only
+ * when it must; with room they show as one word. For display only — filters
+ * and exports keep the plain text.
+ */
+const DELESTEDER: [RegExp, string][] = [
+  [/([Ss])progstøttebehov/g, "$1prog\u00ADstøtte\u00ADbehov"],
+  [/Alderssvarende/g, "Alders\u00ADsvarende"]
+];
+
+export function brydResultat(tekst: string): string {
+  return DELESTEDER.reduce((t, [moenster, med]) => t.replace(moenster, med), tekst);
+}
+
 /** A percentile as SX writes it: one decimal, decimal comma ("1,2"). */
 export function percentil(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";

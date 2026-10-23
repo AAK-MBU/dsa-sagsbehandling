@@ -13,7 +13,7 @@
 </script>
 
 
-<div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #8a2b2b;">
+<div class="rounded-2xl overflow-hidden kort" style="border-left: 5px solid #8a2b2b;">
   <div class="px-6 py-4 border-b border-gray-100">
     <h2 class="font-bold text-[15px]" style="color: #7a2626;">Oplysninger om forældremyndige</h2>
   </div>
