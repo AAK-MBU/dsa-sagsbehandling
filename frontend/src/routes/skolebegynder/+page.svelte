@@ -17,6 +17,7 @@
     iFane,
     jaNej,
     kommendeSkoleaar,
+    percentil,
     skoleaarTekst,
     tidspunkt,
     type AendringRow,
@@ -240,8 +241,8 @@
       render: (row: SkolebegynderRow) => esc(row.ppr_status ? "Ja" : "")
     },
     { key: "navn_konsulent", label: "Konsulent", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.navn_konsulent) },
-    { key: "of_percentil", label: "Ordforråd (percentil)", filterType: "text" },
-    { key: "sf_percentil", label: "Sprogforståelse (percentil)", filterType: "text" },
+    { key: "of_percentil", label: "Ordforråd (percentil)", filterType: "text", render: (row: SkolebegynderRow) => esc(row.of_percentil === null ? "" : percentil(row.of_percentil)) },
+    { key: "sf_percentil", label: "Sprogforståelse (percentil)", filterType: "text", render: (row: SkolebegynderRow) => esc(row.sf_percentil === null ? "" : percentil(row.sf_percentil)) },
     { key: "sagsbehandlingsdato", label: "Sagsbehandlingsdato", filterType: "text", render: (row: SkolebegynderRow) => esc(row.sagsbehandlingsdato ? dato(row.sagsbehandlingsdato) : "") }
   ] satisfies DataTableColumn[];
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String, Unicode, text
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, Numeric, String, Unicode, text
 from sqlalchemy.dialects.mssql import DATETIME2
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -63,17 +63,19 @@ class Skolebegynder(Base):
     screening_noter: Mapped[str | None] = mapped_column(Unicode, nullable=True)
 
     # of_ = ordforråd (vocabulary)
-    of_percentil: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Percentiles have one decimal in SX ("1,2"); score_alt is text ("uden
+    # bonus") — migration 003.
+    of_percentil: Mapped[float | None] = mapped_column(Numeric(4, 1, asdecimal=False), nullable=True)
     of_besvaret: Mapped[int | None] = mapped_column(Integer, nullable=True)
     of_ubesvaret: Mapped[int | None] = mapped_column(Integer, nullable=True)
     of_korrekt: Mapped[int | None] = mapped_column(Integer, nullable=True)
     of_forkert: Mapped[int | None] = mapped_column(Integer, nullable=True)
     of_korrekt_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
     of_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    of_score_alt: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    of_score_alt: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
 
     # sf_ = sprogforståelse (language comprehension)
-    sf_percentil: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sf_percentil: Mapped[float | None] = mapped_column(Numeric(4, 1, asdecimal=False), nullable=True)
     sf_besvaret: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sf_ubesvaret: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sf_korrekt: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -81,7 +83,7 @@ class Skolebegynder(Base):
     sf_korrekt_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
     sf_korrekt_ratio_ori: Mapped[float | None] = mapped_column(Float, nullable=True)
     sf_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    sf_score_alt: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sf_score_alt: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
 
     samlet_resultat: Mapped[str | None] = mapped_column(Unicode(100), nullable=True)
     puf_screeningsresultat: Mapped[str | None] = mapped_column(Unicode(100), nullable=True)

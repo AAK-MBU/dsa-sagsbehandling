@@ -28,9 +28,14 @@ GO
                                 "Skolegangsudsat" or "Flyttet ud af kommunen"
                                 can be made without a screening.
 
-        Screening afviklet      there is a samlet_resultat from SX. Whether the
-                                result needs clarifying is the caseworker's
-                                note (afklaring), not a status.
+        Screening afviklet      there is a samlet_resultat from SX, other than
+                                "Ej sprogscreenet" — SX's own value for a
+                                child it has not screened (a real export,
+                                2026-10-23). The other values seen are
+                                Alderssvarende dansk, Sprogstøttebehov and
+                                Nærmere afklaring; whether a result needs
+                                clarifying is the caseworker's note
+                                (afklaring), not a status.
 
         Tid booket              a screening is booked
                                 (screening_booket_tidspunkt) but there is no
@@ -114,7 +119,8 @@ BEGIN
         SELECT CASE
             WHEN sb.skoletilbud_matrikel_id IS NOT NULL
                  AND sb.skoletilbudstype_id IS NOT NULL      THEN N'Skoleplaceret'
-            WHEN sb.samlet_resultat IS NOT NULL              THEN N'Screening afviklet'
+            WHEN sb.samlet_resultat IS NOT NULL
+                 AND sb.samlet_resultat <> N'Ej sprogscreenet' THEN N'Screening afviklet'
             WHEN sb.screening_booket_tidspunkt IS NOT NULL   THEN N'Tid booket'
             ELSE                                                  N'Potentiel skolestarter'
         END AS calculated_status_text

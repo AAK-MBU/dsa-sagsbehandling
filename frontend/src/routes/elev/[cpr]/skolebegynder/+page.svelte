@@ -5,9 +5,12 @@
   import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate } from "$lib/dates";
   import { erEgenKommentar } from "$lib/kommentarEjer";
   import {
+    EJ_SPROGSCREENET,
     dato,
+    erScreenet,
     fejltekst,
     jaNej,
+    percentil,
     skoleaarTekst,
     tidspunkt,
     type AendringRow,
@@ -317,8 +320,11 @@
       <div class="px-6 py-4 border-b border-gray-100">
         <h2 class="font-bold text-[15px]" style="color: #1f5d6e;">Screening</h2>
       </div>
-      {#if sag.samlet_resultat === null && sag.screeningsdato === null}
+      {#if !erScreenet(sag) && sag.screeningsdato === null}
         <p class="px-6 py-5 text-sm text-gray-500">
+          {#if sag.samlet_resultat === EJ_SPROGSCREENET}
+            <span class="block mb-1">SX: <span class="font-medium text-gray-700">{EJ_SPROGSCREENET}</span>.</span>
+          {/if}
           {#if sag.screening_booket_tidspunkt}
             Ikke screenet endnu. Tid booket: <span class="font-medium text-gray-700">{tidspunkt(sag.screening_booket_tidspunkt)}</span>
           {:else}
@@ -355,12 +361,12 @@
           <tbody>
             <tr class="border-b border-gray-50">
               <td class="py-1.5 font-medium">Ordforråd</td>
-              <td>{tal(sag.of_percentil)}</td><td>{tal(sag.of_korrekt)}</td><td>{tal(sag.of_forkert)}</td>
+              <td>{percentil(sag.of_percentil)}</td><td>{tal(sag.of_korrekt)}</td><td>{tal(sag.of_forkert)}</td>
               <td>{tal(sag.of_besvaret)}</td><td>{procent(sag.of_korrekt_ratio)}</td><td>{tal(sag.of_score)}</td>
             </tr>
             <tr>
               <td class="py-1.5 font-medium">Sprogforståelse</td>
-              <td>{tal(sag.sf_percentil)}</td><td>{tal(sag.sf_korrekt)}</td><td>{tal(sag.sf_forkert)}</td>
+              <td>{percentil(sag.sf_percentil)}</td><td>{tal(sag.sf_korrekt)}</td><td>{tal(sag.sf_forkert)}</td>
               <td>{tal(sag.sf_besvaret)}</td><td>{procent(sag.sf_korrekt_ratio)}</td><td>{tal(sag.sf_score)}</td>
             </tr>
           </tbody>

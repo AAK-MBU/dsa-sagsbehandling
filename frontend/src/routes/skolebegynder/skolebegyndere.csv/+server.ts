@@ -6,6 +6,7 @@ import {
   iFane,
   jaNej,
   kommendeSkoleaar,
+  percentil,
   skoleaarTekst,
   type SkolebegynderRow
 } from "$lib/skolebegynder";
@@ -38,8 +39,9 @@ const COLUMNS: CsvColumn[] = [
   { key: "screeningsdato", header: "Screeningsdato" },
   { key: "samlet_resultat", header: "Samlet resultat" },
   { key: "puf_screeningsresultat", header: "PUF-screeningsresultat" },
-  { key: "of_percentil", header: "Ordforråd (percentil)" },
-  { key: "sf_percentil", header: "Sprogforståelse (percentil)" },
+  // Decimal comma, as SX writes them and Danish Excel reads them.
+  { key: "of_percentil", header: "Ordforråd (percentil)", format: (v) => (v === null || v === undefined ? "" : percentil(Number(v))) },
+  { key: "sf_percentil", header: "Sprogforståelse (percentil)", format: (v) => (v === null || v === undefined ? "" : percentil(Number(v))) },
   { key: "navn_konsulent", header: "Konsulent" },
   { key: "modersmaal", header: "Modersmål" },
   { key: "tilflyttet_dk_dato", header: "Tilflyttet DK" },

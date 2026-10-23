@@ -37,8 +37,8 @@ class SkolebegynderOverviewRecord(BaseModel):
     samlet_resultat: str | None = None
     puf_screeningsresultat: str | None = None
     sprogstoettebehov: bool | None = None
-    of_percentil: int | None = None
-    sf_percentil: int | None = None
+    of_percentil: float | None = None
+    sf_percentil: float | None = None
     navn_konsulent: str | None = None
 
     dagtilbud: str | None = None
@@ -93,7 +93,7 @@ class SkolebegynderDetail(SkolebegynderOverviewRecord):
     of_forkert: int | None = None
     of_korrekt_ratio: float | None = None
     of_score: int | None = None
-    of_score_alt: int | None = None
+    of_score_alt: str | None = None
 
     sf_besvaret: int | None = None
     sf_ubesvaret: int | None = None
@@ -102,7 +102,7 @@ class SkolebegynderDetail(SkolebegynderOverviewRecord):
     sf_korrekt_ratio: float | None = None
     sf_korrekt_ratio_ori: float | None = None
     sf_score: int | None = None
-    sf_score_alt: int | None = None
+    sf_score_alt: str | None = None
 
     dagtilbud_afdeling_adresse: str | None = None
     email_pl: str | None = None

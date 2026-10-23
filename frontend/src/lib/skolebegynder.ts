@@ -75,7 +75,7 @@ export type SkolebegynderDetail = SkolebegynderRow & {
   of_forkert: number | null;
   of_korrekt_ratio: number | null;
   of_score: number | null;
-  of_score_alt: number | null;
+  of_score_alt: string | null;
   sf_besvaret: number | null;
   sf_ubesvaret: number | null;
   sf_korrekt: number | null;
@@ -83,7 +83,7 @@ export type SkolebegynderDetail = SkolebegynderRow & {
   sf_korrekt_ratio: number | null;
   sf_korrekt_ratio_ori: number | null;
   sf_score: number | null;
-  sf_score_alt: number | null;
+  sf_score_alt: string | null;
   dagtilbud_afdeling_adresse: string | null;
   email_pl: string | null;
   email_distriktsskole: string | null;
@@ -218,6 +218,24 @@ export function skoleaarTekst(aar: number): string {
 // -----------------------------
 // Small display helpers
 // -----------------------------
+
+/**
+ * SX's samlet_resultat for a child it has not screened. The other values
+ * seen in a real export are Alderssvarende dansk, Sprogstøttebehov and
+ * Nærmere afklaring. Keep in step with usp_recalculate_skolebegynder_status.
+ */
+export const EJ_SPROGSCREENET = "Ej sprogscreenet";
+
+/** True when SX has a real screening result for the case. */
+export function erScreenet(row: { samlet_resultat: string | null }): boolean {
+  return row.samlet_resultat !== null && row.samlet_resultat !== EJ_SPROGSCREENET;
+}
+
+/** A percentile as SX writes it: one decimal, decimal comma ("1,2"). */
+export function percentil(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return value.toLocaleString("da-DK", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
 
 export function jaNej(value: boolean | null | undefined): string {
   if (value === null || value === undefined) return "—";
