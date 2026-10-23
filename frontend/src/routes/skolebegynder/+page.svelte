@@ -78,6 +78,14 @@
   const toOptions = (list: { id: number; label: string }[]) =>
     list.map((o) => ({ value: o.id, label: o.label }));
 
+  // A note shown as text (a closed case's remark): wrapped like ombryd, but
+  // capped at three lines, with the full text on hover — a long remark must
+  // neither widen its column nor make the row tall.
+  const notat = (tekst: string | null) =>
+    tekst
+      ? `<span class="line-clamp-3" style="white-space: normal; max-width: 16rem;" title="${esc(tekst)}">${esc(tekst)}</span>`
+      : "";
+
   // DataTable cells are nowrap, so one long value ("Henvist til anden skole
   // end distriktsskolen") widens its whole column. Wrapped text keeps the
   // default view inside a normal screen width.
@@ -224,8 +232,8 @@
       filterValues: (row: SkolebegynderRow) => [row.brevskabelon_tekst ?? ""],
       render: (row: SkolebegynderRow) => esc(row.brevskabelon_tekst)
     },
-    { key: "afklaring", label: "Afklaring", filterType: "text", editable: true, render: (row: SkolebegynderRow) => ombryd(esc(row.afklaring), 16) },
-    { key: "bemaerkning", label: "Bemærkning", filterType: "text", editable: true, render: (row: SkolebegynderRow) => esc(row.bemaerkning) },
+    { key: "afklaring", label: "Afklaring", filterType: "text", editable: true, multiline: true, render: (row: SkolebegynderRow) => notat(row.afklaring) },
+    { key: "bemaerkning", label: "Bemærkning", filterType: "text", editable: true, multiline: true, render: (row: SkolebegynderRow) => notat(row.bemaerkning) },
     {
       key: "skoler_afviger",
       class: FAST,

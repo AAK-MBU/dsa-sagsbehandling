@@ -19,6 +19,12 @@
     selectOptions?: { value: string | number; label: string }[];
     inputType?: string;
     /**
+     * DSA: free text (remarks, notes). In always-editable mode the field is a
+     * textarea that grows with its text up to three lines, then scrolls —
+     * CSS only (field-sizing); a browser without it keeps one line.
+     */
+    multiline?: boolean;
+    /**
      * For a column that holds several values per row (kørselstyper, say).
      * Returns the row's values as a list, so the filter dropdown offers each
      * one on its own rather than one compound option per combination, and a
@@ -561,6 +567,17 @@
                         <option value={opt.value}>{opt.label}</option>
                       {/each}
                     </select>
+                  {:else if column.multiline}
+                    <textarea
+                      rows="1"
+                      class={`${inputBredde} block field-sizing-content max-h-[4.4rem] overflow-y-auto resize-none border rounded px-1.5 py-1 text-[13px] leading-snug focus:ring-0 ${changed ? "border-amber-500 bg-amber-50" : "border-gray-300 bg-white focus:border-dsa-500"}`}
+                      aria-label={column.label}
+                      value={value ?? ""}
+                      on:input={(event) => {
+                        const target = event.target as HTMLTextAreaElement;
+                        onCellChange(row, column.key, target.value);
+                      }}
+                    ></textarea>
                   {:else}
                     <input
                       type={column.inputType ?? "text"}
