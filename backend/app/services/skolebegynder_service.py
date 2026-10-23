@@ -32,10 +32,10 @@ from app.models.skolebegynder import Skolebegynder, SkolebegynderAendring
 FAGOMRAADE_TEKST = "Skolebegynderscreeninger"
 
 STATUS_AFSLUTTET = "Afsluttet"
-STATUS_SKOLETILBUD = "Skoletilbud"
+STATUS_SKOLEPLACERET = "Skoleplaceret"
 # Placeholder written when a case is reopened, immediately replaced by the
 # procedure's derived status in the same transaction.
-STATUS_IKKE_SCREENET = "Ikke screenet"
+STATUS_POTENTIEL = "Potentiel skolestarter"
 
 # Fields on SkolebegynderUpdateRequest that reference a lookup table, with the
 # model, its id column and whether it has an aktiv flag to honour.
@@ -249,7 +249,9 @@ class SkolebegynderService:
         Returns:
             view_Skolebegyndere rows, newest screening first and unscreened
             children last — the sketch asks for "nyeste screeningsresultater
-            øverst".
+            øverst". Within a date, by status in process order (so Afsluttet
+            comes after the cases still being worked on), then by wanted
+            school, school offer and name.
         """
 
         result = self.db.execute(
@@ -263,6 +265,9 @@ class SkolebegynderService:
                 ORDER BY
                     skoleaar DESC,
                     screeningsdato DESC,
+                    status_sortering,
+                    oensket_skole,
+                    skoletilbud_matrikel,
                     navn
             """),
             {"skoleaar": skoleaar},
@@ -621,7 +626,7 @@ class SkolebegynderService:
 
         case = self._get_open_case(skolebegynder_id)
 
-        if case.status_id != self._status_id(STATUS_SKOLETILBUD):
+        if case.status_id != self._status_id(STATUS_SKOLEPLACERET):
             raise HTTPException(
                 status_code=409,
                 detail="Kun sager med et skoletilbud kan afsluttes.",
@@ -658,7 +663,7 @@ class SkolebegynderService:
 
         The status is not chosen here: the case is moved out of "Afsluttet"
         and the procedure derives where it belongs from its data — normally
-        back to "Skoletilbud".
+        back to "Skoleplaceret".
 
         Raises:
             HTTPException:
@@ -678,7 +683,7 @@ class SkolebegynderService:
 
         try:
             # Placeholder only — the procedure overwrites it before commit.
-            case.status_id = self._status_id(STATUS_IKKE_SCREENET)
+            case.status_id = self._status_id(STATUS_POTENTIEL)
             case.afsluttet_dato = None
             case.updated_by = udfoert_af[:100]
             self.db.flush()

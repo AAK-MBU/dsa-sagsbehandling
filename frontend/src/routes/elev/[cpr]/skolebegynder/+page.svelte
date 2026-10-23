@@ -2,25 +2,36 @@
   import { invalidateAll } from "$app/navigation";
 
   import { backendFetch } from "$lib/client/backendFetch";
+  import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate } from "$lib/dates";
+  import { erEgenKommentar } from "$lib/kommentarEjer";
   import {
+    EJ_SPROGSCREENET,
     dato,
+    erScreenet,
     fejltekst,
     jaNej,
+    percentil,
+    skoleaarTekst,
     tidspunkt,
     type AendringRow,
     type SkolebegynderDetail,
-    type SkolebegynderFelter
+    type SkolebegynderFelter,
+    type SkolebegynderRow
   } from "$lib/skolebegynder";
-  import { formatCpr, getStatusBadgeClass } from "$lib/tableColumnConfig";
+  import { getStatusBadgeClass } from "$lib/tableColumnConfig";
 
   export let data;
 
-  $: sag = data.sag as SkolebegynderDetail;
+  // The Skolebegynder tab of the student page (/elev/[cpr]). The child, their
+  // stamdata and the protection warnings are the page's, above; this is the
+  // case. sag is null when the child has no skolebegynder case.
+  $: sag = data.sag as SkolebegynderDetail | null;
+  $: sager = data.skolebegynderSager as SkolebegynderRow[];
   $: lookups = data.lookups;
   $: sagsforloeb = data.sagsforloeb as any[];
   $: aendringer = data.aendringer as AendringRow[];
   $: kanRedigere = data.user?.can_edit === true;
-  $: afsluttet = sag.status_tekst === "Afsluttet";
+  $: afsluttet = sag?.status_tekst === "Afsluttet";
   $: brugerNavn = data.user?.name ?? null;
 
 
@@ -37,13 +48,14 @@
     brevskabelon_id: number | "";
     krav_paa_befordring: "" | "ja" | "nej";
     sagsbehandlingsdato: string;
+    afklaring: string;
     bemaerkning: string;
   };
 
   let form: Form;
   let formFor = "";
 
-  $: if (`${sag.skolebegynder_id}-${sag.updated_at}` !== formFor) {
+  $: if (sag && `${sag.skolebegynder_id}-${sag.updated_at}` !== formFor) {
     formFor = `${sag.skolebegynder_id}-${sag.updated_at}`;
     form = {
       puf_screeningsresultat: sag.puf_screeningsresultat ?? "",
@@ -53,6 +65,7 @@
       brevskabelon_id: sag.brevskabelon_id ?? "",
       krav_paa_befordring: sag.krav_paa_befordring === null ? "" : sag.krav_paa_befordring ? "ja" : "nej",
       sagsbehandlingsdato: sag.sagsbehandlingsdato ?? "",
+      afklaring: sag.afklaring ?? "",
       bemaerkning: sag.bemaerkning ?? ""
     };
   }
@@ -89,11 +102,23 @@
       brevskabelon_id: idEllerNull(form.brevskabelon_id),
       krav_paa_befordring: form.krav_paa_befordring === "" ? null : form.krav_paa_befordring === "ja",
       sagsbehandlingsdato: form.sagsbehandlingsdato || null,
+      afklaring: form.afklaring.trim() || null,
       bemaerkning: form.bemaerkning.trim() || null
     };
 
+    // As befordringssystemet's forms: min/max on the input only bound the
+    // picker; a typed or pasted value still reaches bind:value, so the check
+    // that actually stops a "202365" year is this one.
+    const ugyldig =
+      firstInvalidDate(felter, ["sagsbehandlingsdato"]) ??
+      firstOutOfRangeDate(felter, ["sagsbehandlingsdato"]);
+    if (ugyldig) {
+      besked = { type: "fejl", tekst: `Ugyldig sagsbehandlingsdato: ${ugyldig[1]}` };
+      return;
+    }
+
     kald(
-      `/skolebegynder/${sag.skolebegynder_id}`,
+      `/skolebegynder/${sag!.skolebegynder_id}`,
       { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(felter) },
       (svar) => `Gemt — status: ${svar.status_tekst}.`
     );
@@ -101,12 +126,12 @@
 
   function afslut() {
     if (!confirm("Afslut sagen? Gør det, når afgørelsesbrevet er sendt.")) return;
-    kald(`/skolebegynder/${sag.skolebegynder_id}/afslut`, { method: "POST" }, () => "Sagen er afsluttet.");
+    kald(`/skolebegynder/${sag!.skolebegynder_id}/afslut`, { method: "POST" }, () => "Sagen er afsluttet.");
   }
 
   function genaabn() {
     if (!confirm("Genåbn sagen, så den kan ændres?")) return;
-    kald(`/skolebegynder/${sag.skolebegynder_id}/genaabn`, { method: "POST" }, (svar) => `Sagen er genåbnet — status: ${svar.status_tekst}.`);
+    kald(`/skolebegynder/${sag!.skolebegynder_id}/genaabn`, { method: "POST" }, (svar) => `Sagen er genåbnet — status: ${svar.status_tekst}.`);
   }
 
   function haandter(a: AendringRow) {
@@ -124,7 +149,7 @@
     const tekst = kommentar.trim();
     if (!tekst) return;
     kald(
-      `/aktivitet/${sag.cpr}`,
+      `/aktivitet/${sag!.cpr}`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -132,7 +157,7 @@
           aktivitetstype: "Kommentar",
           kommentar: tekst,
           fagomraade_id: data.fagomraadeId,
-          relateret_sag_id: sag.skolebegynder_id
+          relateret_sag_id: sag!.skolebegynder_id
         })
       },
       () => {
@@ -142,9 +167,42 @@
     );
   }
 
-  function sletKommentar(aktivitetId: number) {
-    if (!confirm("Slet kommentaren?")) return;
-    kald(`/aktivitet/kommentar/${aktivitetId}`, { method: "DELETE" }, () => "Kommentaren er slettet.");
+  // Comment deletion, as on befordringssystemet's sag page: permanent —
+  // Sagsaktivitet has no aktiv flag — so a confirmation dialog first, and the
+  // backend's own message shown in it if the delete is refused.
+  let confirmingDeleteAktivitetId: number | null = null;
+  let deletingAktivitet = false;
+  let deleteAktivitetError: string | null = null;
+
+  async function doDeleteKommentar() {
+    if (deletingAktivitet || confirmingDeleteAktivitetId === null) {
+      return;
+    }
+
+    const aktivitetId = confirmingDeleteAktivitetId;
+
+    deletingAktivitet = true;
+    deleteAktivitetError = null;
+
+    try {
+      const response = await backendFetch(`/aktivitet/kommentar/${aktivitetId}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        // The backend says in Danish why it refused (not a comment / not
+        // yours); keep the dialog open so the reason is read where it was
+        // triggered.
+        deleteAktivitetError = await fejltekst(response);
+        return;
+      }
+
+      confirmingDeleteAktivitetId = null;
+
+      await invalidateAll();
+    } finally {
+      deletingAktivitet = false;
+    }
   }
 
   const procent = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)} %`);
@@ -152,35 +210,46 @@
 </script>
 
 
-<svelte:head>
-  <title>{sag.navn ?? "Sag"} – Skolebegynder {sag.skoleaar}</title>
-</svelte:head>
+<section class="w-full">
 
+  {#if !sag}
 
-<section class="w-full max-w-6xl">
+    <div class="rounded-2xl px-6 py-10 text-center text-gray-500 kort">
+      Barnet har ingen skolebegyndersager.
+    </div>
 
-  <a href="/skolebegynder?aar={sag.skoleaar}" class="inline-flex items-center gap-1.5 text-[13px] text-dsa-600 hover:text-dsa-800 mb-4">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-    </svg>
-    Tilbage til overblik
-  </a>
+  {:else}
 
-  <!-- Header -->
-  <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
-    <div>
-      <div class="flex items-center gap-3 flex-wrap">
-        <h1 class="text-[26px] font-bold" style="color: #271347;">{sag.navn ?? "—"}</h1>
-        <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold {getStatusBadgeClass(sag.status_tekst)}">{sag.status_tekst}</span>
-        {#if sag.navne_adresse_beskyttelse}
-          <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">Navne- og adressebeskyttet</span>
-        {/if}
-      </div>
-      <p class="text-[13px] text-gray-500 mt-1">
-        <span class="font-mono">{formatCpr(sag.cpr)}</span>
-        · Skolestart {sag.skoleaar}
-        · <a href="/elevmappe/{sag.cpr}" class="text-dsa-700 hover:underline">Elevmappe</a>
-      </p>
+  <!-- Case strip: which case, its status, and closing it -->
+  <div class="flex items-center justify-between gap-4 mb-5 flex-wrap">
+    <div class="flex items-center gap-3 flex-wrap">
+      <a href="/skolebegynder?aar={sag.skoleaar}" class="inline-flex items-center gap-1 text-[13px] text-dsa-600 hover:text-dsa-800 mr-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        Overblik
+      </a>
+
+      <h2 class="text-[18px] font-bold" style="color: #271347;">Skolebegynder {skoleaarTekst(sag.skoleaar)}</h2>
+      <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold {getStatusBadgeClass(sag.status_tekst)}">{sag.status_tekst}</span>
+
+      <!-- A postponed child has a case per school year -->
+      {#if sager.length > 1}
+        <div class="flex items-center gap-1 ml-2 text-[13px]">
+          <span class="text-gray-500 mr-1">Sager:</span>
+          {#each sager as s (s.skolebegynder_id)}
+            <a
+              href="?sag={s.skolebegynder_id}"
+              class="px-2.5 py-1 rounded-full border {s.skolebegynder_id === sag.skolebegynder_id
+                ? 'border-dsa-600 bg-dsa-50 text-dsa-800 font-semibold'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-50'}"
+              aria-current={s.skolebegynder_id === sag.skolebegynder_id ? "page" : undefined}
+            >
+              {skoleaarTekst(s.skoleaar)} · {s.status_tekst}
+            </a>
+          {/each}
+        </div>
+      {/if}
     </div>
 
     {#if kanRedigere}
@@ -192,9 +261,9 @@
         {:else}
           <button
             type="button"
-            class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40"
-            disabled={arbejder || sag.status_tekst !== "Skoletilbud"}
-            title={sag.status_tekst !== "Skoletilbud" ? "Kun sager med et skoletilbud kan afsluttes" : "Afslut, når brevet er sendt"}
+            class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-white disabled:text-gray-400 disabled:border disabled:border-gray-300 disabled:cursor-not-allowed"
+            disabled={arbejder || sag.status_tekst !== "Skoleplaceret"}
+            title={sag.status_tekst !== "Skoleplaceret" ? "Kun sager med et skoletilbud kan afsluttes" : "Afslut, når brevet er sendt"}
             on:click={afslut}
           >
             Afslut sag
@@ -240,15 +309,28 @@
   {/if}
 
 
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-6">
+  <!-- Full width from xl: the facts (screening, wishes) side by side with the
+       case work under them, and the case log running down the right, where
+       it stays in view while the form is filled in. Below xl the cards stack
+       in reading order. -->
+  <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-5 items-start">
 
     <!-- Screening -->
-    <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #2c7d90;">
+    <div class="rounded-2xl overflow-hidden kort" style="border-left: 5px solid #2c7d90;">
       <div class="px-6 py-4 border-b border-gray-100">
         <h2 class="font-bold text-[15px]" style="color: #1f5d6e;">Screening</h2>
       </div>
-      {#if sag.samlet_resultat === null && sag.screeningsdato === null}
-        <p class="px-6 py-5 text-sm text-gray-500">Barnet er ikke screenet endnu.</p>
+      {#if !erScreenet(sag) && sag.screeningsdato === null}
+        <p class="px-6 py-5 text-sm text-gray-500">
+          {#if sag.samlet_resultat === EJ_SPROGSCREENET}
+            <span class="block mb-1">SX: <span class="font-medium text-gray-700">{EJ_SPROGSCREENET}</span>.</span>
+          {/if}
+          {#if sag.screening_booket_tidspunkt}
+            Ikke screenet endnu. Tid booket: <span class="font-medium text-gray-700">{tidspunkt(sag.screening_booket_tidspunkt)}</span>
+          {:else}
+            Barnet er ikke screenet endnu, og der er ikke booket en tid.
+          {/if}
+        </p>
       {:else}
         <dl class="px-6 py-5 grid grid-cols-[170px_1fr] gap-y-2.5 gap-x-4 text-[13px]">
           <dt class="text-gray-500">Screeningsdato</dt><dd>{dato(sag.screeningsdato)}</dd>
@@ -263,7 +345,8 @@
           {/if}
         </dl>
 
-        <table class="mx-6 mb-5 text-[13px] w-[calc(100%-3rem)]">
+        <div class="mx-6 mb-5 overflow-x-auto">
+        <table class="screeningstabel w-full border-collapse text-[13px]">
           <thead>
             <tr class="text-left text-gray-500 border-b border-gray-100">
               <th class="py-1.5 font-medium"></th>
@@ -278,27 +361,29 @@
           <tbody>
             <tr class="border-b border-gray-50">
               <td class="py-1.5 font-medium">Ordforråd</td>
-              <td>{tal(sag.of_percentil)}</td><td>{tal(sag.of_korrekt)}</td><td>{tal(sag.of_forkert)}</td>
+              <td>{percentil(sag.of_percentil)}</td><td>{tal(sag.of_korrekt)}</td><td>{tal(sag.of_forkert)}</td>
               <td>{tal(sag.of_besvaret)}</td><td>{procent(sag.of_korrekt_ratio)}</td><td>{tal(sag.of_score)}</td>
             </tr>
             <tr>
               <td class="py-1.5 font-medium">Sprogforståelse</td>
-              <td>{tal(sag.sf_percentil)}</td><td>{tal(sag.sf_korrekt)}</td><td>{tal(sag.sf_forkert)}</td>
+              <td>{percentil(sag.sf_percentil)}</td><td>{tal(sag.sf_korrekt)}</td><td>{tal(sag.sf_forkert)}</td>
               <td>{tal(sag.sf_besvaret)}</td><td>{procent(sag.sf_korrekt_ratio)}</td><td>{tal(sag.sf_score)}</td>
             </tr>
           </tbody>
         </table>
+        </div>
       {/if}
     </div>
 
     <!-- Wishes and daycare -->
-    <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #4e7c3a;">
+    <div class="rounded-2xl overflow-hidden kort" style="border-left: 5px solid #4e7c3a;">
       <div class="px-6 py-4 border-b border-gray-100">
         <h2 class="font-bold text-[15px]" style="color: #2f5325;">Skoleønsker og dagtilbud</h2>
       </div>
       <dl class="px-6 py-5 grid grid-cols-[170px_1fr] gap-y-2.5 gap-x-4 text-[13px]">
         <dt class="text-gray-500">Distriktsskole</dt><dd>{sag.distriktsskole ?? "—"}</dd>
-        <dt class="text-gray-500">Ønsket skole</dt><dd>{sag.oensket_skole ?? "—"}</dd>
+        <dt class="text-gray-500">Ønsket skole 1</dt><dd>{sag.oensket_skole ?? "—"}</dd>
+        <dt class="text-gray-500">Ønsket skole 2</dt><dd>{sag.oensket_skole_2 ?? "—"}</dd>
         <dt class="text-gray-500">Søskende på skolen</dt><dd>{sag.soeskende_skole ?? "—"}</dd>
         <dt class="text-gray-500">Ansøgt anden skole</dt><dd>{jaNej(sag.ansoeger_anden_skole)}</dd>
         {#if sag.skoler_afviger}
@@ -312,17 +397,12 @@
         </dd>
         <dt class="text-gray-500">E-mail (PL)</dt><dd>{sag.email_pl ?? "—"}</dd>
         <dt class="text-gray-500">E-mail distriktsskole</dt><dd>{sag.email_distriktsskole ?? "—"}</dd>
-        <dt class="text-gray-500">Modersmål</dt><dd>{sag.modersmaal ?? "—"}</dd>
-        <dt class="text-gray-500">Tilflyttet DK</dt><dd>{sag.tilflyttet_dk_dato ? dato(sag.tilflyttet_dk_dato) : "—"}</dd>
-        <dt class="text-gray-500">PPR</dt><dd>{jaNej(sag.ppr_status)}</dd>
       </dl>
     </div>
 
-  </div>
-
 
   <!-- Case work -->
-  <div class="bg-white rounded-2xl overflow-hidden mb-6" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #6a3fb5;">
+  <div class="rounded-2xl overflow-hidden xl:col-span-2 kort" style="border-left: 5px solid #6a3fb5;">
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
       <h2 class="font-bold text-[15px]" style="color: #3b2168;">Sagsbehandling</h2>
       {#if afsluttet}
@@ -330,18 +410,9 @@
       {/if}
     </div>
 
-    <form class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-[13px]" on:submit|preventDefault={gem}>
+    <!-- Placement first: skoletilbud + type is what moves the case on. -->
+    <form class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4 text-[13px]" on:submit|preventDefault={gem}>
       <fieldset class="contents" disabled={!kanRedigere || afsluttet || arbejder}>
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">PUF-screeningsresultat</span>
-          <input class="border border-gray-300 rounded px-2.5 py-1.5" maxlength="100" bind:value={form.puf_screeningsresultat} />
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Sagsbehandlingsdato</span>
-          <input type="date" class="border border-gray-300 rounded px-2.5 py-1.5" bind:value={form.sagsbehandlingsdato} />
-        </label>
-
         <label class="flex flex-col gap-1">
           <span class="text-gray-600">Skoletilbud (matrikel)</span>
           <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.skoletilbud_matrikel_id}>
@@ -373,13 +444,13 @@
         </label>
 
         <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Skabelon (til brev)</span>
-          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.brevskabelon_id}>
-            <option value="">{lookups.brevskabeloner.length ? "— Vælg —" : "Ingen skabeloner oprettet endnu"}</option>
-            {#each lookups.brevskabeloner as o}
-              <option value={o.id}>{o.label}</option>
-            {/each}
-          </select>
+          <span class="text-gray-600">PUF-screeningsresultat</span>
+          <input class="border border-gray-300 rounded px-2.5 py-1.5" maxlength="100" bind:value={form.puf_screeningsresultat} />
+        </label>
+
+        <label class="flex flex-col gap-1">
+          <span class="text-gray-600">Sagsbehandlingsdato</span>
+          <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 rounded px-2.5 py-1.5" bind:value={form.sagsbehandlingsdato} />
         </label>
 
         <label class="flex flex-col gap-1">
@@ -391,16 +462,31 @@
           </select>
         </label>
 
-        <label class="flex flex-col gap-1 md:col-span-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-gray-600">Skabelon (til brev)</span>
+          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.brevskabelon_id}>
+            <option value="">{lookups.brevskabeloner.length ? "— Vælg —" : "Ingen skabeloner oprettet endnu"}</option>
+            {#each lookups.brevskabeloner as o}
+              <option value={o.id}>{o.label}</option>
+            {/each}
+          </select>
+        </label>
+
+        <label class="flex flex-col gap-1 md:col-span-2 xl:col-span-3">
+          <span class="text-gray-600">Afklaring</span>
+          <textarea class="border border-gray-300 rounded px-2.5 py-1.5 min-h-16" placeholder="Hvis screeningsresultatet ikke er entydigt" bind:value={form.afklaring}></textarea>
+        </label>
+
+        <label class="flex flex-col gap-1 md:col-span-2 xl:col-span-3">
           <span class="text-gray-600">Bemærkning</span>
           <textarea class="border border-gray-300 rounded px-2.5 py-1.5 min-h-20" bind:value={form.bemaerkning}></textarea>
         </label>
       </fieldset>
 
       {#if kanRedigere && !afsluttet}
-        <div class="md:col-span-2 flex items-center justify-between gap-4">
+        <div class="md:col-span-2 xl:col-span-3 flex items-center justify-between gap-4">
           <p class="text-xs text-gray-500">
-            Status følger felterne: skoletilbud + skoletilbudstype giver "Skoletilbud".
+            Status følger felterne: skoletilbud + skoletilbudstype giver "Skoleplaceret".
           </p>
           <button type="submit" class="px-5 py-2 rounded-full text-sm font-semibold text-white bg-dsa-600 hover:bg-dsa-700 disabled:opacity-40" disabled={arbejder}>
             {arbejder ? "Gemmer…" : "Gem"}
@@ -411,8 +497,8 @@
   </div>
 
 
-  <!-- Sagsforløb -->
-  <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08); border-left: 5px solid #bd9b16;">
+  <!-- Sagsforløb — the right-hand column from xl -->
+  <div class="rounded-2xl overflow-hidden xl:col-start-3 xl:row-start-1 xl:row-span-2 kort" style="border-left: 5px solid #bd9b16;">
     <div class="px-6 py-4 border-b border-gray-100">
       <h2 class="font-bold text-[15px]" style="color: #8a7210;">Sagsforløb</h2>
     </div>
@@ -434,8 +520,8 @@
     {:else}
       <ol class="px-6 py-4 space-y-3">
         {#each sagsforloeb as a (a.aktivitet_id)}
-          <li class="flex gap-4 text-[13px]">
-            <span class="w-32 shrink-0 text-gray-500">{tidspunkt(a.oprettet_tidspunkt)}</span>
+          <li class="flex gap-3 text-[13px]">
+            <span class="w-28 shrink-0 text-gray-500">{tidspunkt(a.oprettet_tidspunkt)}</span>
             <div class="flex-1">
               <p>
                 <span class="font-semibold {a.type_kode === 'kommentar' ? 'text-dsa-800' : 'text-gray-800'}">{a.aktivitetstype}</span>
@@ -443,8 +529,19 @@
               </p>
               {#if a.kommentar}<p class="text-gray-700 mt-0.5 whitespace-pre-line">{a.kommentar}</p>{/if}
             </div>
-            {#if a.type_kode === "kommentar" && brugerNavn && a.udfoert_af === brugerNavn}
-              <button type="button" class="text-xs text-red-600 hover:underline self-start" on:click={() => sletKommentar(a.aktivitet_id)}>Slet</button>
+            <!-- Only comments can be deleted, and only your own — erEgenKommentar
+                 mirrors the backend's samme_bruger, which is what decides. -->
+            {#if (a.type_kode === "kommentar" || a.aktivitetstype === "Kommentar") && erEgenKommentar(a.udfoert_af, brugerNavn)}
+              <button
+                type="button"
+                title="Slet din kommentar"
+                class="p-1 text-gray-400 hover:text-red-600 transition-colors self-start"
+                on:click={() => { confirmingDeleteAktivitetId = a.aktivitet_id; deleteAktivitetError = null; }}
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             {/if}
           </li>
         {/each}
@@ -452,4 +549,76 @@
     {/if}
   </div>
 
+  </div>
+
+  {/if}
+
 </section>
+
+
+<!-- Delete kommentar confirmation modal — markup from befordringssystemet's
+     sag page. -->
+{#if confirmingDeleteAktivitetId !== null}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+    role="presentation"
+  >
+    <div
+      class="w-[420px] bg-white rounded-lg shadow-2xl"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
+      <div class="px-6 py-5 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900">Slet kommentar</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Kommentar #{confirmingDeleteAktivitetId}</p>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4">
+        <p class="text-sm text-gray-700">
+          Er du sikker på, at du vil slette denne kommentar?
+          Den slettes permanent fra databasen og kan ikke gendannes.
+        </p>
+        {#if deleteAktivitetError}
+          <p class="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{deleteAktivitetError}</p>
+        {/if}
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+        <button
+          type="button"
+          class="px-4 py-2 text-sm font-medium border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+          on:click={() => confirmingDeleteAktivitetId = null}
+        >
+          Annullér
+        </button>
+        <button
+          type="button"
+          disabled={deletingAktivitet}
+          class="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded transition-colors disabled:opacity-50"
+          on:click={doDeleteKommentar}
+        >
+          {deletingAktivitet ? "Sletter…" : "Slet kommentar"}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+
+<style>
+  /* The global td/th rule (app.css, from befordringssystemet) pads every cell
+     0.75rem — too much for a seven-column table inside a column-wide card.
+     Compact here, as DataTable does for its own cells. */
+  .screeningstabel :global(th),
+  .screeningstabel :global(td) {
+    padding: 0.375rem 0.4rem;
+  }
+</style>

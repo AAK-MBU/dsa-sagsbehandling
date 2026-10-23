@@ -168,17 +168,18 @@ DECLARE @skolebegyndere INT = (
 
 -- Status  (5 rows, skolebegyndere)
 --
--- From the status legend in the skolebegynder UI sketch. The first four are
+-- The caseworkers' own statuses (pre-meeting 2026-10-21, migration 002),
+-- which replaced the status legend in the skolebegynder UI sketch. The first four are
 -- AUTOMATIC: usp_recalculate_skolebegynder_status sets them from the case's
 -- data. Only Afsluttet is set by a person, and the procedure never moves a
 -- case out of it — reopening is a deliberate act by a caseworker.
 INSERT INTO [dsa].[Status] (status_tekst, beskrivelse, aktiv, fagomraade_id, sortering)
 SELECT v.status_tekst, v.beskrivelse, v.aktiv, @skolebegyndere, v.sortering
 FROM (VALUES
-    (N'Ikke screenet',      N'Automatisk: intet screeningsresultat endnu',                         1, 10),
-    (N'Nærmere afklaring',  N'Automatisk: screenet, men PUF-screeningsresultat er ikke udfyldt',    1, 20),
-    (N'Under behandling',   N'Automatisk: screenet og klar til skoleplacering',                    1, 30),
-    (N'Skoletilbud',        N'Automatisk: skoletilbud og skoletilbudstype er udfyldt',              1, 40),
+    (N'Potentiel skolestarter', N'Automatisk: på etableringslisten; ingen booket screening og intet resultat', 1, 10),
+    (N'Tid booket',             N'Automatisk: forældrene har booket en tid til sprogscreening',               1, 20),
+    (N'Screening afviklet',     N'Automatisk: der er et resultat af sprogscreeningen',                         1, 30),
+    (N'Skoleplaceret',          N'Automatisk: skoletilbud og skoletilbudstype er udfyldt',                     1, 40),
     (N'Afsluttet',          N'Manuelt: sagen er afsluttet og brevet er sendt',                     1, 50)
 ) AS v (status_tekst, beskrivelse, aktiv, sortering);
 PRINT CONCAT('Status: ', @@ROWCOUNT, ' row(s) inserted.');

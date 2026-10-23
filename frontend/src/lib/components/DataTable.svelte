@@ -64,6 +64,54 @@
 
   export let rowStyle: ((row: any) => string) | null = null;
 
+  // DSA: always-editable mode, instead of a Redigér button per row. The
+  // editable columns are inputs on every row; each change is reported
+  // through onCellChange and held by the caller (`drafts`, keyed by
+  // getRowId, then column key) until the caller saves it, and a changed cell
+  // is highlighted. isRowEditable keeps a row read-only (a closed case);
+  // getEditValue maps a stored value to what the input shows (a boolean as
+  // 1/0 for a Ja/Nej select). Leave `editable` off when this is on.
+  export let alwaysEditable = false;
+  export let drafts: Record<string | number, Record<string, any>> = {};
+  export let isRowEditable: (row: any) => boolean = () => true;
+  export let getEditValue: (row: any, key: string) => any = (row, key) => row[key];
+  export let onCellChange: (row: any, key: string, value: any) => void = () => {};
+
+  // DSA: compact density below Tailwind's 2xl breakpoint (1536px): tighter
+  // cell padding, 13px text and narrower edit fields, so a 13" laptop
+  // (1280px wide at 150% scaling) fits the grid that a large screen shows
+  // unchanged. Off by default — befordringssystemet's spacing.
+  export let compact = false;
+
+  // DSA: keep the first column (and the selection checkbox before it) in view
+  // while the grid scrolls sideways — the safety net for when the chosen
+  // columns are wider than the screen.
+  export let stickyFirstColumn = false;
+
+  // Full class strings, so Tailwind sees them.
+  $: tekstKlasse = compact ? "text-[13px] 2xl:text-sm" : "text-sm";
+  $: thPad = compact ? "px-2.5 py-2.5 2xl:px-4 2xl:py-3" : "px-4 py-3";
+  $: tdPad = compact ? "px-2.5 py-2 2xl:px-4 2xl:py-3" : "px-4 py-3";
+  $: editPad = compact ? "px-1.5 py-1.5 2xl:px-2" : "px-2 py-1.5";
+  $: filterPad = compact ? "px-2 py-2 2xl:px-3" : "px-3 py-2";
+  $: selectBredde = compact ? "w-28 2xl:w-36" : "w-36";
+  // Text fields fill their cell, so a remark column that the table widens
+  // gives a wider field; the minimum keeps a narrow column usable. Selects
+  // stay fixed — their options can be far longer than the cell. The input
+  // carries size="1": its built-in width (about 20 characters) would
+  // otherwise count as the column's minimum and widen the grid.
+  $: inputBredde = compact ? "w-full min-w-20 2xl:min-w-32" : "w-full min-w-32";
+
+  // The sticky first column starts where the (fixed-width) checkbox column ends.
+  $: stickyVenstre = selectable ? "left: 2.25rem;" : "left: 0;";
+  const stickyKant = "shadow-[inset_-1px_0_0_#d1d5db]";
+  // With collapsed borders a sticky cell's background stops at the middle of
+  // its border, so scrolled content shows through the 1px line. A strip in
+  // the cell's own background (bg-inherit: row colour, hover, header) covers
+  // it on the outer side(s).
+  const daekV = "before:content-[''] before:absolute before:inset-y-0 before:-left-px before:w-px before:bg-inherit";
+  const daekH = "after:content-[''] after:absolute after:inset-y-0 after:-right-px after:w-px after:bg-inherit";
+
   // DSA: row selection, for mass updates. Keyed by getRowId, so give the
   // table a real id (the index default would select different rows as the
   // filter changes). The header checkbox selects every FILTERED row, not
@@ -263,7 +311,7 @@
     </div>
   {/if}
 
-  <table class="w-full text-sm text-gray-700 border-collapse">
+  <table class={`w-full ${tekstKlasse} text-gray-700 border-collapse`}>
 
     <thead>
 
@@ -273,7 +321,7 @@
 
         {#if selectable}
           <!-- DSA: select / deselect every filtered row -->
-          <th class="px-3 py-3 w-8 text-left" style="background-color: #271347;">
+          <th class={stickyFirstColumn ? `px-0 w-9 min-w-9 text-center sticky left-0 z-20 ${daekV} ${daekH}` : "px-3 py-3 w-8 text-left"} style="background-color: #271347;">
             <input
               type="checkbox"
               aria-label="Vælg alle filtrerede rækker"
@@ -288,8 +336,12 @@
           <th class="px-4 py-3 font-semibold whitespace-nowrap text-left sticky left-0 z-10" style="background-color: #271347;"></th>
         {/if}
 
-        {#each columns as column}
-          <th class={`px-4 py-3 font-semibold whitespace-normal min-w-24 text-left ${column.class ?? ""}`}>
+        {#each columns as column, ci}
+          {@const fast = stickyFirstColumn && ci === 0}
+          <th
+            class={`${thPad} font-semibold whitespace-normal min-w-24 text-left ${fast ? `sticky z-20 ${stickyKant} ${daekV}` : ""} ${column.class ?? ""}`}
+            style={fast ? `${stickyVenstre} background-color: #271347;` : ""}
+          >
             {column.label}
           </th>
         {/each}
@@ -302,15 +354,16 @@
         <tr class="bg-gray-100 border-b border-gray-300">
 
           {#if selectable}
-            <td class="px-3 py-2"></td>
+            <td class={stickyFirstColumn ? `px-0 w-9 min-w-9 sticky left-0 z-10 bg-gray-100 ${daekV} ${daekH}` : "px-3 py-2"}></td>
           {/if}
 
           {#if editable}
             <td class="px-3 py-2 sticky left-0 z-10 bg-gray-100"></td>
           {/if}
 
-          {#each columns as column}
-            <td class="px-3 py-2 align-top">
+          {#each columns as column, ci}
+            {@const fast = stickyFirstColumn && ci === 0}
+            <td class={`${filterPad} align-top ${fast ? `sticky z-10 bg-gray-100 ${stickyKant} ${daekV}` : ""}`} style={fast ? stickyVenstre : ""}>
 
               {#if column.filterable !== false}
 
@@ -432,7 +485,7 @@
 
             {#if selectable}
               <!-- DSA: row selection -->
-              <td class="px-3 py-3">
+              <td class={stickyFirstColumn ? `px-0 w-9 min-w-9 text-center sticky left-0 z-10 ${rowBg} group-hover:bg-blue-50 transition-colors ${daekV} ${daekH}` : "px-3 py-3"}>
                 <input
                   type="checkbox"
                   aria-label="Vælg række"
@@ -475,11 +528,55 @@
             {/if}
 
 
-            {#each columns as column}
+            {#each columns as column, ci}
 
-              <td class={`px-4 py-3 whitespace-nowrap ${column.class ?? ""}`}>
+              {@const cellEditable = alwaysEditable && column.editable === true && isRowEditable(row)}
+              {@const changed = cellEditable && drafts[rowId] !== undefined && column.key in drafts[rowId]}
+              {@const fast = stickyFirstColumn && ci === 0}
 
-                {#if isEditing && column.editable === true}
+              <td
+                class={`whitespace-nowrap ${cellEditable ? editPad : tdPad} ${changed ? "bg-amber-100" : ""} ${fast ? `sticky z-10 ${rowBg} group-hover:bg-blue-50 transition-colors ${stickyKant} ${daekV}` : ""} ${column.class ?? ""}`}
+                style={fast ? stickyVenstre : ""}
+              >
+
+                {#if cellEditable}
+
+                  <!-- DSA: always-editable cell -->
+                  {@const value = changed ? drafts[rowId][column.key] : getEditValue(row, column.key)}
+                  {#if column.selectOptions}
+                    <!-- Narrow so a grid of them still fits the screen; the
+                         title shows a long value in full on hover. -->
+                    <select
+                      title={column.selectOptions.find((o) => o.value === value)?.label ?? ""}
+                      class={`${selectBredde} border rounded px-1.5 py-1 text-[13px] focus:ring-0 ${changed ? "border-amber-500 bg-amber-50" : "border-gray-300 bg-white focus:border-dsa-500"}`}
+                      aria-label={column.label}
+                      value={value ?? ""}
+                      on:change={(event) => {
+                        const target = event.target as HTMLSelectElement;
+                        onCellChange(row, column.key, target.value === "" ? null : Number(target.value));
+                      }}
+                    >
+                      <option value="">—</option>
+                      {#each column.selectOptions as opt}
+                        <option value={opt.value}>{opt.label}</option>
+                      {/each}
+                    </select>
+                  {:else}
+                    <input
+                      type={column.inputType ?? "text"}
+                      size="1"
+                      class={`${inputBredde} border rounded px-1.5 py-1 text-[13px] focus:ring-0 ${changed ? "border-amber-500 bg-amber-50" : "border-gray-300 bg-white focus:border-dsa-500"}`}
+                      title={value ?? ""}
+                      aria-label={column.label}
+                      value={value ?? ""}
+                      on:input={(event) => {
+                        const target = event.target as HTMLInputElement;
+                        onCellChange(row, column.key, target.value);
+                      }}
+                    />
+                  {/if}
+
+                {:else if isEditing && column.editable === true}
 
                   {#if column.selectOptions}
                     <select

@@ -16,27 +16,38 @@ GO
     writing. The result set lists every case considered and whether its
     status would change.
 
-    The rule, agreed 2026-10-20 — automatic transitions, but never overriding
-    what a person has decided:
+    The rule — the caseworkers' statuses (migration 002) — automatic
+    transitions, but never overriding what a person has decided:
 
         Afsluttet           set by a caseworker; this procedure NEVER moves a
                             case into or out of it. Reopening is deliberate.
 
-        Skoletilbud         skoletilbud_matrikel_id AND skoletilbudstype_id
-                            are both filled. Wins over the screening rules below,
-                            because a decision such as "Skolegangsudsat" or
-                            "Flyttet ud af kommunen" can be made without a
-                            screening.
+        Skoleplaceret           skoletilbud_matrikel_id AND skoletilbudstype_id
+                                are both filled. Wins over the screening rules
+                                below, because a decision such as
+                                "Skolegangsudsat" or "Flyttet ud af kommunen"
+                                can be made without a screening.
 
-        Ikke screenet       no samlet_resultat from SX yet.
+        Screening afviklet      there is a samlet_resultat from SX, other than
+                                "Ej sprogscreenet" — SX's own value for a
+                                child it has not screened (a real export,
+                                2026-10-23). The other values seen are
+                                Alderssvarende dansk, Sprogstøttebehov and
+                                Nærmere afklaring; whether a result needs
+                                clarifying is the caseworker's note
+                                (afklaring), not a status.
 
-        Nærmere afklaring   screened, but puf_screeningsresultat is empty.
+        Tid booket              a screening is booked
+                                (screening_booket_tidspunkt) but there is no
+                                result yet — also after the booked time has
+                                passed, so a missed or interrupted screening
+                                stays visible here with its date.
 
-        Under behandling    screened and PUF-assessed; ready for placement.
+        Potentiel skolestarter  on the etableringsliste; nothing booked yet.
 
-    Because Skoletilbud is derived, it "switches back" by itself: a caseworker
-    who clears the school offer after a change sees the case return to Under
-    behandling on the next run, as the UI sketch asks.
+    Because Skoleplaceret is derived, it "switches back" by itself: a
+    caseworker who clears the school offer after a change sees the case return
+    to Screening afviklet on the next run, as the UI sketch asks.
 
     Inactive cases (aktiv = 0) are left alone.
 
@@ -80,8 +91,8 @@ BEGIN
       AND  s.aktiv = 1;
 
     IF (SELECT COUNT(*) FROM @statuses
-        WHERE status_tekst IN (N'Ikke screenet', N'Nærmere afklaring', N'Under behandling',
-                               N'Skoletilbud', N'Afsluttet')) <> 5
+        WHERE status_tekst IN (N'Potentiel skolestarter', N'Tid booket', N'Screening afviklet',
+                               N'Skoleplaceret', N'Afsluttet')) <> 5
     BEGIN
         THROW 50003, 'One or more skolebegynder statuses are missing from dsa.Status. Run seed_lookup_data.sql.', 1;
     END;
@@ -107,10 +118,11 @@ BEGIN
     CROSS APPLY (
         SELECT CASE
             WHEN sb.skoletilbud_matrikel_id IS NOT NULL
-                 AND sb.skoletilbudstype_id IS NOT NULL      THEN N'Skoletilbud'
-            WHEN sb.samlet_resultat IS NULL                  THEN N'Ikke screenet'
-            WHEN sb.puf_screeningsresultat IS NULL           THEN N'Nærmere afklaring'
-            ELSE                                                  N'Under behandling'
+                 AND sb.skoletilbudstype_id IS NOT NULL      THEN N'Skoleplaceret'
+            WHEN sb.samlet_resultat IS NOT NULL
+                 AND sb.samlet_resultat <> N'Ej sprogscreenet' THEN N'Screening afviklet'
+            WHEN sb.screening_booket_tidspunkt IS NOT NULL   THEN N'Tid booket'
+            ELSE                                                  N'Potentiel skolestarter'
         END AS calculated_status_text
     ) calc
     LEFT JOIN @statuses target

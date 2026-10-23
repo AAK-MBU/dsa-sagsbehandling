@@ -1,6 +1,15 @@
 import { csvCpr, csvResponse, type CsvColumn } from "$lib/server/csv";
 import { backendUserFetcher } from "$lib/server/backendApi";
-import { aarFraQuery, faneFraQuery, iFane, jaNej, type SkolebegynderRow } from "$lib/skolebegynder";
+import {
+  aarFraQuery,
+  faneFraQuery,
+  iFane,
+  jaNej,
+  kommendeSkoleaar,
+  percentil,
+  skoleaarTekst,
+  type SkolebegynderRow
+} from "$lib/skolebegynder";
 
 import type { RequestHandler } from "./$types";
 
@@ -24,13 +33,15 @@ const jaNejCsv = (value: unknown) =>
 const COLUMNS: CsvColumn[] = [
   { key: "navn", header: "Navn" },
   { key: "cpr", header: "CPR", format: csvCpr },
-  { key: "skoleaar", header: "Skolestart" },
+  { key: "skoleaar", header: "Skoleår", format: (value) => skoleaarTekst(Number(value)) },
   { key: "status_tekst", header: "Status" },
+  { key: "screening_booket_tidspunkt", header: "Booket screeningstid" },
   { key: "screeningsdato", header: "Screeningsdato" },
   { key: "samlet_resultat", header: "Samlet resultat" },
   { key: "puf_screeningsresultat", header: "PUF-screeningsresultat" },
-  { key: "of_percentil", header: "Ordforråd (percentil)" },
-  { key: "sf_percentil", header: "Sprogforståelse (percentil)" },
+  // Decimal comma, as SX writes them and Danish Excel reads them.
+  { key: "of_percentil", header: "Ordforråd (percentil)", format: (v) => (v === null || v === undefined ? "" : percentil(Number(v))) },
+  { key: "sf_percentil", header: "Sprogforståelse (percentil)", format: (v) => (v === null || v === undefined ? "" : percentil(Number(v))) },
   { key: "navn_konsulent", header: "Konsulent" },
   { key: "modersmaal", header: "Modersmål" },
   { key: "tilflyttet_dk_dato", header: "Tilflyttet DK" },
@@ -38,7 +49,8 @@ const COLUMNS: CsvColumn[] = [
   { key: "dagtilbud", header: "Indmeldt dagtilbud" },
   { key: "dagtilbud_afdeling", header: "Afdeling" },
   { key: "distriktsskole", header: "Distriktsskole" },
-  { key: "oensket_skole", header: "Ønsket skole" },
+  { key: "oensket_skole", header: "Ønsket skole 1" },
+  { key: "oensket_skole_2", header: "Ønsket skole 2" },
   { key: "soeskende_skole", header: "Skoleønske søskende" },
   { key: "skoletilbud_matrikel", header: "Skoletilbud" },
   { key: "skoletilbudstype_tekst", header: "Skoletilbudstype" },
@@ -48,6 +60,7 @@ const COLUMNS: CsvColumn[] = [
   { key: "gaaafstand_oensket_skole_km", header: "Gåafstand ønsket skole (km)" },
   { key: "gaaafstand_skoletilbud_km", header: "Gåafstand skoletilbud (km)" },
   { key: "brevskabelon_tekst", header: "Skabelon" },
+  { key: "afklaring", header: "Afklaring" },
   { key: "bemaerkning", header: "Bemærkning" },
   { key: "skoler_afviger", header: "Skoler afviger", format: jaNejCsv },
   { key: "sagsbehandlingsdato", header: "Sagsbehandlingsdato" },
@@ -69,15 +82,13 @@ export const GET: RequestHandler = async (event) => {
   const rows: SkolebegynderRow[] = await res.json();
 
   const fane = faneFraQuery(event.url.searchParams.get("fane"));
-  const aar =
-    aarFraQuery(event.url.searchParams.get("aar")) ??
-    Math.max(...rows.map((r) => r.skoleaar));
+  const aar = aarFraQuery(event.url.searchParams.get("aar")) ?? kommendeSkoleaar();
 
   const udvalgte = rows.filter((row) => row.skoleaar === aar && iFane(row, fane));
 
   return csvResponse(
     udvalgte as unknown as Record<string, unknown>[],
     COLUMNS,
-    `skolebegyndere-${aar}-${fane}`
+    `skolebegyndere-${aar}-${aar + 1}-${fane}`
   );
 };

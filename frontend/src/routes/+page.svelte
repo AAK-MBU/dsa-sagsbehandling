@@ -1,51 +1,16 @@
 <script lang="ts">
   // Front page ("Forside") — the hub where you pick which område to enter.
-  // The 6 områder live in $lib/areas (shared with the top nav).
+  // The 6 områder live in $lib/areas (shared with the top nav). The student
+  // search is the top bar's, as on every page.
   import { areas } from "$lib/areas";
-
-  let search = $state("");
 </script>
-
-
-<svelte:head>
-  <title>DSA – Forside</title>
-</svelte:head>
 
 
 <div class="flex-1 flex flex-col">
 
-  <!-- Top bar -->
-  <header class="px-6 md:px-12 pt-8 pb-6 flex items-start justify-between gap-6 flex-wrap">
-
-    <div class="flex items-center gap-3">
-      <div
-        class="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-lg text-white"
-        style="background: linear-gradient(135deg, #9a7dd2, #6a3fb5);"
-      >
-        D
-      </div>
-      <div class="leading-tight">
-        <p class="font-bold text-[17px]" style="color: #271347;">DSA</p>
-        <p class="text-[12px] text-gray-500">Vælg et område</p>
-      </div>
-    </div>
-
-    <!-- Søgning -->
-    <div class="relative w-full max-w-sm">
-      <input
-        type="text"
-        bind:value={search}
-        placeholder="Søg på Navn eller CPR"
-        class="w-full rounded-full bg-white border border-dsa-200 pl-5 pr-11 py-2.5 text-sm shadow-sm focus:border-dsa-400 focus:outline-none focus:ring-2 focus:ring-dsa-100 transition-all"
-      />
-      <svg
-        class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-dsa-400"
-        fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-      >
-        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" />
-      </svg>
-    </div>
-
+  <header class="px-6 md:px-12 pt-10 pb-6 max-w-[900px] w-full mx-auto">
+    <h1 class="text-[22px] font-bold" style="color: #271347;">Vælg et område</h1>
+    <p class="text-[13px] text-gray-500 mt-1">Eller søg en elev frem på navn eller CPR i søgefeltet øverst.</p>
   </header>
 
 

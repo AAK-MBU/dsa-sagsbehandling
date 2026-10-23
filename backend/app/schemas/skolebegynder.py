@@ -32,12 +32,13 @@ class SkolebegynderOverviewRecord(BaseModel):
     status_dato: date | None = None
     modtaget_tidspunkt: datetime
 
+    screening_booket_tidspunkt: datetime | None = None
     screeningsdato: date | None = None
     samlet_resultat: str | None = None
     puf_screeningsresultat: str | None = None
     sprogstoettebehov: bool | None = None
-    of_percentil: int | None = None
-    sf_percentil: int | None = None
+    of_percentil: float | None = None
+    sf_percentil: float | None = None
     navn_konsulent: str | None = None
 
     dagtilbud: str | None = None
@@ -46,6 +47,8 @@ class SkolebegynderOverviewRecord(BaseModel):
     distriktsskole: str | None = None
     oensket_skolekode: int | None = None
     oensket_skole: str | None = None
+    oensket_skolekode_2: int | None = None
+    oensket_skole_2: str | None = None
     soeskende_skolekode: int | None = None
     soeskende_skole: str | None = None
     ansoeger_anden_skole: bool | None = None
@@ -63,6 +66,7 @@ class SkolebegynderOverviewRecord(BaseModel):
     gaaafstand_distriktsskole_km: float | None = None
     gaaafstand_oensket_skole_km: float | None = None
     gaaafstand_skoletilbud_km: float | None = None
+    afklaring: str | None = None
     bemaerkning: str | None = None
     sagsbehandlingsdato: date | None = None
     afsluttet_dato: date | None = None
@@ -89,7 +93,7 @@ class SkolebegynderDetail(SkolebegynderOverviewRecord):
     of_forkert: int | None = None
     of_korrekt_ratio: float | None = None
     of_score: int | None = None
-    of_score_alt: int | None = None
+    of_score_alt: str | None = None
 
     sf_besvaret: int | None = None
     sf_ubesvaret: int | None = None
@@ -98,7 +102,7 @@ class SkolebegynderDetail(SkolebegynderOverviewRecord):
     sf_korrekt_ratio: float | None = None
     sf_korrekt_ratio_ori: float | None = None
     sf_score: int | None = None
-    sf_score_alt: int | None = None
+    sf_score_alt: str | None = None
 
     dagtilbud_afdeling_adresse: str | None = None
     email_pl: str | None = None
@@ -128,6 +132,7 @@ class SkolebegynderUpdateRequest(BaseModel):
     skoleplaceringsaarsag_id: int | None = None
     brevskabelon_id: int | None = None
     krav_paa_befordring: bool | None = None
+    afklaring: str | None = None
     bemaerkning: str | None = None
     sagsbehandlingsdato: date | None = None
 
