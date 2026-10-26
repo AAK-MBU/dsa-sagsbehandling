@@ -108,20 +108,27 @@
       // column less, which is what lets the grid fit a 13" laptop — and the
       // Navn search finds either, typed with or without the dash.
       filterValues: (row: SkolebegynderRow) => [row.navn ?? "", row.cpr, formatCpr(row.cpr)],
-      render: (row: SkolebegynderRow) =>
-        ombryd(
-        `<a href="/elev/${esc(row.cpr)}/skolebegynder?sag=${row.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
-        (row.navne_adresse_beskyttelse
-          ? ` <span title="Navne- og adressebeskyttelse" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">Beskyttet</span>`
-          : "") +
-        (row.aabne_aendringer > 0
-          ? ` <span title="${row.aabne_aendringer} uhåndteret ændring(er)" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">!</span>`
-          : "") +
-        (row.skoler_afviger
-          ? ` <span title="Distriktsskole, ønsket skole og skoletilbud er ikke den samme skole" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-fuchsia-100 text-fuchsia-800">≠</span>`
-          : "") +
-        `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(row.cpr))}</span>`,
-        12)
+      // Markers are short words on their own line, not symbols: a "!" or "≠"
+      // only explained itself through a tooltip on a 10px target.
+      render: (row: SkolebegynderRow) => {
+        const maerker = [
+          row.navne_adresse_beskyttelse
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">Beskyttet</span>`
+            : "",
+          row.aabne_aendringer > 0
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">${row.aabne_aendringer} ${row.aabne_aendringer === 1 ? "ændring" : "ændringer"}</span>`
+            : "",
+          row.skoler_afviger
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-fuchsia-100 text-fuchsia-800" title="Distriktsskole, ønsket skole og skoletilbud er ikke den samme skole">Skoler afviger</span>`
+            : ""
+        ].filter(Boolean);
+        return ombryd(
+          `<a href="/elev/${esc(row.cpr)}/skolebegynder?sag=${row.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
+            `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(row.cpr))}</span>` +
+            (maerker.length ? `<span class="mt-1 flex flex-wrap gap-1">${maerker.join("")}</span>` : ""),
+          12
+        );
+      }
     },
     { key: "cpr", class: FAST, label: "CPR", filterType: "text", render: (row: SkolebegynderRow) => esc(formatCpr(row.cpr)) },
     {
