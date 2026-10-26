@@ -689,21 +689,27 @@
     </div>
   {:else}
 
-    <!-- Tabs -->
-    <div class="flex gap-1 border-b border-dsa-100 mb-5">
+    <!-- Tabs: separate boxed buttons, so each reads as clickable on its own;
+         the chosen one filled in the header purple. -->
+    <div class="flex gap-2 mb-5 flex-wrap" role="tablist">
       {#each FANER as f}
         <button
           type="button"
-          class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition-colors {fane === f.id
-            ? 'border-dsa-600 text-dsa-800'
-            : 'border-transparent text-gray-500 hover:text-dsa-700'}"
+          role="tab"
+          aria-selected={fane === f.id}
+          class="inline-flex items-center px-4 py-2 rounded-lg border text-sm font-medium transition-colors {fane === f.id
+            ? 'text-white border-transparent shadow'
+            : 'bg-white text-gray-700 border-[#d3cce2] shadow-sm hover:bg-dsa-50 hover:border-dsa-400 hover:text-dsa-800'}"
+          style={fane === f.id ? "background-color: #271347;" : ""}
           on:click={() => skiftVisning(aar, f.id)}
         >
           {f.label}
           <span
-            class="ml-1.5 inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1.5 rounded-full text-[11px] font-bold {f.id === 'aendringer' && antal[f.id] > 0
+            class="ml-2 inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1.5 rounded-full text-[11px] font-bold {f.id === 'aendringer' && antal[f.id] > 0
               ? 'bg-amber-500 text-white'
-              : 'bg-dsa-100 text-dsa-800'}"
+              : fane === f.id
+                ? 'bg-white/20 text-white'
+                : 'bg-dsa-100 text-dsa-800'}"
           >
             {antal[f.id]}
           </span>
