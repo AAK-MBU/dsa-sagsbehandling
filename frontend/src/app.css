@@ -15,8 +15,10 @@
   --color-dsa-950: #271347;
 }
 
+/* DSA: as befordringssystemet (#dde3ec), the page is a clearly tinted
+   backdrop, so white cards and tables stand off it — in DSA's lavender. */
 body {
-  background-color: #f4f2f9;
+  background-color: #e6e3ef;
   margin: 0;
   color: #2a2438;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -24,4 +26,47 @@ body {
 
 th {
   text-transform: none !important;
+}
+
+/* Gør alle datatable-celler synlige
+ *
+ * From befordringssystemet's app.css: the cell borders are what show where
+ * one column's value ends and the next begins. DataTable's own scoped style
+ * tightens the padding inside the grid; this is the default for every other
+ * table. max-width also caps a single wide value at 20rem. */
+td, th {
+  border: 1px solid #e5e7eb; /* gray-200 */
+  padding: 0.75rem;   /* Better padding */
+  text-align: left;
+  max-width: 20rem;
+}
+
+/* Table rows with better hover */
+tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+/* DSA: the DSA lavender (dsa-50) rather than befordringssystemet's blue. */
+tbody tr:hover {
+  background-color: #f6f4fb !important;
+}
+
+/* Alternating row colors for better readability */
+tbody tr:nth-child(odd) {
+  background-color: #f8fafc;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #ffffff;
+}
+
+
+/* DSA: a card or table surface — white, with a real border and shadow, as
+   befordringssystemet's "bg-white border border-gray-300 rounded-lg shadow".
+   Without the border, white on the light backdrop blurred together. A
+   coloured border-left set inline still wins on that side. */
+.kort {
+  background-color: #ffffff;
+  border: 1px solid #d3cce2;
+  box-shadow: 0 1px 3px rgba(39, 19, 71, 0.12), 0 1px 2px -1px rgba(39, 19, 71, 0.10);
 }

@@ -12,13 +12,10 @@
  * stylesheet. It is shared so these pages stay recognisably the same product.
  */
 
-export function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+// DSA: escapeHtml lives in $lib/html so the browser can use the same one
+// (DataTable render functions); re-exported here so callers are unchanged.
+export { escapeHtml } from "$lib/html";
+import { escapeHtml } from "$lib/html";
 
 
 export type StatusPage = {
