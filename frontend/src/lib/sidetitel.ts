@@ -33,6 +33,7 @@ const FASTE_TITLER: Record<string, string> = {
 const SAGS_HANDLINGER: Record<string, string> = {
   "/elev/[cpr]/skolebegynder": "",
   "/elev/[cpr]/skoleskiftere": "Skoleskiftere",
+  "/skoleskiftere/sag/[id]": "Skoleskiftersag",
   "/elev/[cpr]/foraeldremyndighed": "Forældremyndighed",
 };
 

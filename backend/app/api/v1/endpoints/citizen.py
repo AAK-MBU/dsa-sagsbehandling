@@ -56,6 +56,15 @@ def get_stamdata(cpr: str, db: DbSession):
     return service.get_stamdata(cpr=cpr)
 
 
+# DSA: siblings — not in befordringssystemet. Area-wide: the requirements ask
+# for siblings' earlier decisions and schools on a case in any area.
+@router.get("/stamdata/{cpr}/soeskende")
+def get_soeskende(cpr: str, db: DbSession):
+    """The child's siblings (sharing a custody holder), each with school and cases."""
+
+    return CitizenService(db=db).get_soeskende(cpr=cpr)
+
+
 @router.get("/stamdata/{cpr}/parents")
 def get_parent_data(cpr: str, db: DbSession):
     """Get parent/guardian data for a citizen/student.

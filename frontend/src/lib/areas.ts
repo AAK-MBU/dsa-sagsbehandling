@@ -50,10 +50,9 @@ export const areas: Area[] = [
     accent: "#4e7c3a",
     bg: "#eef5e9",
     ring: "#cfe2c2",
-    // Placeholder: enabled with "Kommer snart" pages (/skoleskiftere and the
-    // student page tab) to test the area switching before the area is built.
+    // Draft (2026-10-27): overview, the student page tab and cases without CPR.
     href: "/skoleskiftere",
-    links: [{ label: "Forside", href: "/skoleskiftere" }, { label: "Rapport" }],
+    links: [{ label: "Overblik", href: "/skoleskiftere" }, { label: "Rapport" }],
     enabled: true,
   },
   {
