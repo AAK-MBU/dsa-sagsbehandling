@@ -6,10 +6,9 @@ import type { SkoleskifterDetail, Soeskende } from "$lib/skoleskifter";
 
 
 /**
- * Everything one skoleskifter case page needs — shared by the student page's
- * Skoleskiftere tab and the page of a case without CPR: the case, the
- * lookups for the decision form, the case's own log entries and the child's
- * siblings. Log and siblings need a CPR; without one they are empty.
+ * Everything the student page's Skoleskiftere tab needs for one case: the
+ * case, the lookups for the decision form, the case's own log entries and
+ * the child's siblings.
  */
 export async function hentSkoleskifterSag(event: RequestEvent, id: number) {
   const api = backendUserFetcher(event);
@@ -27,21 +26,16 @@ export async function hentSkoleskifterSag(event: RequestEvent, id: number) {
   const lookups: Lookups = lookupsRes.ok ? { ...TOMME_LOOKUPS, ...(await lookupsRes.json()) } : TOMME_LOOKUPS;
   const fagomraadeId = lookups.fagomraader.find((f) => f.label === "Skoleskiftere og tilflyttere")?.id ?? null;
 
-  let sagsforloeb: any[] = [];
-  let soeskende: Soeskende[] = [];
-
-  if (sag.cpr) {
-    const [aktivitetRes, soeskendeRes] = await Promise.all([
-      api(`/aktivitet/${sag.cpr}`),
-      api(`/citizen/stamdata/${sag.cpr}/soeskende`)
-    ]);
-    // The child's log holds every area and case; this page shows this case's.
-    const aktivitet: any[] = aktivitetRes.ok ? await aktivitetRes.json() : [];
-    sagsforloeb = aktivitet.filter(
-      (a) => a.relateret_sag_id === id && (fagomraadeId === null || a.fagomraade_id === fagomraadeId)
-    );
-    soeskende = soeskendeRes.ok ? await soeskendeRes.json() : [];
-  }
+  const [aktivitetRes, soeskendeRes] = await Promise.all([
+    api(`/aktivitet/${sag.cpr}`),
+    api(`/citizen/stamdata/${sag.cpr}/soeskende`)
+  ]);
+  // The child's log holds every area and case; this page shows this case's.
+  const aktivitet: any[] = aktivitetRes.ok ? await aktivitetRes.json() : [];
+  const sagsforloeb = aktivitet.filter(
+    (a) => a.relateret_sag_id === id && (fagomraadeId === null || a.fagomraade_id === fagomraadeId)
+  );
+  const soeskende: Soeskende[] = soeskendeRes.ok ? await soeskendeRes.json() : [];
 
   return { sag, lookups, sagsforloeb, soeskende, fagomraadeId };
 }

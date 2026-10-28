@@ -34,9 +34,11 @@ GO
 
         Sendt til PPR           manual, and kept until an offer is given.
 
-        Afventer skoletilbud    a samlet_resultat (screening) or the current
-                                school's assessment (skoleskift internt) is
-                                there.
+        Afventer skoletilbud    a samlet_resultat is there. (Every case is
+                                assessed by PUF — migration 005. A result of
+                                "Alderssvarende dansk" closes the case in
+                                SkoleskifterService instead: the child is
+                                not DSA's.)
 
         Aftalt sprogscreening   a screening date, no result yet.
 
@@ -121,8 +123,7 @@ BEGIN
                  AND ss.skoletilbudstype_id IS NOT NULL
                  AND ss.dato_skoletilbud IS NOT NULL          THEN N'Skoletilbud afsendt'
             WHEN cur.status_tekst = N'Sendt til PPR'          THEN N'Sendt til PPR'
-            WHEN ss.samlet_resultat IS NOT NULL
-                 OR ss.skolens_vurdering IS NOT NULL          THEN N'Afventer skoletilbud'
+            WHEN ss.samlet_resultat IS NOT NULL               THEN N'Afventer skoletilbud'
             WHEN ss.screeningsdato IS NOT NULL                THEN N'Aftalt sprogscreening'
             WHEN cur.status_tekst IN (N'Ny', N'Afventer sprogvurdering')
                                                               THEN cur.status_tekst

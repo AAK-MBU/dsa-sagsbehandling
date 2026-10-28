@@ -4,8 +4,7 @@
   import type { SkoleskifterDetail, SkoleskifterRow, Soeskende } from "$lib/skoleskifter";
 
   // The Skoleskiftere tab of the student page (draft). The child, stamdata
-  // and warnings are the page's, above; this is the case — shared with the
-  // page of a case without CPR (SkoleskifterSag).
+  // and warnings are the page's, above; this is the case (SkoleskifterSag).
   export let data;
 
   $: sag = data.sag as SkoleskifterDetail | null;

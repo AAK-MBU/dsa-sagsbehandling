@@ -11,7 +11,6 @@ from app.schemas.skoleskifter import (
     SkoleskifterDetail,
     SkoleskifterOverviewRecord,
     SkoleskifterUpdateRequest,
-    TilknytCprRequest,
 )
 from app.services.skoleskifter_service import SkoleskifterService
 
@@ -70,11 +69,3 @@ def genaabn(skoleskifter_id: int, db: DbSession, udfoert_af: CurrentUser):
 
     return SkoleskifterService(db=db).genaabn(skoleskifter_id=skoleskifter_id, udfoert_af=udfoert_af)
 
-
-@router.post("/{skoleskifter_id}/cpr", response_model=SkoleskifterDetail, dependencies=[RequireEdit])
-def tilknyt_cpr(skoleskifter_id: int, request: TilknytCprRequest, db: DbSession, udfoert_af: CurrentUser):
-    """Link a case that arrived without a CPR to the child."""
-
-    return SkoleskifterService(db=db).tilknyt_cpr(
-        skoleskifter_id=skoleskifter_id, cpr=request.cpr, udfoert_af=udfoert_af
-    )

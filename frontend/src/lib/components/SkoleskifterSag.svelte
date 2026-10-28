@@ -3,26 +3,27 @@
 
   import { backendFetch } from "$lib/client/backendFetch";
   import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate } from "$lib/dates";
-  import { dato, fejltekst, jaNej, tidspunkt, type Lookups } from "$lib/skolebegynder";
+  import { dato, fejltekst, skoleaarTekst, tidspunkt, type Lookups } from "$lib/skolebegynder";
   import {
     AFSLUTTET,
+    ALDERSSVARENDE,
     MANUELLE_STATUSSER,
-    vurderesAfSkolen,
+    VARIANTER,
     type SkoleskifterDetail,
     type Soeskende
   } from "$lib/skoleskifter";
   import { formatCpr, getStatusBadgeClass } from "$lib/tableColumnConfig";
 
   /**
-   * One skoleskifter case (draft) — shared by the student page's
-   * Skoleskiftere tab and the page of a case without CPR, so a case looks
-   * the same wherever it is opened.
+   * One skoleskifter case (draft), on the student page's Skoleskiftere tab.
    *
    * Laid out as the Skolebegyndere tab: the facts and the case work in two
-   * columns, the case log down the right. The language assessment follows
-   * the case's kind: the current school's assessment for skoleskift internt,
-   * a screening (date, points and results for up to three materials) for
-   * the others — entered by hand in the draft.
+   * columns, the case log down the right. The application card shows the
+   * parents' form (and the receiving school's decision, when the case came
+   * that way); the type is the robot's guess from it and can be corrected.
+   * Every case is screened by PUF — date, points and results for up to
+   * three materials, entered by hand in the draft. "Alderssvarende dansk"
+   * closes the case: the child is not DSA's.
    */
   export let sag: SkoleskifterDetail;
   export let lookups: Lookups;
@@ -32,11 +33,9 @@
   export let fagomraadeId: number | null = null;
 
   $: afsluttet = sag.status_tekst === AFSLUTTET;
-  $: skolen = vurderesAfSkolen(sag.variant);
   $: laast = !kanRedigere || afsluttet || arbejder;
 
   type Form = {
-    skolens_vurdering: string;
     screeningsdato: string;
     point_1: string; resultat_1: string;
     point_2: string; resultat_2: string;
@@ -58,7 +57,6 @@
   $: if (`${sag.skoleskifter_id}-${sag.updated_at}` !== formFor) {
     formFor = `${sag.skoleskifter_id}-${sag.updated_at}`;
     form = {
-      skolens_vurdering: sag.skolens_vurdering ?? "",
       screeningsdato: sag.screeningsdato ?? "",
       point_1: tekst(sag.point_1), resultat_1: sag.resultat_1 ?? "",
       point_2: tekst(sag.point_2), resultat_2: sag.resultat_2 ?? "",
@@ -113,7 +111,6 @@
     }
 
     const felter = {
-      skolens_vurdering: tomTilNull(form.skolens_vurdering),
       screeningsdato: form.screeningsdato || null,
       point_1: point[0], resultat_1: tomTilNull(form.resultat_1),
       point_2: point[1], resultat_2: tomTilNull(form.resultat_2),
@@ -135,7 +132,22 @@
       return;
     }
 
-    kald(`/skoleskifter/${sag.skoleskifter_id}`, put(felter), (svar) => `Gemt — status: ${svar.status_tekst}.`);
+    // The backend closes the case on this result; say so before it happens.
+    if (
+      felter.samlet_resultat === ALDERSSVARENDE &&
+      sag.samlet_resultat !== ALDERSSVARENDE &&
+      !confirm(`"${ALDERSSVARENDE}" afslutter sagen — barnet er ikke relevant for DSA. Fortsæt?`)
+    ) {
+      return;
+    }
+
+    kald(`/skoleskifter/${sag.skoleskifter_id}`, put(felter), (svar) =>
+      svar.status_tekst === AFSLUTTET ? "Gemt — sagen er afsluttet." : `Gemt — status: ${svar.status_tekst}.`
+    );
+  }
+
+  function skiftVariant(variant: string) {
+    kald(`/skoleskifter/${sag.skoleskifter_id}`, put({ variant }), (svar) => `Type: ${svar.variant}.`);
   }
 
   function saetStatus(status: string) {
@@ -155,7 +167,7 @@
   let kommentar = "";
   function tilfoejKommentar() {
     const t = kommentar.trim();
-    if (!t || !sag.cpr) return;
+    if (!t) return;
     kald(
       `/aktivitet/${sag.cpr}`,
       {
@@ -236,7 +248,25 @@
   <div class="rounded-2xl overflow-hidden kort" style="border-left: 5px solid #4e7c3a;">
     <div class="px-6 py-4 border-b border-gray-100"><h3 class="font-bold text-[15px]" style="color: #2f5325;">Ansøgning</h3></div>
     <dl class="px-6 py-5 grid grid-cols-[150px_1fr] gap-y-2.5 gap-x-4 text-[13px]">
-      <dt class="text-gray-500">Type</dt><dd>{sag.variant}</dd>
+      <dt class="text-gray-500 self-center">Type</dt>
+      <dd>
+        {#if kanRedigere && !afsluttet}
+          <!-- Set by the robot from the form (kommune + moving); correctable. -->
+          <select
+            class="{felt} py-1"
+            value={sag.variant}
+            disabled={arbejder}
+            on:change={(e) => skiftVariant(e.currentTarget.value)}
+          >
+            {#each VARIANTER as v}<option value={v}>{v}</option>{/each}
+          </select>
+        {:else}
+          {sag.variant}
+        {/if}
+      </dd>
+      <dt class="text-gray-500">Indgang</dt>
+      <dd>{sag.indgang === "Modtagelsesklasse" ? "Direkte fra forældre (modtagelsesklasse)" : "Via skolens afgørelse"}</dd>
+      <dt class="text-gray-500">Skoleår</dt><dd>{sag.skoleaar === null ? "—" : skoleaarTekst(sag.skoleaar)}</dd>
       <dt class="text-gray-500">Modtaget</dt><dd>{tidspunkt(sag.modtaget_tidspunkt)}</dd>
       <dt class="text-gray-500">SagsID (GO)</dt>
       <dd>
@@ -246,17 +276,35 @@
           <span class="font-mono">{sag.esdh_noegle ?? "—"}</span>
         {/if}
       </dd>
-      {#if !sag.cpr}
-        <dt class="text-gray-500">Navn i ansøgning</dt><dd>{sag.ansoeger_navn ?? "—"}</dd>
-      {/if}
+      <dt class="text-gray-500">Nuværende kommune</dt><dd>{sag.nuvaerende_kommune ?? "—"}</dd>
       <dt class="text-gray-500">Nuværende skole</dt><dd>{sag.nuvaerende_skole ?? "—"}</dd>
-      <dt class="text-gray-500">Klassetrin</dt><dd>{sag.klassetrin_ansoegning ?? "—"}</dd>
-      <dt class="text-gray-500">Ønsket skole</dt><dd>{sag.oensket_skole ?? "—"}</dd>
-      <dt class="text-gray-500">Ønsket skolestart</dt><dd>{dato(sag.dato_oensket_skolestart)}</dd>
-      {#if sag.variant === "Tilflytter"}
-        <dt class="text-gray-500">Kommende adresse</dt><dd>{sag.kommende_adresse ?? "—"}</dd>
+      <dt class="text-gray-500">Nuværende klasse</dt><dd>{sag.klassetrin_ansoegning ?? "—"}{sag.nuvaerende_skoletilbud ? ` · ${sag.nuvaerende_skoletilbud}` : ""}</dd>
+      {#if sag.nuvaerende_skoletilbud === "Modtagelsesklasse"}
+        <dt class="text-gray-500">Kan udsluses pr.</dt><dd>{dato(sag.udslusningsdato)}</dd>
       {/if}
-      <dt class="text-gray-500">Særlige behov</dt><dd>{jaNej(sag.saerlige_behov)}</dd>
+      <dt class="text-gray-500">Ønsket skole</dt><dd>{sag.oensket_skole ?? "—"}</dd>
+      <dt class="text-gray-500">Søskende på skolen</dt>
+      <dd>{sag.soeskende_paa_skolen ? `Ja${sag.soeskende_klasse ? ` · ${sag.soeskende_klasse}` : ""}` : sag.soeskende_paa_skolen === false ? "Nej" : "—"}</dd>
+      <dt class="text-gray-500">Flytning</dt>
+      <dd>
+        {#if sag.flytning}
+          {sag.kommende_adresse ?? "Adressen kendes endnu ikke"}{sag.flyttedato ? ` · ${dato(sag.flyttedato)}` : ""}
+        {:else}
+          {sag.flytning === false ? "Nej" : "—"}
+        {/if}
+      </dd>
+      <dt class="text-gray-500">Modersmål</dt>
+      <dd>
+        {sag.modersmaal ?? "Ikke registreret"}
+        {#if sag.modersmaal_foraelder}<span class="block text-gray-500">Forældre: {sag.modersmaal_foraelder}</span>{/if}
+        {#if sag.modersmaal_skole}<span class="block text-gray-500">Skolen: {sag.modersmaal_skole}</span>{/if}
+      </dd>
+      {#if sag.skolens_afgoerelse}
+        <dt class="text-gray-500">Skolens afgørelse</dt><dd>{sag.skolens_afgoerelse}</dd>
+      {/if}
+      {#if sag.begrundelse}
+        <dt class="text-gray-500">Forældrenes begrundelse</dt><dd class="whitespace-pre-line">{sag.begrundelse}</dd>
+      {/if}
       {#if sag.ppr_sendt_dato}
         <dt class="text-gray-500">Sendt til PPR</dt><dd>{dato(sag.ppr_sendt_dato)}{sag.dage_hos_ppr !== null ? ` · ${sag.dage_hos_ppr} dage` : ""}</dd>
       {/if}
@@ -269,34 +317,33 @@
     <div class="px-6 py-4 border-b border-gray-100">
       <h3 class="font-bold text-[15px]" style="color: #1f5d6e;">Sprogvurdering</h3>
       <p class="text-[12px] text-gray-500 mt-0.5">
-        {skolen ? "Skoleskift internt: den nuværende skole vurderer barnets dansk." : "Barnet sprogscreenes. Point og resultater indtastes manuelt (kladde)."}
+        PUF afklarer, om barnet har alderssvarende dansk. Point og resultater indtastes manuelt (kladde).
       </p>
     </div>
     <form class="px-6 py-5 grid gap-4 text-[13px]" on:submit|preventDefault={gem}>
       <fieldset class="contents" disabled={laast}>
-        {#if skolen}
-          <label class="flex flex-col gap-1">
-            <span class="text-gray-600">Skolens vurdering</span>
-            <textarea class="{felt} min-h-20" bind:value={form.skolens_vurdering}></textarea>
-          </label>
-        {:else}
-          <label class="flex flex-col gap-1 max-w-56">
-            <span class="text-gray-600">Screeningsdato</span>
-            <input type="date" min={MIN_DATE} max={MAX_DATE} class={felt} bind:value={form.screeningsdato} />
-          </label>
-          <table class="materialer w-full border-collapse">
-            <thead><tr class="text-left text-gray-500"><th class="font-medium"></th><th class="font-medium">Point</th><th class="font-medium">Resultat</th></tr></thead>
-            <tbody>
-              <tr><td class="font-medium">Materiale 1</td><td><input class="{felt} w-24" inputmode="decimal" bind:value={form.point_1} /></td><td><input class="{felt} w-full" bind:value={form.resultat_1} /></td></tr>
-              <tr><td class="font-medium">Materiale 2</td><td><input class="{felt} w-24" inputmode="decimal" bind:value={form.point_2} /></td><td><input class="{felt} w-full" bind:value={form.resultat_2} /></td></tr>
-              <tr><td class="font-medium">Materiale 3</td><td><input class="{felt} w-24" inputmode="decimal" bind:value={form.point_3} /></td><td><input class="{felt} w-full" bind:value={form.resultat_3} /></td></tr>
-            </tbody>
-          </table>
-          <label class="flex flex-col gap-1">
-            <span class="text-gray-600">Samlet resultat</span>
-            <input class={felt} bind:value={form.samlet_resultat} />
-          </label>
-        {/if}
+        <label class="flex flex-col gap-1 max-w-56">
+          <span class="text-gray-600">Screeningsdato</span>
+          <input type="date" min={MIN_DATE} max={MAX_DATE} class={felt} bind:value={form.screeningsdato} />
+        </label>
+        <table class="materialer w-full border-collapse">
+          <thead><tr class="text-left text-gray-500"><th class="font-medium"></th><th class="font-medium">Point</th><th class="font-medium">Resultat</th></tr></thead>
+          <tbody>
+            <tr><td class="font-medium">Materiale 1</td><td><input class="{felt} w-24" inputmode="decimal" bind:value={form.point_1} /></td><td><input class="{felt} w-full" bind:value={form.resultat_1} /></td></tr>
+            <tr><td class="font-medium">Materiale 2</td><td><input class="{felt} w-24" inputmode="decimal" bind:value={form.point_2} /></td><td><input class="{felt} w-full" bind:value={form.resultat_2} /></td></tr>
+            <tr><td class="font-medium">Materiale 3</td><td><input class="{felt} w-24" inputmode="decimal" bind:value={form.point_3} /></td><td><input class="{felt} w-full" bind:value={form.resultat_3} /></td></tr>
+          </tbody>
+        </table>
+        <label class="flex flex-col gap-1">
+          <span class="text-gray-600">Samlet resultat</span>
+          <input class={felt} list="ss-resultater" bind:value={form.samlet_resultat} />
+          <datalist id="ss-resultater">
+            <option value={ALDERSSVARENDE}></option>
+            <option value="Sprogstøttebehov"></option>
+            <option value="Intet dansk sprog"></option>
+          </datalist>
+          <span class="text-[12px] text-gray-500">"{ALDERSSVARENDE}" afslutter sagen.</span>
+        </label>
       </fieldset>
       {#if kanRedigere && !afsluttet}
         <div class="flex justify-end">
@@ -309,28 +356,24 @@
   <!-- Case log — the right-hand column from xl -->
   <div class="rounded-2xl overflow-hidden kort xl:col-start-3 xl:row-start-1 xl:row-span-3" style="border-left: 5px solid #bd9b16;">
     <div class="px-6 py-4 border-b border-gray-100"><h3 class="font-bold text-[15px]" style="color: #8a7210;">Sagsforløb</h3></div>
-    {#if !sag.cpr}
-      <p class="px-6 py-5 text-[13px] text-gray-500">Sagsforløbet starter, når der er tilknyttet et CPR-nummer.</p>
+    <form class="px-6 pt-4 flex gap-3" on:submit|preventDefault={tilfoejKommentar}>
+      <input class="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm" placeholder="Skriv en kommentar…" bind:value={kommentar} disabled={arbejder} />
+      <button type="submit" class="px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-dsa-200 text-dsa-800 hover:bg-dsa-50 disabled:opacity-40" disabled={arbejder || !kommentar.trim()}>Tilføj</button>
+    </form>
+    {#if sagsforloeb.length === 0}
+      <p class="px-6 py-5 text-sm text-gray-500">Ingen hændelser endnu.</p>
     {:else}
-      <form class="px-6 pt-4 flex gap-3" on:submit|preventDefault={tilfoejKommentar}>
-        <input class="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm" placeholder="Skriv en kommentar…" bind:value={kommentar} disabled={arbejder} />
-        <button type="submit" class="px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-dsa-200 text-dsa-800 hover:bg-dsa-50 disabled:opacity-40" disabled={arbejder || !kommentar.trim()}>Tilføj</button>
-      </form>
-      {#if sagsforloeb.length === 0}
-        <p class="px-6 py-5 text-sm text-gray-500">Ingen hændelser endnu.</p>
-      {:else}
-        <ol class="px-6 py-4 space-y-3">
-          {#each sagsforloeb as a (a.aktivitet_id)}
-            <li class="flex gap-3 text-[13px]">
-              <span class="w-28 shrink-0 text-gray-500">{tidspunkt(a.oprettet_tidspunkt)}</span>
-              <div class="flex-1">
-                <p><span class="font-semibold text-gray-800">{a.aktivitetstype}</span><span class="text-gray-500"> · {a.udfoert_af ?? "—"}</span></p>
-                {#if a.kommentar}<p class="text-gray-700 mt-0.5 whitespace-pre-line">{a.kommentar}</p>{/if}
-              </div>
-            </li>
-          {/each}
-        </ol>
-      {/if}
+      <ol class="px-6 py-4 space-y-3">
+        {#each sagsforloeb as a (a.aktivitet_id)}
+          <li class="flex gap-3 text-[13px]">
+            <span class="w-28 shrink-0 text-gray-500">{tidspunkt(a.oprettet_tidspunkt)}</span>
+            <div class="flex-1">
+              <p><span class="font-semibold text-gray-800">{a.aktivitetstype}</span><span class="text-gray-500"> · {a.udfoert_af ?? "—"}</span></p>
+              {#if a.kommentar}<p class="text-gray-700 mt-0.5 whitespace-pre-line">{a.kommentar}</p>{/if}
+            </div>
+          </li>
+        {/each}
+      </ol>
     {/if}
   </div>
 
@@ -389,9 +432,7 @@
   <!-- Siblings — children sharing a custody holder -->
   <div class="rounded-2xl overflow-hidden kort xl:col-span-2" style="border-left: 5px solid #8a2b2b;">
     <div class="px-6 py-4 border-b border-gray-100"><h3 class="font-bold text-[15px]" style="color: #7a2626;">Søskende</h3></div>
-    {#if !sag.cpr}
-      <p class="px-6 py-5 text-[13px] text-gray-500">Søskende vises, når der er tilknyttet et CPR-nummer.</p>
-    {:else if soeskende.length === 0}
+    {#if soeskende.length === 0}
       <p class="px-6 py-5 text-[13px] text-gray-500">Ingen søskende registreret (børn med samme forældremyndighedsindehaver).</p>
     {:else}
       <ul class="px-6 py-4 divide-y divide-gray-100 text-[13px]">

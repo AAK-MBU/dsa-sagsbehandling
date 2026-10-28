@@ -11,12 +11,13 @@ GO
     One row per active skoleskifter case (Skoleskiftere og tilflyttere) —
     the area's overview grid, and the student page's tab.
 
-    navn is the child's from Elev once a CPR is linked, else the name the
-    application gave (ansoeger_navn): a case without CPR still needs a name
-    on the list.
+    Every case has a CPR (migration 005); navn and stamdata are the child's
+    from Elev.
 
     nuvaerende_skole is the Aarhus school's name for skoleskift internt, or
-    the school given as text for one outside Aarhus.
+    the school given as text for one outside Aarhus. indgang says how the
+    case came: straight from the parents (the child is in modtagelsesklasse)
+    or through the receiving school's form.
 
     ventetid_dage — the mock-up's "Ventetid": days since the application was
     received, to the close date for a closed case. dage_hos_ppr — "hvor lang
@@ -33,8 +34,7 @@ AS
 SELECT
     ss.skoleskifter_id,
     ss.cpr,
-    CAST(CASE WHEN ss.cpr IS NULL THEN 0 ELSE 1 END AS BIT) AS har_cpr,
-    COALESCE(e.adresseringsnavn, ss.ansoeger_navn)          AS navn,
+    e.adresseringsnavn                                      AS navn,
     e.navne_adresse_beskyttelse,
     a.adresse_tekst,
     e.modersmaal,
@@ -53,17 +53,27 @@ SELECT
     -- Application
     ss.esdh_noegle,
     ss.esdh_url,
-    ss.dato_oensket_skolestart,
+    ss.skoleaar,
+    CASE WHEN ss.nuvaerende_skoletilbud = N'Modtagelsesklasse'
+         THEN N'Modtagelsesklasse' ELSE N'Via skolen' END   AS indgang,
+    ss.nuvaerende_skoletilbud,
+    ss.udslusningsdato,
+    ss.nuvaerende_kommune,
     ss.oensket_skolekode,
     os.skolenavn                                            AS oensket_skole,
     ss.nuvaerende_skolekode,
     COALESCE(ns.skolenavn, ss.nuvaerende_skole_tekst)       AS nuvaerende_skole,
     ss.klassetrin_ansoegning,
+    ss.flytning,
+    ss.flyttedato,
     ss.kommende_adresse,
-    ss.saerlige_behov,
+    ss.modersmaal_foraelder,
+    ss.modersmaal_skole,
+    ss.soeskende_paa_skolen,
+    ss.soeskende_klasse,
+    ss.skolens_afgoerelse,
 
     -- Language assessment
-    ss.skolens_vurdering,
     ss.screeningsdato,
     ss.samlet_resultat,
 
@@ -88,7 +98,7 @@ SELECT
     ss.updated_by
 FROM
     [dsa].[Skoleskifter] ss
-LEFT JOIN
+INNER JOIN
     [dsa].[Elev] e
     ON e.cpr = ss.cpr
 LEFT JOIN

@@ -3,8 +3,7 @@
 
 export type SkoleskifterRow = {
   skoleskifter_id: number;
-  cpr: string | null;
-  har_cpr: boolean;
+  cpr: string;
   navn: string | null;
   navne_adresse_beskyttelse: boolean | null;
   adresse_tekst: string | null;
@@ -20,15 +19,24 @@ export type SkoleskifterRow = {
   modtaget_tidspunkt: string;
   esdh_noegle: string | null;
   esdh_url: string | null;
-  dato_oensket_skolestart: string | null;
+  skoleaar: number | null;
+  indgang: Indgang;
+  nuvaerende_skoletilbud: string | null;
+  udslusningsdato: string | null;
+  nuvaerende_kommune: string | null;
   oensket_skolekode: number | null;
   oensket_skole: string | null;
   nuvaerende_skolekode: number | null;
   nuvaerende_skole: string | null;
   klassetrin_ansoegning: string | null;
+  flytning: boolean | null;
+  flyttedato: string | null;
   kommende_adresse: string | null;
-  saerlige_behov: boolean | null;
-  skolens_vurdering: string | null;
+  modersmaal_foraelder: string | null;
+  modersmaal_skole: string | null;
+  soeskende_paa_skolen: boolean | null;
+  soeskende_klasse: string | null;
+  skolens_afgoerelse: string | null;
   screeningsdato: string | null;
   samlet_resultat: string | null;
   skoletilbud_matrikel_id: number | null;
@@ -47,9 +55,9 @@ export type SkoleskifterRow = {
 };
 
 export type SkoleskifterDetail = SkoleskifterRow & {
-  ansoeger_navn: string | null;
   nuvaerende_skole_tekst: string | null;
   ansoegningsdata: string | null;
+  begrundelse: string | null;
   point_1: number | null;
   resultat_1: string | null;
   point_2: number | null;
@@ -72,15 +80,25 @@ export type Soeskende = {
 };
 
 /**
- * The three kinds of case (PUF's own description):
- * - Tilflytter: new to Aarhus Kommune, from another kommune or abroad — screened.
- * - Skoleskift internt (A): between two Aarhus schools — the current school assesses.
- * - Skoleskift udefra (B): from another kommune's folkeskole or a privatskole — screened.
+ * The three kinds of case (PUF's own description). The robot sets it from
+ * the form; the caseworker can correct it. All three are assessed by PUF.
+ * - Tilflytter: new to Aarhus Kommune — current kommune not Aarhus, moving.
+ * - Skoleskift internt (A): between two Aarhus schools.
+ * - Skoleskift udefra (B): from another kommune's school, not moving.
  */
 export type Variant = "Tilflytter" | "Skoleskift internt" | "Skoleskift udefra";
 
-/** Only skoleskift internt is assessed by the school rather than screened. */
-export const vurderesAfSkolen = (variant: Variant) => variant === "Skoleskift internt";
+export const VARIANTER: Variant[] = ["Tilflytter", "Skoleskift internt", "Skoleskift udefra"];
+
+/**
+ * How the case came (migration 005): straight from the parents when the
+ * child is in modtagelsesklasse, else through the receiving school's form
+ * (tilflytter til distriktet / ledig plads, and not Danish mother tongue).
+ */
+export type Indgang = "Modtagelsesklasse" | "Via skolen";
+
+/** The screening result that closes the case: the child is not DSA's. */
+export const ALDERSSVARENDE = "Alderssvarende dansk";
 
 /** The statuses a caseworker sets; usp_recalculate_skoleskifter_status derives the rest. */
 export const MANUELLE_STATUSSER = ["Ny", "Afventer sprogvurdering", "Sendt til PPR"] as const;
@@ -95,29 +113,26 @@ export const VENTETID_GRAENSE = 14;
 // Tabs
 // -----------------------------
 
-export type Fane = "skoleskiftere" | "tilflyttere" | "uden-cpr" | "hos-ppr" | "afsluttede";
+export type Fane = "skoleskiftere" | "tilflyttere" | "hos-ppr" | "afsluttede";
 
 // The sketch's two columns — skoleskiftere and tilflyttere — first, then
-// the special views it asks for: applications without CPR, and cases with
-// PPR ("hvor lang tid sagen har ligget hos PPR"). Closed cases last.
+// the cases with PPR ("hvor lang tid sagen har ligget hos PPR"). Closed
+// cases last.
 export const FANER: { id: Fane; label: string }[] = [
   { id: "skoleskiftere", label: "Skoleskiftere" },
   { id: "tilflyttere", label: "Tilflyttere" },
-  { id: "uden-cpr", label: "Uden CPR" },
   { id: "hos-ppr", label: "Hos PPR" },
   { id: "afsluttede", label: "Afsluttede" }
 ];
 
-/** Which cases a tab shows. A case without CPR is on its own tab only. */
+/** Which cases a tab shows. */
 export function iFane(row: SkoleskifterRow, fane: Fane): boolean {
   const aaben = row.status_tekst !== AFSLUTTET;
   switch (fane) {
     case "skoleskiftere":
-      return aaben && row.har_cpr && row.variant !== "Tilflytter";
+      return aaben && row.variant !== "Tilflytter";
     case "tilflyttere":
-      return aaben && row.har_cpr && row.variant === "Tilflytter";
-    case "uden-cpr":
-      return aaben && !row.har_cpr;
+      return aaben && row.variant === "Tilflytter";
     case "hos-ppr":
       return aaben && row.status_tekst === "Sendt til PPR";
     case "afsluttede":
@@ -129,9 +144,7 @@ export function faneFraQuery(value: string | null): Fane {
   return FANER.some((f) => f.id === value) ? (value as Fane) : "skoleskiftere";
 }
 
-/** Where a case opens: on the child's page, or its own page while it has no CPR. */
-export function sagHref(row: { skoleskifter_id: number; cpr: string | null }): string {
-  return row.cpr
-    ? `/elev/${row.cpr}/skoleskiftere?sag=${row.skoleskifter_id}`
-    : `/skoleskiftere/sag/${row.skoleskifter_id}`;
+/** Where a case opens: on the child's page. */
+export function sagHref(row: { skoleskifter_id: number; cpr: string }): string {
+  return `/elev/${row.cpr}/skoleskiftere?sag=${row.skoleskifter_id}`;
 }

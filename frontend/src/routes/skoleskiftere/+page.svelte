@@ -5,7 +5,7 @@
   import DataTable, { type DataTableColumn } from "$lib/components/DataTable.svelte";
   import ReadOnlyNotice from "$lib/components/ReadOnlyNotice.svelte";
   import { esc } from "$lib/html";
-  import { dato } from "$lib/skolebegynder";
+  import { dato, skoleaarTekst } from "$lib/skolebegynder";
   import {
     FANER,
     VENTETID_GRAENSE,
@@ -20,9 +20,8 @@
   /**
    * Skoleskiftere og tilflyttere — the overview (draft).
    *
-   * From the sketch: the two kinds side by side as tabs, the special view of
-   * applications without CPR, and the cases with PPR with how long they have
-   * been there. Read-only for now — the case is worked on its own page; the
+   * From the sketch: the two kinds side by side as tabs, and the cases with
+   * PPR with how long they have been there. Read-only for now — the case is worked on its own page; the
    * area has no mass handling like skolebegyndere.
    */
   export let data;
@@ -47,22 +46,20 @@
       key: "navn",
       label: "Navn",
       filterType: "text",
-      filterValues: (r: SkoleskifterRow) => [r.navn ?? "", r.cpr ?? "", r.cpr ? formatCpr(r.cpr) : ""],
+      filterValues: (r: SkoleskifterRow) => [r.navn ?? "", r.cpr, formatCpr(r.cpr)],
       render: (r: SkoleskifterRow) => {
-        const maerker = [
-          r.har_cpr ? "" : chip("Uden CPR", "bg-gray-200 text-gray-700", "Ansøgningen kom uden CPR — tilknyt CPR på sagen"),
-          r.navne_adresse_beskyttelse ? chip("Beskyttet", "bg-red-100 text-red-700") : "",
-          r.saerlige_behov ? chip("Særlige behov", "bg-rose-100 text-rose-800") : ""
-        ].filter(Boolean);
+        const maerker = [r.navne_adresse_beskyttelse ? chip("Beskyttet", "bg-red-100 text-red-700") : ""].filter(Boolean);
         return ombryd(
           `<a href="${sagHref(r)}" class="font-semibold text-dsa-700 hover:underline">${esc(r.navn ?? "—")}</a>` +
-            (r.cpr ? `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(r.cpr))}</span>` : "") +
+            `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(r.cpr))}</span>` +
             (maerker.length ? `<span class="mt-1 flex flex-wrap gap-1">${maerker.join("")}</span>` : ""),
           12
         );
       }
     },
     { key: "variant", label: "Type", filterType: "select", multiSelect: true, render: (r: SkoleskifterRow) => ombryd(esc(r.variant), 7) },
+    // Straight from the parents (modtagelsesklasse) or through the school's form.
+    { key: "indgang", label: "Indgang", filterType: "select", multiSelect: true, render: (r: SkoleskifterRow) => ombryd(esc(r.indgang), 8) },
     {
       key: "status_tekst",
       label: "Status",
@@ -71,10 +68,10 @@
       render: (r: SkoleskifterRow) =>
         `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium whitespace-normal max-w-[7.5rem] ${getStatusBadgeClass(r.status_tekst)}">${esc(r.status_tekst)}</span>`
     },
-    { key: "klassetrin_ansoegning", class: FAST, label: "Klassetrin", filterType: "select", multiSelect: true },
+    { key: "klassetrin_ansoegning", class: FAST, label: "Klasse", filterType: "select", multiSelect: true },
     { key: "nuvaerende_skole", label: "Nuværende skole", filterType: "select", multiSelect: true, render: (r: SkoleskifterRow) => ombryd(esc(r.nuvaerende_skole ?? "")) },
     { key: "oensket_skole", label: "Ønsket skole", filterType: "select", multiSelect: true, render: (r: SkoleskifterRow) => ombryd(esc(r.oensket_skole ?? "")) },
-    { key: "dato_oensket_skolestart", class: FAST, label: "Ønsket start", filterType: "text", render: (r: SkoleskifterRow) => esc(dato(r.dato_oensket_skolestart)) },
+    { key: "skoleaar", class: FAST, label: "Skoleår", filterType: "select", multiSelect: true, render: (r: SkoleskifterRow) => esc(r.skoleaar === null ? "" : skoleaarTekst(r.skoleaar)) },
     { key: "modtaget_tidspunkt", class: FAST, label: "Modtaget", filterType: "text", render: (r: SkoleskifterRow) => esc(dato(r.modtaget_tidspunkt)) },
     {
       key: "ventetid_dage",
@@ -97,9 +94,8 @@
 
   // Columns per tab: what the work in that tab needs.
   const KOLONNER: Record<Fane, string[]> = {
-    skoleskiftere: ["navn", "variant", "status_tekst", "klassetrin_ansoegning", "nuvaerende_skole", "oensket_skole", "dato_oensket_skolestart", "modtaget_tidspunkt", "ventetid_dage", "esdh_noegle"],
-    tilflyttere: ["navn", "status_tekst", "klassetrin_ansoegning", "nuvaerende_skole", "oensket_skole", "dato_oensket_skolestart", "modtaget_tidspunkt", "ventetid_dage", "esdh_noegle"],
-    "uden-cpr": ["navn", "variant", "status_tekst", "klassetrin_ansoegning", "oensket_skole", "modtaget_tidspunkt", "ventetid_dage", "esdh_noegle"],
+    skoleskiftere: ["navn", "variant", "indgang", "status_tekst", "klassetrin_ansoegning", "nuvaerende_skole", "oensket_skole", "skoleaar", "modtaget_tidspunkt", "ventetid_dage", "esdh_noegle"],
+    tilflyttere: ["navn", "indgang", "status_tekst", "klassetrin_ansoegning", "nuvaerende_skole", "oensket_skole", "skoleaar", "modtaget_tidspunkt", "ventetid_dage", "esdh_noegle"],
     "hos-ppr": ["navn", "variant", "klassetrin_ansoegning", "oensket_skole", "modtaget_tidspunkt", "dage_hos_ppr", "esdh_noegle"],
     afsluttede: ["navn", "variant", "klassetrin_ansoegning", "oensket_skole", "skoletilbud_matrikel", "skoletilbudstype_tekst", "modtaget_tidspunkt", "ventetid_dage", "esdh_noegle"]
   };
@@ -134,7 +130,7 @@
       >
         {f.label}
         <span
-          class="ml-2 inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1.5 rounded-full text-[11px] font-bold {(f.id === 'uden-cpr' || f.id === 'hos-ppr') && antal[f.id] > 0
+          class="ml-2 inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1.5 rounded-full text-[11px] font-bold {f.id === 'hos-ppr' && antal[f.id] > 0
             ? 'bg-amber-500 text-white'
             : fane === f.id
               ? 'bg-white/20 text-white'

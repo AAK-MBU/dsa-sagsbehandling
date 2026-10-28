@@ -1,0 +1,1111 @@
+dine_oplysninger:
+  '#type': wizard_page
+  '#title': 'Dine oplysninger'
+  section_intro:
+    '#type': section
+    '#title': Intro
+    '#title_display': invisible
+    '#attributes':
+      style: 'background: #7f7f7f; padding: 25px;'
+    markup_introduktion:
+      '#type': markup
+      '#wrapper_attributes':
+        style: 'color: white;'
+  dine_oplysninger_sektion_login:
+    '#type': section
+    '#title': 'Dine oplysninger'
+    '#attributes':
+      style: 'background: #E5EFFA; padding: 25px;'
+    dine_oplysninger_login_udfylder:
+      '#type': mine_organisations_data_element
+      '#title': 'Dine oplysninger'
+      '#data_type': current_user
+      '#location__access': false
+ansoegningen_om_skoleskift_skole:
+  '#type': wizard_page
+  '#title': 'Skolens afgørelse'
+  arvede_oplysninger:
+    '#type': container
+    '#attributes':
+      style: 'display:none'
+    navn_mitid:
+      '#type': textfield
+      '#title': Navn
+      '#readonly': true
+    cpr_nummer_mitid:
+      '#type': textfield
+      '#title': CPR-nummer
+      '#readonly': true
+    adresse:
+      '#type': textfield
+      '#title': Adresse
+      '#readonly': true
+    telefonnummer:
+      '#type': textfield
+      '#title': Telefonnummer
+      '#international': true
+      '#international_initial_country': DK
+      '#international_preferred_countries':
+        - DK
+    emailadresse_login:
+      '#type': email
+      '#title': Emailadresse
+    vaelg_barn:
+      '#type': textfield
+      '#title': 'Vælg dit barn fra listen'
+      '#readonly': true
+    mit_barn_kommer_ikke_frem_i_listen:
+      '#type': checkbox
+      '#title': 'Mit barn kommer ikke frem i listen'
+    barnets_navn_mitid:
+      '#type': textfield
+      '#title': 'Barnets navn'
+      '#readonly': true
+    cpr_nummer_barn_mitid:
+      '#type': textfield
+      '#title': 'Barnets CPR-nummer'
+      '#readonly': true
+    barnets_adresse_mitid:
+      '#type': textfield
+      '#title': Adresse
+      '#readonly': true
+    foraeldremyndighedsindehaver_2_cpr_nummer:
+      '#type': textfield
+      '#title': 'Forældremyndighedsindehaver 2 CPR-nummer'
+      '#readonly': true
+    barnets_navn_manuelt:
+      '#type': textfield
+      '#title': 'Barnets navn'
+    cpr_nummer_barn_manuelt:
+      '#type': textfield
+      '#title': 'Barnets CPR-nummer'
+    barnets_adresse_manuelt:
+      '#type': textfield
+      '#title': 'Barnets folkeregisteradresse'
+      '#readonly': true
+    barnets_nuvaerende_skole:
+      '#type': textfield
+      '#title': 'Barnets nuværende skole'
+    gaar_barnet_i_en_normal_klasse:
+      '#type': radios
+      '#title': 'Barnets nuværende skoletilbud'
+      '#options':
+        'Almen klasse': 'Almen klasse'
+        Modtagelsesklasse: Modtagelsesklasse
+        Specialklasse: Specialklasse
+    skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas:
+      '#type': date
+      '#title': 'Skolen har vurderet at mit barn kan udsluses fra modtagelsesklasse til almenklasse pr.'
+    nuvaerende_klasse:
+      '#type': textfield
+      '#title': 'Nuværende klasse'
+    soeger_i_skole_inden_for_eller_uden_for_skoledistriktet:
+      '#type': radios
+      '#title': 'Søger I skoleskift ifm. flytning?'
+      '#options':
+        Ja: Ja
+        Nej: Nej
+    hvilken_adresse_flytter_i_til:
+      '#type': textfield
+      '#title': 'Hvilken adresse flytter I til?'
+      '#readonly': true
+    vi_kender_endnu_ikke_adressen:
+      '#type': checkbox
+      '#title': 'Vi kender endnu ikke adressen'
+    gaeldende_fra_dato:
+      '#type': date
+      '#title': 'Hvornår flytter I til adressen?'
+    skoleaar_valg:
+      '#type': radios
+      '#title': 'Hvilket skoleår søger du skoleskift for?'
+      '#options':
+        indevaerende: 'Indeværende skoleår'
+        kommende: 'Kommende skoleår'
+    du_soeger_skoleskift_for_skoleaaret:
+      '#type': textfield
+      '#title': 'Du søger skoleskift for skoleåret'
+      '#readonly': true
+    modtagende_skole:
+      '#type': remote_select_element
+      '#title': 'Undertegnede ønsker skoleskift for mit/vores barn til'
+      '#endpoint': 'https://mbuweb.adm.aarhuskommune.dk/dataapi/entities?type=skoleemail'
+      '#data_key': id
+      '#data_value': value
+      '#use_empty_option': true
+      '#empty_option': Vælg
+      '#use_select2': true
+    er_der_soeskende_paa_denne_skole:
+      '#type': radios
+      '#title': 'Er der søskende på denne skole?'
+      '#options':
+        Ja: Ja
+        Nej: Nej
+    hvilket_klassetrin_soeskende:
+      '#type': textfield
+      '#title': 'I hvilken klasse?'
+    begrund_oenske_om_skoleskift:
+      '#type': textarea
+      '#title': 'Uddyb evt. ønske om skoleskift'
+    navn_foraeldre_2:
+      '#type': textfield
+      '#title': Navn
+    adresse_foraeldre_2:
+      '#type': textfield
+      '#title': Adresse
+      '#readonly': true
+    telefonnummer_foraeldre_2:
+      '#type': textfield
+      '#title': Telefonnummer
+      '#international': true
+      '#international_initial_country': DK
+      '#international_preferred_countries':
+        - DK
+    emailadresse_foraeldre_2:
+      '#type': email
+      '#title': Emailadresse
+    kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma:
+      '#type': radios
+      '#title': 'Er der enighed mellem forældremyndighedsindehaverne?'
+      '#options':
+        Ja: Ja
+        Nej: Nej
+    registreret_modersmaal:
+      '#type': textfield
+      '#title': 'Registreret modersmål'
+      '#readonly': true
+    hvilket_sprog_er_barnets_modersmaal_01:
+      '#type': select_other
+      '#title': 'Jeg vurderer, at mit barns modersmål er'
+      '#options':
+        Afghansk: Afghansk
+        Afrikaans: Afrikaans
+        Akan: Akan
+        Albansk: Albansk
+        Amharisk: Amharisk
+        Arabisk: Arabisk
+        Aramæisk: Aramæisk
+        Armensk: Armensk
+        Assyrisk: Assyrisk
+        Azerbaijani: Azerbaijani
+        Bemba: Bemba
+        Bengali: Bengali
+        Berberisk: Berberisk
+        Bosnisk: Bosnisk
+        Bulgarsk: Bulgarsk
+        Burmesisk: Burmesisk
+        Cambodiansk: Cambodiansk
+        Cebuano: Cebuano
+        Dansk: Dansk
+        Dari: Dari
+        Engelsk: Engelsk
+        Estisk: Estisk
+        Faeroesk: Faeroesk
+        Farsi: Farsi
+        Filippin: Filippin
+        Finsk: Finsk
+        Fransk: Fransk
+        Fulani: Fulani
+        Galla: Galla
+        Gambiansk: Gambiansk
+        Græsk: Græsk
+        Grønlandsk: Grønlandsk
+        Gujarati: Gujarati
+        Hindi: Hindi
+        Hollandsk: Hollandsk
+        Hviderussisk: Hviderussisk
+        Igbo: Igbo
+        Indonesisk: Indonesisk
+        Irak: Irak
+        Islandsk: Islandsk
+        Italiensk: Italiensk
+        Japansk: Japansk
+        Kannada: Kannada
+        Kinesisk: Kinesisk
+        Kinyarwanda: Kinyarwanda
+        Kirundi: Kirundi
+        Kongo: Kongo
+        Koreansk: Koreansk
+        Kroatisk: Kroatisk
+        Kurdisk: Kurdisk
+        Lettisk: Lettisk
+        Lingala: Lingala
+        Litauisk: Litauisk
+        Malayalam: Malayalam
+        Marathi: Marathi
+        Nepali: Nepali
+        Norsk: Norsk
+        Pakistansk: Pakistansk
+        Palæstinensisk: Palæstinensisk
+        Pashto: Pashto
+        Persisk: Persisk
+        Polsk: Polsk
+        Portugisisk: Portugisisk
+        Punjabi: Punjabi
+        Romani: Romani
+        Rumænsk: Rumænsk
+        Russisk: Russisk
+        Serbokroatisk: Serbokroatisk
+        Singhalesisk: Singhalesisk
+        Slovakisk: Slovakisk
+        Slovensk: Slovensk
+        Somali: Somali
+        Spansk: Spansk
+        Sudanesisk: Sudanesisk
+        Svensk: Svensk
+        Swahili: Swahili
+        Tagalog: Tagalog
+        Tamil: Tamil
+        Tegnsprog: Tegnsprog
+        Telugo: Telugu
+        Thai: Thai
+        Tigre: Tigre
+        Tigrinya: Tigrinya
+        Tjekkisk: Tjekkisk
+        Tjetjensk: Tjetjensk
+        Tunesisk: Tunesisk
+        Turkmensk: Turkmensk
+        Twi-fante: Twi-fante
+        Tyrkisk: Tyrkisk
+        Tysk: Tysk
+        Ukrainsk: Ukrainsk
+        Ungarsk: Ungarsk
+        Urdu: Urdu
+        Usbekisk: Usbekisk
+        Vietnamesisk: Vietnamesisk
+        Wolof: Wolof
+      '#empty_option': '- Vælg -'
+    mit_har_ikke_et_cpr_nummer:
+      '#type': checkbox
+      '#title': 'Mit barn har ikke et cpr-nummer'
+    nuvaerende_kommune:
+      '#type': select
+      '#title': 'Nuværende kommune'
+      '#options':
+        'Aabenraa Kommune': 'Aabenraa Kommune'
+        'Aalborg Kommune': 'Aalborg Kommune'
+        'Aarhus Kommune': 'Aarhus Kommune'
+        'Albertslund Kommune': 'Albertslund Kommune'
+        'Allerød Kommune': 'Allerød Kommune'
+        'Assens Kommune': 'Assens Kommune'
+        'Ballerup Kommune': 'Ballerup Kommune'
+        'Billund Kommune': 'Billund Kommune'
+        'Bornholms Regionskommune': 'Bornholms Regionskommune'
+        'Brøndby Kommune': 'Brøndby Kommune'
+        'Brønderslev Kommune': 'Brønderslev Kommune'
+        'Dragør Kommune': 'Dragør Kommune'
+        'Egedal Kommune': 'Egedal Kommune'
+        'Esbjerg Kommune': 'Esbjerg Kommune'
+        'Fanø Kommune': 'Fanø Kommune'
+        'Favrskov Kommune': 'Favrskov Kommune'
+        'Faxe Kommune': 'Faxe Kommune'
+        'Fredensborg Kommune': 'Fredensborg Kommune'
+        'Fredericia Kommune': 'Fredericia Kommune'
+        'Frederiksberg Kommune': 'Frederiksberg Kommune'
+        'Frederikshavn Kommune': 'Frederikshavn Kommune'
+        'Frederikssund Kommune': 'Frederikssund Kommune'
+        'Furesø Kommune': 'Furesø Kommune'
+        'Faaborg-Midtfyn Kommune': 'Faaborg-Midtfyn Kommune'
+        'Gentofte Kommune': 'Gentofte Kommune'
+        'Gladsaxe Kommune': 'Gladsaxe Kommune'
+        'Glostrup Kommune': 'Glostrup Kommune'
+        'Greve Kommune': 'Greve Kommune'
+        'Gribskov Kommune': 'Gribskov Kommune'
+        'Guldborgsund Kommune': 'Guldborgsund Kommune'
+        'Haderslev Kommune': 'Haderslev Kommune'
+        'Halsnæs Kommune': 'Halsnæs Kommune'
+        'Hedensted Kommune': 'Hedensted Kommune'
+        'Helsingør Kommune': 'Helsingør Kommune'
+        'Herlev Kommune': 'Herlev Kommune'
+        'Herning Kommune': 'Herning Kommune'
+        'Hillerød Kommune': 'Hillerød Kommune'
+        'Hjørring Kommune': 'Hjørring Kommune'
+        'Holbæk Kommune': 'Holbæk Kommune'
+        'Holstebro Kommune': 'Holstebro Kommune'
+        'Horsens Kommune': 'Horsens Kommune'
+        'Hvidovre Kommune': 'Hvidovre Kommune'
+        'Høje-Taastrup Kommune': 'Høje-Taastrup Kommune'
+        'Hørsholm Kommune': 'Hørsholm Kommune'
+        'Ikast-Brande Kommune': 'Ikast-Brande Kommune'
+        'Ishøj Kommune': 'Ishøj Kommune'
+        'Jammerbugt Kommune': 'Jammerbugt Kommune'
+        'Kalundborg Kommune': 'Kalundborg Kommune'
+        'Kerteminde Kommune': 'Kerteminde Kommune'
+        'Kolding Kommune': 'Kolding Kommune'
+        'Københavns Kommune': 'Københavns Kommune'
+        'Køge Kommune': 'Køge Kommune'
+        'Langeland Kommune': 'Langeland Kommune'
+        'Lejre Kommune': 'Lejre Kommune'
+        'Lemvig Kommune': 'Lemvig Kommune'
+        'Lolland Kommune': 'Lolland Kommune'
+        'Lyngby-Taarbæk Kommune': 'Lyngby-Taarbæk Kommune'
+        'Læsø Kommune': 'Læsø Kommune'
+        'Mariagerfjord Kommune': 'Mariagerfjord Kommune'
+        'Middelfart Kommune': 'Middelfart Kommune'
+        'Morsø Kommune': 'Morsø Kommune'
+        'Norddjurs Kommune': 'Norddjurs Kommune'
+        'Nordfyns Kommune': 'Nordfyns Kommune'
+        'Nyborg Kommune': 'Nyborg Kommune'
+        'Næstved Kommune': 'Næstved Kommune'
+        'Odder Kommune': 'Odder Kommune'
+        'Odense Kommune': 'Odense Kommune'
+        'Odsherred Kommune': 'Odsherred Kommune'
+        'Randers Kommune': 'Randers Kommune'
+        'Rebild Kommune': 'Rebild Kommune'
+        'Ringkøbing-Skjern Kommune': 'Ringkøbing-Skjern Kommune'
+        'Ringsted Kommune': 'Ringsted Kommune'
+        'Roskilde Kommune': 'Roskilde Kommune'
+        'Rudersdal Kommune': 'Rudersdal Kommune'
+        'Rødovre Kommune': 'Rødovre Kommune'
+        'Samsø Kommune': 'Samsø Kommune'
+        'Silkeborg Kommune': 'Silkeborg Kommune'
+        'Skanderborg Kommune': 'Skanderborg Kommune'
+        'Skive Kommune': 'Skive Kommune'
+        'Slagelse Kommune': 'Slagelse Kommune'
+        'Solrød Kommune': 'Solrød Kommune'
+        'Sorø Kommune': 'Sorø Kommune'
+        'Stevns Kommune': 'Stevns Kommune'
+        'Struer Kommune': 'Struer Kommune'
+        'Svendborg Kommune': 'Svendborg Kommune'
+        'Syddjurs Kommune': 'Syddjurs Kommune'
+        'Sønderborg Kommune': 'Sønderborg Kommune'
+        'Thisted Kommune': 'Thisted Kommune'
+        'Tønder Kommune': 'Tønder Kommune'
+        'Tårnby Kommune': 'Tårnby Kommune'
+        'Vallensbæk Kommune': 'Vallensbæk Kommune'
+        'Varde Kommune': 'Varde Kommune'
+        'Vejen Kommune': 'Vejen Kommune'
+        'Vejle Kommune': 'Vejle Kommune'
+        'Vesthimmerlands Kommune': 'Vesthimmerlands Kommune'
+        'Viborg Kommune': 'Viborg Kommune'
+        'Vordingborg Kommune': 'Vordingborg Kommune'
+        'Ærø Kommune': 'Ærø Kommune'
+    skolens_emailadresse:
+      '#type': textfield
+      '#title': 'Skolens emailadresse'
+      '#readonly': true
+  ansoegningen_om_skoleskift:
+    '#type': computed_twig
+    '#title': 'Ansøgning fra forældrene'
+    '#title_display': invisible
+    '#mode': html
+    '#template': |
+      {% set manuelt_barn = data.mit_barn_kommer_ikke_frem_i_listen|default('') %}
+      {% set barn_navn = data.barnets_navn_mitid|default('') %}
+      {% set barn_cpr = data.cpr_nummer_barn_mitid|default('') %}
+      {% set adresse_id = 'barnets_adresse_mitid' %}
+      {% set adresse_label = 'Adresse' %}
+      {% if manuelt_barn %}
+        {% set barn_navn = data.barnets_navn_manuelt|default('') %}
+        {% set barn_cpr = data.cpr_nummer_barn_manuelt|default('') %}
+        {% set adresse_id = 'barnets_adresse_manuelt' %}
+        {% set adresse_label = 'Barnets folkeregisteradresse' %}
+      {% else %}
+        {% if barn_navn is empty %}{% set barn_navn = data.barnets_navn_manuelt|default('') %}{% endif %}
+        {% if barn_cpr is empty %}{% set barn_cpr = data.cpr_nummer_barn_manuelt|default('') %}{% endif %}
+        {% if data.barnets_adresse_mitid|default('') is empty %}
+          {% set adresse_id = 'barnets_adresse_manuelt' %}
+          {% set adresse_label = 'Barnets folkeregisteradresse' %}
+        {% endif %}
+      {% endif %}
+      {% set registreret = data.registreret_modersmaal|default('')|trim %}
+      {% set har_registreret = registreret is not empty and registreret != 'None' and registreret != 'Kunne ikke finde barnets modersmaal' %}
+      {% set foraelder_sprog = data.hvilket_sprog_er_barnets_modersmaal_01|default('') %}
+      {% set anden_foraelder = data.foraeldremyndighedsindehaver_2_cpr_nummer|default('') is not empty or data.navn_foraeldre_2|default('') is not empty or data.adresse_foraeldre_2|default('') is not empty or data.telefonnummer_foraeldre_2|default('') is not empty or data.emailadresse_foraeldre_2|default('') is not empty %}
+
+      <div id="skoleskifte-foraeldre">
+        <style>
+          #skoleskifte-foraeldre { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.35; color: #000; }
+          #skoleskifte-foraeldre h2 { font-size: 14pt; text-align: center; margin: 0 0 16px; }
+          #skoleskifte-foraeldre table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 12px; }
+          #skoleskifte-foraeldre th, #skoleskifte-foraeldre td { border: 1px solid #000; padding: 6px 8px; vertical-align: top; overflow-wrap: anywhere; word-wrap: break-word; }
+          #skoleskifte-foraeldre th { background: #fff; text-align: center; font-size: 10pt; font-weight: bold; }
+          #skoleskifte-foraeldre .label { display: block; font-size: 9pt; margin: 0 0 4px; }
+          #skoleskifte-foraeldre .value { display: block; min-height: 14px; font-weight: normal; }
+          #skoleskifte-foraeldre .tekst { font-weight: normal; }
+          #skoleskifte-foraeldre tr { page-break-inside: avoid; }
+          #skoleskifte-foraeldre thead { display: table-header-group; }
+        </style>
+
+        <h2>Ansøgning fra forældrene i skoleåret {{ data.du_soeger_skoleskift_for_skoleaaret|default('')|escape }}</h2>
+
+        <table>
+          <thead><tr><th colspan="2">Barnet</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="label">Barnets navn</span><span class="value">{{ barn_navn|escape }}</span></td>
+              <td><span class="label">Barnets CPR-nummer</span><span class="value">{% if data.mit_har_ikke_et_cpr_nummer|default('') %}Barnet har ikke et CPR-nummer{% else %}{{ barn_cpr|escape }}{% endif %}</span></td>
+            </tr>
+            <tr><td colspan="2"><span class="label">{{ adresse_label|escape }}</span><span class="value">{{ webform_token('[webform_submission:values:' ~ adresse_id ~ ']', webform_submission)|striptags|escape }}</span></td></tr>
+          </tbody>
+        </table>
+
+        <table>
+          <thead><tr><th colspan="2">Elevens nuværende skoleforhold</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="label">Nuværende kommune</span><span class="value">{{ data.nuvaerende_kommune|default('')|escape }}</span></td>
+              <td><span class="label">Elevens nuværende skole</span><span class="value">{{ data.barnets_nuvaerende_skole|default('')|escape }}</span></td>
+            </tr>
+            <tr>
+              <td><span class="label">Elevens nuværende skoletilbud</span><span class="value">{{ data.gaar_barnet_i_en_normal_klasse|default('')|escape }}</span></td>
+              <td><span class="label">Nuværende klasse</span><span class="value">{{ data.nuvaerende_klasse|default('')|escape }}</span></td>
+            </tr>
+            {% if data.gaar_barnet_i_en_normal_klasse|default('') == 'Modtagelsesklasse' %}
+            <tr><td colspan="2"><span class="label">Skolen har vurderet at mit barn kan udsluses fra modtagelsesklasse til almenklasse pr.</span><span class="value">{% if data.skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas|default('') is not empty %}{{ data.skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas|date('d-m-Y')|escape }}{% endif %}</span></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <table>
+          <thead><tr><th colspan="2">Barnets modersmål</th></tr></thead>
+          <tbody>
+            {% if har_registreret %}
+            <tr><td colspan="2"><span class="label">Barnets registrerede modersmål</span><span class="value">{{ registreret|escape }}</span></td></tr>
+            {% endif %}
+            {% if (not har_registreret or manuelt_barn) and foraelder_sprog is not empty %}
+            <tr><td colspan="2"><span class="label">Jeg vurderer, at mit barns modersmål er</span><span class="value">{{ foraelder_sprog|escape }}</span></td></tr>
+            {% endif %}
+            {% if not har_registreret and foraelder_sprog is empty %}
+            <tr><td colspan="2">Der er ikke oplyst et modersmål.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <table>
+          <thead>
+            <tr><th colspan="2">Forældremyndighedsindehaver(e)</th></tr>
+            <tr><th>Ansøger fra formular 1</th><th>Den anden forældremyndighedsindehaver</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+      {% if data.navn_mitid|default('') is not empty %}<p><span class="label">Navn</span><span class="value">{{ data.navn_mitid|default('')|escape }}</span></p>{% endif %}
+      {% if data.cpr_nummer_mitid|default('') is not empty %}<p><span class="label">CPR-nummer</span><span class="value">{{ data.cpr_nummer_mitid|default('')|escape }}</span></p>{% endif %}
+      {% if data.adresse|default('') is not empty %}<p><span class="label">Adresse</span><span class="value">{{ data.adresse|default('')|escape }}</span></p>{% endif %}
+      {% if data.telefonnummer|default('') is not empty %}<p><span class="label">Telefonnummer</span><span class="value">{{ data.telefonnummer|default('')|escape }}</span></p>{% endif %}
+      {% if data.emailadresse_login|default('') is not empty %}<p><span class="label">Emailadresse</span><span class="value">{{ data.emailadresse_login|default('')|escape }}</span></p>{% endif %}
+              </td>
+              <td>
+                {% if anden_foraelder %}
+      {% if data.navn_foraeldre_2|default('') is not empty %}<p><span class="label">Navn</span><span class="value">{{ data.navn_foraeldre_2|default('')|escape }}</span></p>{% endif %}
+      {% if data.foraeldremyndighedsindehaver_2_cpr_nummer|default('') is not empty %}<p><span class="label">Forældremyndighedsindehaver 2 CPR-nummer</span><span class="value">{{ data.foraeldremyndighedsindehaver_2_cpr_nummer|default('')|escape }}</span></p>{% endif %}
+      {% if data.adresse_foraeldre_2|default('') is not empty %}<p><span class="label">Adresse</span><span class="value">{{ data.adresse_foraeldre_2|default('')|escape }}</span></p>{% endif %}
+      {% if data.telefonnummer_foraeldre_2|default('') is not empty %}<p><span class="label">Telefonnummer</span><span class="value">{{ data.telefonnummer_foraeldre_2|default('')|escape }}</span></p>{% endif %}
+      {% if data.emailadresse_foraeldre_2|default('') is not empty %}<p><span class="label">Emailadresse</span><span class="value">{{ data.emailadresse_foraeldre_2|default('')|escape }}</span></p>{% endif %}
+                {% else %}
+                  <p>Der er ikke registreret en anden forældremyndighedsindehaver på barnet.</p>
+                {% endif %}
+              </td>
+            </tr>
+            {% if data.kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma|default('') is not empty %}
+            <tr><td colspan="2"><span class="label">Er der enighed mellem forældremyndighedsindehaverne?</span><span class="value">{{ data.kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma|escape }}</span></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <table>
+          <thead><tr><th colspan="2">Oplysninger om skoleskiftet</th></tr></thead>
+          <tbody>
+            <tr><td colspan="2"><span class="label">Undertegnede ønsker skoleskift for mit/vores barn til</span><span class="value">{{ webform_token('[webform_submission:values:modtagende_skole:html]', webform_submission)|striptags|escape }}</span></td></tr>
+            {% if data.skolen_email_tekstelement|default('') is not empty %}
+            <tr><td colspan="2"><span class="label">Skolens emailadresse</span><span class="value">{{ data.skolen_email_tekstelement|escape }}</span></td></tr>
+            {% endif %}
+            <tr>
+              <td><span class="label">Du søger skoleskift for skoleåret</span><span class="value">{{ data.du_soeger_skoleskift_for_skoleaaret|default('')|escape }}</span></td>
+              <td><span class="label">Søger I skoleskift ifm. flytning?</span><span class="value">{{ data.soeger_i_skole_inden_for_eller_uden_for_skoledistriktet|default('')|escape }}</span></td>
+            </tr>
+            {% if data.soeger_i_skole_inden_for_eller_uden_for_skoledistriktet|default('') == 'Ja' %}
+              {% if data.vi_kender_endnu_ikke_adressen|default('') %}
+              <tr><td colspan="2"><span class="label">Hvilken adresse flytter I til?</span><span class="value">Familien kender endnu ikke adressen.</span></td></tr>
+              {% else %}
+              <tr><td colspan="2"><span class="label">Hvilken adresse flytter I til?</span><span class="value">{{ webform_token('[webform_submission:values:hvilken_adresse_flytter_i_til]', webform_submission)|striptags|escape }}</span></td></tr>
+                {% if data.gaeldende_fra_dato|default('') is not empty %}
+                <tr><td colspan="2"><span class="label">Hvornår flytter I til adressen?</span><span class="value">{{ data.gaeldende_fra_dato|date('d-m-Y')|escape }}</span></td></tr>
+                {% endif %}
+              {% endif %}
+            {% endif %}
+            <tr><td colspan="2"><span class="label">Er der søskende på denne skole?</span><span class="value">{{ data.er_der_soeskende_paa_denne_skole|default('')|escape }}</span></td></tr>
+            {% if data.er_der_soeskende_paa_denne_skole|default('') == 'Ja' %}
+            <tr><td colspan="2"><span class="label">I hvilken klasse?</span><span class="value">{{ data.hvilket_klassetrin_soeskende|default('')|escape }}</span></td></tr>
+            {% endif %}
+            {% if data.begrund_oenske_om_skoleskift|default('') is not empty %}
+            <tr><td colspan="2"><span class="label">Uddyb evt. ønske om skoleskift</span><span class="tekst">{{ data.begrund_oenske_om_skoleskift|escape|nl2br }}</span></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+      </div>
+    '#ajax': false
+  horizontal_rule:
+    '#type': horizontal_rule
+  skole_afgoerlse:
+    '#type': section
+    '#title': 'Skolens afgørelse'
+    '#attributes':
+      style: 'background: #E5EFFA; padding: 25px;'
+    container_modersmaal_tea_skole:
+      '#type': container
+      '#states':
+        visible:
+          - ':input[name="registreret_modersmaal"]':
+              filled: true
+          - and
+          - ':input[name="registreret_modersmaal"]':
+              '!value': None
+          - and
+          - ':input[name="registreret_modersmaal"]':
+              '!value': 'Kunne ikke finde barnets modersmaal'
+      markup_modersmaal_lis:
+        '#type': computed_twig
+        '#title': 'Barnets registrerede modersmål'
+        '#title_display': invisible
+        '#template': |-
+          {% set sprog = data.registreret_modersmaal|default('')|trim %}
+          {% if sprog is not empty and sprog != 'None' and sprog != 'Kunne ikke finde barnets modersmaal' %}
+            <p>Barnet er registreret i Børn og Unge med <strong>{{ sprog|escape }}</strong> som modersmål.</p>
+          {% endif %}
+        '#ajax': true
+    container_modersmaal_skole:
+      '#type': container
+      '#states':
+        visible:
+          ':input[name="hvilket_sprog_er_barnets_modersmaal_01[select]"]':
+            filled: true
+      markup_modersmaal_manuelt_skole:
+        '#type': markup
+        '#display_on': both
+        '#markup': '<p>Ud fra nedenstående definition af tosprogede børn/børn med dansk som andetsprog og vores viden om barnet ud fra dialog med forældrene, er det vores vurdering at barnets modersmål er</p>'
+      elevens_modersmaal:
+        '#type': select_other
+        '#title': 'Elevens modersmål'
+        '#options':
+          Afghansk: Afghansk
+          Afrikaans: Afrikaans
+          Akan: Akan
+          Albansk: Albansk
+          Amharisk: Amharisk
+          Arabisk: Arabisk
+          Aramæisk: Aramæisk
+          Armensk: Armensk
+          Assyrisk: Assyrisk
+          Azerbaijani: Azerbaijani
+          Bemba: Bemba
+          Bengali: Bengali
+          Berberisk: Berberisk
+          Bosnisk: Bosnisk
+          Bulgarsk: Bulgarsk
+          Burmesisk: Burmesisk
+          Cambodiansk: Cambodiansk
+          Cebuano: Cebuano
+          Dansk: Dansk
+          Dari: Dari
+          Engelsk: Engelsk
+          Estisk: Estisk
+          Faeroesk: Faeroesk
+          Farsi: Farsi
+          Filippin: Filippin
+          Finsk: Finsk
+          Fransk: Fransk
+          Fulani: Fulani
+          Galla: Galla
+          Gambiansk: Gambiansk
+          Græsk: Græsk
+          Grønlandsk: Grønlandsk
+          Gujarati: Gujarati
+          Hindi: Hindi
+          Hollandsk: Hollandsk
+          Hviderussisk: Hviderussisk
+          Igbo: Igbo
+          Indonesisk: Indonesisk
+          Irak: Irak
+          Islandsk: Islandsk
+          Italiensk: Italiensk
+          Japansk: Japansk
+          Kannada: Kannada
+          Kinesisk: Kinesisk
+          Kinyarwanda: Kinyarwanda
+          Kirundi: Kirundi
+          Kongo: Kongo
+          Koreansk: Koreansk
+          Kroatisk: Kroatisk
+          Kurdisk: Kurdisk
+          Lettisk: Lettisk
+          Lingala: Lingala
+          Litauisk: Litauisk
+          Malayalam: Malayalam
+          Marathi: Marathi
+          Nepali: Nepali
+          Norsk: Norsk
+          Pakistansk: Pakistansk
+          Palæstinensisk: Palæstinensisk
+          Pashto: Pashto
+          Persisk: Persisk
+          Polsk: Polsk
+          Portugisisk: Portugisisk
+          Punjabi: Punjabi
+          Romani: Romani
+          Rumænsk: Rumænsk
+          Russisk: Russisk
+          Serbokroatisk: Serbokroatisk
+          Singhalesisk: Singhalesisk
+          Slovakisk: Slovakisk
+          Slovensk: Slovensk
+          Somali: Somali
+          Spansk: Spansk
+          Sudanesisk: Sudanesisk
+          Svensk: Svensk
+          Swahili: Swahili
+          Tagalog: Tagalog
+          Tamil: Tamil
+          Tegnsprog: Tegnsprog
+          Telugo: Telugu
+          Thai: Thai
+          Tigre: Tigre
+          Tigrinya: Tigrinya
+          Tjekkisk: Tjekkisk
+          Tjetjensk: Tjetjensk
+          Tunesisk: Tunesisk
+          Turkmensk: Turkmensk
+          Twi-fante: Twi-fante
+          Tyrkisk: Tyrkisk
+          Tysk: Tysk
+          Ukrainsk: Ukrainsk
+          Ungarsk: Ungarsk
+          Urdu: Urdu
+          Usbekisk: Usbekisk
+          Vietnamesisk: Vietnamesisk
+          Wolof: Wolof
+        '#empty_option': '- Vælg -'
+        '#attributes':
+          style: 'width:32em'
+      markup_info_foraeldre:
+        '#type': markup
+        '#markup': '<p>Forældrene er orienteret om skolens vurdering</p>'
+      definition:
+        '#type': fieldset
+        '#title': Definition
+        '#title_display': invisible
+        '#format': container
+        markup_definition:
+          '#type': markup
+          '#markup': '<p lang="DA-DK"><em>Dagtilbuds- og folkeskolelovens definition af børn med dansk som andetsprog: ”Ved tosprogede børn forstås børn, der har et andet modersmål end dansk, og som først ved kontakt med det omgivende samfund, eventuelt gennem skolens undervisning, lærer dansk”.</em>&nbsp;</p><p lang="DA-DK"><em>Et barn har dansk som andetsprog:</em>&nbsp;</p><ul><li><p lang="DA-DK"><em>Når ingen af forældrene har talt dansk på et modersmålslignende niveau til barnet fra fødslen.</em>&nbsp;</p></li><li><p lang="DA-DK"><em>Når barnet først er begyndt sin tilegnelse af dansk på et senere tidspunkt – eventuelt først ved indmeldelse i dagtilbud.</em></p></li></ul>'
+    skolens_vurdering:
+      '#type': radios
+      '#title': 'Skolens vurdering'
+      '#options':
+        'Barnet er tilflytter til skolens distrikt': 'Barnet er tilflytter til skolens distrikt'
+        'Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang': 'Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang'
+        'Skolen har jf. reglerne om det frie skolevalg ikke ledig plads på den pågældende årgang': 'Skolen har jf. reglerne om det frie skolevalg ikke ledig plads på den pågældende årgang'
+    container_tilflytter_distrikt:
+      '#type': container
+      markup_dsm_tilfytter:
+        '#type': markup
+        '#markup': '<p>Barnet har dansk som modersmål, og har dermed krav på optagelse</p>'
+        '#states':
+          visible:
+            - ':input[name="registreret_modersmaal"]':
+                value: Dansk
+            - or
+            - ':input[name="elevens_modersmaal[select]"]':
+                value: Dansk
+      markup_dsa_tilflytter:
+        '#type': markup
+        '#markup': '<p>Barnet har dansk som andetsprog, og ansøgningen bliver derfor videresendt til PUF til afklaring af om barnet har et alderssvarende dansk sprog eller har et sprogstøttebehov</p>'
+        '#states':
+          visible:
+            - ':input[name="registreret_modersmaal"]':
+                value:
+                  pattern: '^(?!(?:Dansk|None|Kunne ikke finde barnets modersmaal)$).+$'
+              ':input[name="elevens_modersmaal[select]"]':
+                '!value': Dansk
+            - or
+            - ':input[name="elevens_modersmaal[select]"]':
+                filled: true
+                '!value': Dansk
+              ':input[name="registreret_modersmaal"]':
+                '!value': Dansk
+      '#states':
+        visible:
+          ':input[name="skolens_vurdering"]':
+            value: 'Barnet er tilflytter til skolens distrikt'
+    container_frie_skolevalg_ledig_plads:
+      '#type': container
+      markup_dsm_optagelse:
+        '#type': markup
+        '#markup': '<p>Barnet har dansk som modersmål, og har dermed krav på optagelse</p>'
+        '#states':
+          visible:
+            - ':input[name="registreret_modersmaal"]':
+                value: Dansk
+            - or
+            - ':input[name="elevens_modersmaal[select]"]':
+                value: Dansk
+      markup_dsa:
+        '#type': markup
+        '#markup': '<p>Barnet har dansk som andetsprog, og ansøgningen skal derfor videresendes til PUF til afklaring af om barnet har et alderssvarende dansk sprog eller har et sprogstøttebehov</p>'
+        '#states':
+          visible:
+            - ':input[name="registreret_modersmaal"]':
+                value:
+                  pattern: '^(?!(?:Dansk|None|Kunne ikke finde barnets modersmaal)$).+$'
+              ':input[name="elevens_modersmaal[select]"]':
+                '!value': Dansk
+            - or
+            - ':input[name="elevens_modersmaal[select]"]':
+                filled: true
+                '!value': Dansk
+              ':input[name="registreret_modersmaal"]':
+                '!value': Dansk
+      '#states':
+        visible:
+          ':input[name="skolens_vurdering"]':
+            value: 'Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang'
+    container_optag:
+      '#type': container
+      '#states':
+        visible:
+          ':input[name="skolens_vurdering"]':
+            value:
+              pattern: '^(Barnet er tilflytter til skolens distrikt|Skolen har jf[.] reglerne om det frie skolevalg ledig plads på den pågældende årgang)$'
+      container_optag_dsm:
+        '#type': container
+        '#states':
+          visible:
+            - ':input[name="registreret_modersmaal"]':
+                value: Dansk
+            - or
+            - ':input[name="elevens_modersmaal[select]"]':
+                value: Dansk
+        dato_for_start:
+          '#type': date
+          '#title': 'Dato for start'
+          '#date_date_min': today
+          '#required': false
+          '#states':
+            required:
+              - ':input[name="skolens_vurdering"]':
+                  value: 'Barnet er tilflytter til skolens distrikt'
+                ':input[name="registreret_modersmaal"]':
+                  value: Dansk
+              - or
+              - ':input[name="skolens_vurdering"]':
+                  value: 'Barnet er tilflytter til skolens distrikt'
+                ':input[name="elevens_modersmaal[select]"]':
+                  value: Dansk
+              - or
+              - ':input[name="skolens_vurdering"]':
+                  value: 'Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang'
+                ':input[name="registreret_modersmaal"]':
+                  value: Dansk
+              - or
+              - ':input[name="skolens_vurdering"]':
+                  value: 'Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang'
+                ':input[name="elevens_modersmaal[select]"]':
+                  value: Dansk
+        eleven_kan_optages_i_klasse:
+          '#type': textfield
+          '#title': 'Eleven kan optages i (klasse)'
+          '#required': false
+          '#states':
+            required:
+              - ':input[name="skolens_vurdering"]':
+                  value: 'Barnet er tilflytter til skolens distrikt'
+                ':input[name="registreret_modersmaal"]':
+                  value: Dansk
+              - or
+              - ':input[name="skolens_vurdering"]':
+                  value: 'Barnet er tilflytter til skolens distrikt'
+                ':input[name="elevens_modersmaal[select]"]':
+                  value: Dansk
+              - or
+              - ':input[name="skolens_vurdering"]':
+                  value: 'Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang'
+                ':input[name="registreret_modersmaal"]':
+                  value: Dansk
+              - or
+              - ':input[name="skolens_vurdering"]':
+                  value: 'Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang'
+                ':input[name="elevens_modersmaal[select]"]':
+                  value: Dansk
+    container_afslag_venteliste:
+      '#type': container
+      '#states':
+        visible:
+          ':input[name="skolens_vurdering"]':
+            value: 'Skolen har jf. reglerne om det frie skolevalg ikke ledig plads på den pågældende årgang'
+      markup_afslag_venteliste:
+        '#type': markup
+        '#markup': '<p><strong>Afslag og venteliste</strong></p><p>Der er ikke ledig plads på den pågældende årgang. Forældrene skal have besked om afslag og venteliste.</p>'
+test_aftaledokument:
+  '#type': wizard_page
+  '#title': 'Ansøgning om skoleskift – fuld'
+  visning_af_fuld_ansoegning:
+    '#type': computed_twig
+    '#title': 'Ansøgning om skoleskift – fuld'
+    '#title_display': invisible
+    '#mode': html
+    '#template': |
+      {% set manuelt_barn = data.mit_barn_kommer_ikke_frem_i_listen|default('') %}
+      {% set barn_navn = data.barnets_navn_mitid|default('') %}
+      {% set barn_cpr = data.cpr_nummer_barn_mitid|default('') %}
+      {% set adresse_id = 'barnets_adresse_mitid' %}
+      {% set adresse_label = 'Adresse' %}
+      {% if manuelt_barn %}
+        {% set barn_navn = data.barnets_navn_manuelt|default('') %}
+        {% set barn_cpr = data.cpr_nummer_barn_manuelt|default('') %}
+        {% set adresse_id = 'barnets_adresse_manuelt' %}
+        {% set adresse_label = 'Barnets folkeregisteradresse' %}
+      {% else %}
+        {% if barn_navn is empty %}{% set barn_navn = data.barnets_navn_manuelt|default('') %}{% endif %}
+        {% if barn_cpr is empty %}{% set barn_cpr = data.cpr_nummer_barn_manuelt|default('') %}{% endif %}
+        {% if data.barnets_adresse_mitid|default('') is empty %}
+          {% set adresse_id = 'barnets_adresse_manuelt' %}
+          {% set adresse_label = 'Barnets folkeregisteradresse' %}
+        {% endif %}
+      {% endif %}
+      {% set registreret = data.registreret_modersmaal|default('')|trim %}
+      {% set har_registreret = registreret is not empty and registreret != 'None' and registreret != 'Kunne ikke finde barnets modersmaal' %}
+      {% set foraelder_sprog = data.hvilket_sprog_er_barnets_modersmaal_01|default('') %}
+      {% set skole_sprog = data.elevens_modersmaal|default('') %}
+      {% set afgoerende_sprog = skole_sprog %}
+      {% if har_registreret %}
+        {% set afgoerende_sprog = registreret %}
+      {% endif %}
+      {% set vurdering = data.skolens_vurdering|default('') %}
+      {% set tilflytter = vurdering == 'Barnet er tilflytter til skolens distrikt' %}
+      {% set ledig_plads = vurdering == 'Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang' %}
+      {% set er_dsm = registreret == 'Dansk' or skole_sprog == 'Dansk' %}
+      {% set er_dsa = not er_dsm and (har_registreret or skole_sprog is not empty) %}
+      {% set afslag_venteliste = vurdering == 'Skolen har jf. reglerne om det frie skolevalg ikke ledig plads på den pågældende årgang' %}
+      {% set kan_optages = (tilflytter or ledig_plads) and er_dsm %}
+      {% set til_puf = (tilflytter or ledig_plads) and er_dsa %}
+      {% set anden_foraelder = data.foraeldremyndighedsindehaver_2_cpr_nummer|default('') is not empty or data.navn_foraeldre_2|default('') is not empty or data.adresse_foraeldre_2|default('') is not empty or data.telefonnummer_foraeldre_2|default('') is not empty or data.emailadresse_foraeldre_2|default('') is not empty %}
+
+      <div id="skoleskifte-fuld">
+        <style>
+          #skoleskifte-fuld { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.35; color: #000; }
+          #skoleskifte-fuld h2 { font-size: 14pt; text-align: center; margin: 0 0 16px; }
+          #skoleskifte-fuld table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 12px; }
+          #skoleskifte-fuld th, #skoleskifte-fuld td { border: 1px solid #000; padding: 6px 8px; vertical-align: top; overflow-wrap: anywhere; word-wrap: break-word; }
+          #skoleskifte-fuld th { background: #fff; text-align: center; font-size: 10pt; font-weight: bold; }
+          #skoleskifte-fuld .label { display: block; font-size: 9pt; margin: 0 0 4px; }
+          #skoleskifte-fuld .value { display: block; min-height: 14px; font-weight: normal; }
+          #skoleskifte-fuld .tekst { font-weight: normal; }
+          #skoleskifte-fuld tr { page-break-inside: avoid; }
+          #skoleskifte-fuld thead { display: table-header-group; }
+          @media print { #skoleskifte-fuld .skole { page-break-before: always; } }
+        </style>
+
+        <h2>Ansøgning om skoleskift i skoleåret {{ data.du_soeger_skoleskift_for_skoleaaret|default('')|escape }}</h2>
+
+        <table>
+          <thead><tr><th colspan="2">Barnet</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="label">Barnets navn</span><span class="value">{{ barn_navn|escape }}</span></td>
+              <td><span class="label">Barnets CPR-nummer</span><span class="value">{% if data.mit_har_ikke_et_cpr_nummer|default('') %}Barnet har ikke et CPR-nummer{% else %}{{ barn_cpr|escape }}{% endif %}</span></td>
+            </tr>
+            <tr><td colspan="2"><span class="label">{{ adresse_label|escape }}</span><span class="value">{{ webform_token('[webform_submission:values:' ~ adresse_id ~ ']', webform_submission)|striptags|escape }}</span></td></tr>
+          </tbody>
+        </table>
+
+        <table>
+          <thead><tr><th colspan="2">Elevens nuværende skoleforhold</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="label">Nuværende kommune</span><span class="value">{{ data.nuvaerende_kommune|default('')|escape }}</span></td>
+              <td><span class="label">Elevens nuværende skole</span><span class="value">{{ data.barnets_nuvaerende_skole|default('')|escape }}</span></td>
+            </tr>
+            <tr>
+              <td><span class="label">Elevens nuværende skoletilbud</span><span class="value">{{ data.gaar_barnet_i_en_normal_klasse|default('')|escape }}</span></td>
+              <td><span class="label">Nuværende klasse</span><span class="value">{{ data.nuvaerende_klasse|default('')|escape }}</span></td>
+            </tr>
+            {% if data.gaar_barnet_i_en_normal_klasse|default('') == 'Modtagelsesklasse' %}
+            <tr><td colspan="2"><span class="label">Skolen har vurderet at mit barn kan udsluses fra modtagelsesklasse til almenklasse pr.</span><span class="value">{% if data.skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas|default('') is not empty %}{{ data.skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas|date('d-m-Y')|escape }}{% endif %}</span></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <table>
+          <thead><tr><th colspan="2">Barnets modersmål</th></tr></thead>
+          <tbody>
+            {% if har_registreret %}
+            <tr><td colspan="2"><span class="label">Barnets registrerede modersmål</span><span class="value">{{ registreret|escape }}</span></td></tr>
+            {% endif %}
+            {% if (not har_registreret or manuelt_barn) and foraelder_sprog is not empty %}
+            <tr><td colspan="2"><span class="label">Jeg vurderer, at mit barns modersmål er</span><span class="value">{{ foraelder_sprog|escape }}</span></td></tr>
+            {% endif %}
+            {% if not har_registreret and foraelder_sprog is empty %}
+            <tr><td colspan="2">Der er ikke oplyst et modersmål.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <table>
+          <thead>
+            <tr><th colspan="2">Forældremyndighedsindehaver(e)</th></tr>
+            <tr><th>Ansøger fra formular 1</th><th>Den anden forældremyndighedsindehaver</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+      {% if data.navn_mitid|default('') is not empty %}<p><span class="label">Navn</span><span class="value">{{ data.navn_mitid|default('')|escape }}</span></p>{% endif %}
+      {% if data.cpr_nummer_mitid|default('') is not empty %}<p><span class="label">CPR-nummer</span><span class="value">{{ data.cpr_nummer_mitid|default('')|escape }}</span></p>{% endif %}
+      {% if data.adresse|default('') is not empty %}<p><span class="label">Adresse</span><span class="value">{{ data.adresse|default('')|escape }}</span></p>{% endif %}
+      {% if data.telefonnummer|default('') is not empty %}<p><span class="label">Telefonnummer</span><span class="value">{{ data.telefonnummer|default('')|escape }}</span></p>{% endif %}
+      {% if data.emailadresse_login|default('') is not empty %}<p><span class="label">Emailadresse</span><span class="value">{{ data.emailadresse_login|default('')|escape }}</span></p>{% endif %}
+              </td>
+              <td>
+                {% if anden_foraelder %}
+      {% if data.navn_foraeldre_2|default('') is not empty %}<p><span class="label">Navn</span><span class="value">{{ data.navn_foraeldre_2|default('')|escape }}</span></p>{% endif %}
+      {% if data.foraeldremyndighedsindehaver_2_cpr_nummer|default('') is not empty %}<p><span class="label">Forældremyndighedsindehaver 2 CPR-nummer</span><span class="value">{{ data.foraeldremyndighedsindehaver_2_cpr_nummer|default('')|escape }}</span></p>{% endif %}
+      {% if data.adresse_foraeldre_2|default('') is not empty %}<p><span class="label">Adresse</span><span class="value">{{ data.adresse_foraeldre_2|default('')|escape }}</span></p>{% endif %}
+      {% if data.telefonnummer_foraeldre_2|default('') is not empty %}<p><span class="label">Telefonnummer</span><span class="value">{{ data.telefonnummer_foraeldre_2|default('')|escape }}</span></p>{% endif %}
+      {% if data.emailadresse_foraeldre_2|default('') is not empty %}<p><span class="label">Emailadresse</span><span class="value">{{ data.emailadresse_foraeldre_2|default('')|escape }}</span></p>{% endif %}
+                {% else %}
+                  <p>Der er ikke registreret en anden forældremyndighedsindehaver på barnet.</p>
+                {% endif %}
+              </td>
+            </tr>
+            {% if data.kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma|default('') is not empty %}
+            <tr><td colspan="2"><span class="label">Er der enighed mellem forældremyndighedsindehaverne?</span><span class="value">{{ data.kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma|escape }}</span></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <table>
+          <thead><tr><th colspan="2">Oplysninger om skoleskiftet</th></tr></thead>
+          <tbody>
+            <tr><td colspan="2"><span class="label">Undertegnede ønsker skoleskift for mit/vores barn til</span><span class="value">{{ webform_token('[webform_submission:values:modtagende_skole:html]', webform_submission)|striptags|escape }}</span></td></tr>
+            {% if data.data.skolen_email_tekstelement|default('') is not empty %}
+            <tr><td colspan="2"><span class="label">Skolens emailadresse</span><span class="value">{{ data.skolen_email_tekstelement|escape }}</span></td></tr>
+            {% endif %}
+            <tr>
+              <td><span class="label">Du søger skoleskift for skoleåret</span><span class="value">{{ data.du_soeger_skoleskift_for_skoleaaret|default('')|escape }}</span></td>
+              <td><span class="label">Søger I skoleskift ifm. flytning?</span><span class="value">{{ data.soeger_i_skole_inden_for_eller_uden_for_skoledistriktet|default('')|escape }}</span></td>
+            </tr>
+            {% if data.soeger_i_skole_inden_for_eller_uden_for_skoledistriktet|default('') == 'Ja' %}
+              {% if data.vi_kender_endnu_ikke_adressen|default('') %}
+              <tr><td colspan="2"><span class="label">Hvilken adresse flytter I til?</span><span class="value">Familien kender endnu ikke adressen.</span></td></tr>
+              {% else %}
+              <tr><td colspan="2"><span class="label">Hvilken adresse flytter I til?</span><span class="value">{{ webform_token('[webform_submission:values:hvilken_adresse_flytter_i_til]', webform_submission)|striptags|escape }}</span></td></tr>
+                {% if data.gaeldende_fra_dato|default('') is not empty %}
+                <tr><td colspan="2"><span class="label">Hvornår flytter I til adressen?</span><span class="value">{{ data.gaeldende_fra_dato|date('d-m-Y')|escape }}</span></td></tr>
+                {% endif %}
+              {% endif %}
+            {% endif %}
+            <tr><td colspan="2"><span class="label">Er der søskende på denne skole?</span><span class="value">{{ data.er_der_soeskende_paa_denne_skole|default('')|escape }}</span></td></tr>
+            {% if data.er_der_soeskende_paa_denne_skole|default('') == 'Ja' %}
+            <tr><td colspan="2"><span class="label">I hvilken klasse?</span><span class="value">{{ data.hvilket_klassetrin_soeskende|default('')|escape }}</span></td></tr>
+            {% endif %}
+            {% if data.begrund_oenske_om_skoleskift|default('') is not empty %}
+            <tr><td colspan="2"><span class="label">Uddyb evt. ønske om skoleskift</span><span class="tekst">{{ data.begrund_oenske_om_skoleskift|escape|nl2br }}</span></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <table class="skole">
+          <thead><tr><th colspan="2">Skolens vurdering og afgørelse</th></tr></thead>
+          <tbody>
+            {% if not har_registreret and foraelder_sprog is not empty and skole_sprog is not empty %}
+            <tr><td colspan="2"><span class="label">Elevens modersmål</span><span class="value">{{ skole_sprog|escape }}</span></td></tr>
+            {% endif %}
+            <tr><td colspan="2"><span class="label">Skolens vurdering</span><span class="value">{% if vurdering is not empty %}{{ vurdering|escape }}{% else %}Ikke udfyldt endnu{% endif %}</span></td></tr>
+            {% if kan_optages %}
+            <tr><td colspan="2">Barnet har dansk som modersmål, og har dermed krav på optagelse</td></tr>
+            <tr>
+              <td><span class="label">Eleven kan optages i (klasse)</span><span class="value">{{ data.eleven_kan_optages_i_klasse|default('')|escape }}</span></td>
+              <td><span class="label">Dato for start</span><span class="value">{% if data.dato_for_start|default('') is not empty %}{{ data.dato_for_start|date('d-m-Y')|escape }}{% endif %}</span></td>
+            </tr>
+            {% elseif til_puf %}
+            <tr><td colspan="2">{% if tilflytter %}Barnet har dansk som andetsprog, og ansøgningen bliver derfor videresendt til PUF til afklaring af om barnet har et alderssvarende dansk sprog eller har et sprogstøttebehov{% else %}Barnet har dansk som andetsprog, og ansøgningen skal derfor videresendes til PUF til afklaring af om barnet har et alderssvarende dansk sprog eller har et sprogstøttebehov{% endif %}</td></tr>
+            {% elseif afslag_venteliste %}
+            <tr><td colspan="2"><p><strong>Afslag og venteliste</strong></p><p>Der er ikke ledig plads på den pågældende årgang. Forældrene skal have besked om afslag og venteliste.</p></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    '#ajax': false
+container_beskeder:
+  '#type': container
+  besked_til_foraeldre_afslag:
+    '#type': os2forms_attachment
+    '#title': 'Besked til forældre - afslag'
+    '#display_on': view
+    '#filename': 'Ansøgning om skoleskifte.pdf'
+    '#export_type': pdf
+    '#digital_signature': 0
+    '#excluded_elements':
+      navn_mitid: navn_mitid
+      cpr_nummer_mitid: cpr_nummer_mitid
+      adresse: adresse
+      telefonnummer: telefonnummer
+      emailadresse_login: emailadresse_login
+      vaelg_barn: vaelg_barn
+      mit_barn_kommer_ikke_frem_i_listen: mit_barn_kommer_ikke_frem_i_listen
+      barnets_navn_mitid: barnets_navn_mitid
+      cpr_nummer_barn_mitid: cpr_nummer_barn_mitid
+      barnets_adresse_mitid: barnets_adresse_mitid
+      barnets_navn_manuelt: barnets_navn_manuelt
+      cpr_nummer_barn_manuelt: cpr_nummer_barn_manuelt
+      barnets_adresse_manuelt: barnets_adresse_manuelt
+      barnets_nuvaerende_skole: barnets_nuvaerende_skole
+      gaar_barnet_i_en_normal_klasse: gaar_barnet_i_en_normal_klasse
+      skoleaar_valg: skoleaar_valg
+      du_soeger_skoleskift_for_skoleaaret: du_soeger_skoleskift_for_skoleaaret
+      modtagende_skole: modtagende_skole
+      er_der_soeskende_paa_denne_skole: er_der_soeskende_paa_denne_skole
+      hvilket_klassetrin_soeskende: hvilket_klassetrin_soeskende
+      begrund_oenske_om_skoleskift: begrund_oenske_om_skoleskift
+      navn_foraeldre_2: navn_foraeldre_2
+      adresse_foraeldre_2: adresse_foraeldre_2
+      telefonnummer_foraeldre_2: telefonnummer_foraeldre_2
+      emailadresse_foraeldre_2: emailadresse_foraeldre_2
+      kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma: kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma
+    '#exclude_empty': true
+    '#exclude_empty_checkbox': true
+  markup_besked_afslag:
+    '#type': markup
+    '#display_on': view
+    '#markup': '<p>Eleven kan ikke optages, da der ikke er ledig plads til rådighed på klassetrinnet. Opstår der i løbet af indeværende skoleår en ledig plads, vil I blive kontaktet af skolen. Skolen vil her forespørge, om I fortsat ønsker jeres barn optaget på skolen</p><p>Der kan klages over afslag. Klagen fremsendes i givet fald skriftligt inden 4 uger til: Aarhus Kommune, Børn og Unge, Pladsanvisning og Elevadministration, Grøndalsvej 2, 8260 Viby J. Skolens afslag eller kopi heraf skal vedlægges klagen.</p>'
+ansoegning_om_skoleskift:
+  '#type': os2forms_attachment
+  '#title': 'Ansøgning om skoleskift'
+  '#display_on': view
+  '#filename': 'Ansøgning om skoleskift.pdf'
+  '#export_type': pdf
+  '#digital_signature': 0
+  '#excluded_elements':
+    dine_oplysninger_login_udfylder: dine_oplysninger_login_udfylder
+    navn_mitid: navn_mitid
+    cpr_nummer_mitid: cpr_nummer_mitid
+    adresse: adresse
+    telefonnummer: telefonnummer
+    emailadresse_login: emailadresse_login
+    vaelg_barn: vaelg_barn
+    mit_barn_kommer_ikke_frem_i_listen: mit_barn_kommer_ikke_frem_i_listen
+    barnets_navn_mitid: barnets_navn_mitid
+    cpr_nummer_barn_mitid: cpr_nummer_barn_mitid
+    barnets_adresse_mitid: barnets_adresse_mitid
+    barnets_navn_manuelt: barnets_navn_manuelt
+    cpr_nummer_barn_manuelt: cpr_nummer_barn_manuelt
+    barnets_adresse_manuelt: barnets_adresse_manuelt
+    barnets_nuvaerende_skole: barnets_nuvaerende_skole
+    gaar_barnet_i_en_normal_klasse: gaar_barnet_i_en_normal_klasse
+    skoleaar_valg: skoleaar_valg
+    du_soeger_skoleskift_for_skoleaaret: du_soeger_skoleskift_for_skoleaaret
+    modtagende_skole: modtagende_skole
+    er_der_soeskende_paa_denne_skole: er_der_soeskende_paa_denne_skole
+    hvilket_klassetrin_soeskende: hvilket_klassetrin_soeskende
+    begrund_oenske_om_skoleskift: begrund_oenske_om_skoleskift
+    navn_foraeldre_2: navn_foraeldre_2
+    adresse_foraeldre_2: adresse_foraeldre_2
+    telefonnummer_foraeldre_2: telefonnummer_foraeldre_2
+    emailadresse_foraeldre_2: emailadresse_foraeldre_2
+    kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma: kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma
+    eleven_kan_optages_i_klasse: eleven_kan_optages_i_klasse
+    dato_for_start: dato_for_start
+    besked_til_foraeldre_afslag: besked_til_foraeldre_afslag
+    markup_besked_afslag: markup_besked_afslag
+  '#exclude_empty': true
+  '#exclude_empty_checkbox': true

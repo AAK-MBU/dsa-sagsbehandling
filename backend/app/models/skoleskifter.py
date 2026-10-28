@@ -1,7 +1,7 @@
 """Skoleskifter cases — Skoleskiftere og tilflyttere (draft).
 
-One row per application (migration 004). A case can exist without a CPR —
-an application that arrived without one — and is linked to the child later.
+One row per application (migrations 004 and 005). Every case has a CPR:
+the forms send a child without one elsewhere (see migration 005).
 """
 
 from __future__ import annotations
@@ -20,6 +20,13 @@ DB_SCHEMA = "dsa"
 # The three kinds of case (CK_Skoleskifter_variant).
 VARIANTER = ("Tilflytter", "Skoleskift internt", "Skoleskift udefra")
 
+# How the case came (CK_Skoleskifter_skoletilbud): Modtagelsesklasse straight
+# from the parents, Almen klasse through the receiving school's form.
+NUVAERENDE_SKOLETILBUD = ("Almen klasse", "Modtagelsesklasse")
+
+# The receiving school's ground for admission (CK_Skoleskifter_afgoerelse).
+SKOLENS_AFGOERELSER = ("Tilflytter til distriktet", "Ledig plads")
+
 
 class Skoleskifter(Base):
     """A skoleskifter / tilflytter case.
@@ -34,12 +41,11 @@ class Skoleskifter(Base):
 
     skoleskifter_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    cpr: Mapped[str | None] = mapped_column(
+    cpr: Mapped[str] = mapped_column(
         String(10),
         ForeignKey(f"{DB_SCHEMA}.Elev.cpr"),
-        nullable=True,
+        nullable=False,
     )
-    ansoeger_navn: Mapped[str | None] = mapped_column(Unicode(200), nullable=True)
     variant: Mapped[str] = mapped_column(Unicode(30), nullable=False)
     status_id: Mapped[int] = mapped_column(
         Integer,
@@ -58,16 +64,25 @@ class Skoleskifter(Base):
     ansoegningsdata: Mapped[str | None] = mapped_column(Unicode, nullable=True)
     esdh_noegle: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
     esdh_url: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
-    dato_oensket_skolestart: Mapped[date | None] = mapped_column(Date, nullable=True)
+    skoleaar: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nuvaerende_skoletilbud: Mapped[str | None] = mapped_column(Unicode(30), nullable=True)
+    udslusningsdato: Mapped[date | None] = mapped_column(Date, nullable=True)
+    nuvaerende_kommune: Mapped[str | None] = mapped_column(Unicode(100), nullable=True)
     oensket_skolekode: Mapped[int | None] = mapped_column(Integer, nullable=True)
     nuvaerende_skolekode: Mapped[int | None] = mapped_column(Integer, nullable=True)
     nuvaerende_skole_tekst: Mapped[str | None] = mapped_column(Unicode(200), nullable=True)
-    klassetrin_ansoegning: Mapped[str | None] = mapped_column(Unicode(20), nullable=True)
+    klassetrin_ansoegning: Mapped[str | None] = mapped_column(Unicode(20), nullable=True)  # "Nuværende klasse", e.g. 3.B
+    flytning: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    flyttedato: Mapped[date | None] = mapped_column(Date, nullable=True)
     kommende_adresse: Mapped[str | None] = mapped_column(Unicode(300), nullable=True)
-    saerlige_behov: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    modersmaal_foraelder: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
+    modersmaal_skole: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
+    soeskende_paa_skolen: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    soeskende_klasse: Mapped[str | None] = mapped_column(Unicode(20), nullable=True)
+    begrundelse: Mapped[str | None] = mapped_column(Unicode, nullable=True)
+    skolens_afgoerelse: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
 
-    # --- Language assessment ---
-    skolens_vurdering: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
+    # --- Language assessment (PUF) ---
     screeningsdato: Mapped[date | None] = mapped_column(Date, nullable=True)
     point_1: Mapped[float | None] = mapped_column(Numeric(6, 1, asdecimal=False), nullable=True)
     resultat_1: Mapped[str | None] = mapped_column(Unicode(100), nullable=True)
