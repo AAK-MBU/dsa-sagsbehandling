@@ -9,12 +9,16 @@
 # its two `set` directives at the aliases below.
 #
 # Selected per directory via COMPOSE_FILE in .env — see .env.example.
+#
+# Runs the :main image (pushes to main); dev runs :develop. DSA_IMAGE_TAG in
+# .env overrides it.
 
 services:
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    # Built by .github/workflows/docker-publish.yml — never on the server.
+    # pull_policy always: the tag moves with each push, so `up -d` fetches it.
+    image: ghcr.io/aak-mbu/dsa-sagsbehandling-api:${DSA_IMAGE_TAG:-main}
+    pull_policy: always
     container_name: dsa-prod-api
     environment:
       API_KEY: ${API_KEY}
@@ -54,9 +58,10 @@ services:
           - dsa-prod-api
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    # Built by .github/workflows/docker-publish.yml — never on the server.
+    # pull_policy always: the tag moves with each push, so `up -d` fetches it.
+    image: ghcr.io/aak-mbu/dsa-sagsbehandling-frontend:${DSA_IMAGE_TAG:-main}
+    pull_policy: always
     container_name: dsa-prod-frontend
     environment:
       PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
