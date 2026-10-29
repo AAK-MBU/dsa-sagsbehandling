@@ -21,6 +21,7 @@ export type SkolebegynderRow = {
   status_sortering: number | null;
   status_dato: string | null;
   modtaget_tidspunkt: string;
+  screening_booket_tidspunkt: string | null;
   screeningsdato: string | null;
   samlet_resultat: string | null;
   puf_screeningsresultat: string | null;
@@ -34,6 +35,8 @@ export type SkolebegynderRow = {
   distriktsskole: string | null;
   oensket_skolekode: number | null;
   oensket_skole: string | null;
+  oensket_skolekode_2: number | null;
+  oensket_skole_2: string | null;
   soeskende_skolekode: number | null;
   soeskende_skole: string | null;
   ansoeger_anden_skole: boolean | null;
@@ -50,6 +53,7 @@ export type SkolebegynderRow = {
   gaaafstand_distriktsskole_km: number | null;
   gaaafstand_oensket_skole_km: number | null;
   gaaafstand_skoletilbud_km: number | null;
+  afklaring: string | null;
   bemaerkning: string | null;
   sagsbehandlingsdato: string | null;
   afsluttet_dato: string | null;
@@ -71,7 +75,7 @@ export type SkolebegynderDetail = SkolebegynderRow & {
   of_forkert: number | null;
   of_korrekt_ratio: number | null;
   of_score: number | null;
-  of_score_alt: number | null;
+  of_score_alt: string | null;
   sf_besvaret: number | null;
   sf_ubesvaret: number | null;
   sf_korrekt: number | null;
@@ -79,7 +83,7 @@ export type SkolebegynderDetail = SkolebegynderRow & {
   sf_korrekt_ratio: number | null;
   sf_korrekt_ratio_ori: number | null;
   sf_score: number | null;
-  sf_score_alt: number | null;
+  sf_score_alt: string | null;
   dagtilbud_afdeling_adresse: string | null;
   email_pl: string | null;
   email_distriktsskole: string | null;
@@ -138,6 +142,7 @@ export type SkolebegynderFelter = {
   skoleplaceringsaarsag_id?: number | null;
   brevskabelon_id?: number | null;
   krav_paa_befordring?: boolean | null;
+  afklaring?: string | null;
   bemaerkning?: string | null;
   sagsbehandlingsdato?: string | null;
 };
@@ -147,17 +152,25 @@ export type SkolebegynderFelter = {
 // Tabs
 // -----------------------------
 
-export type Fane = "overblik" | "naermere-afklaring" | "ikke-screenet" | "aendringer";
+export type Fane = "overblik" | "screening-afviklet" | "ikke-screenet" | "aendringer";
 
+// Ordered by how much the caseworker has to DO in each, not by process step:
+// Overblik (the decision) -> Screening afviklet (screened, still to be
+// placed — the work queue) -> Ændringer (a decision may need reviewing) ->
+// Ikke screenet (mostly waiting on the screening in SX). The skolebegynder
+// sketch also puts Ændringer next to Overblik and Ikke screenet last.
 export const FANER: { id: Fane; label: string }[] = [
   { id: "overblik", label: "Overblik" },
-  { id: "naermere-afklaring", label: "Nærmere afklaring" },
-  { id: "ikke-screenet", label: "Ikke screenet" },
-  { id: "aendringer", label: "Ændringer" }
+  { id: "screening-afviklet", label: "Screening afviklet" },
+  { id: "aendringer", label: "Ændringer" },
+  { id: "ikke-screenet", label: "Ikke screenet" }
 ];
 
 /** Statuses on the Overblik tab: every screened child ("Alle screenet"). */
-const OVERBLIK_STATUSSER = new Set(["Under behandling", "Skoletilbud", "Afsluttet"]);
+const OVERBLIK_STATUSSER = new Set(["Screening afviklet", "Skoleplaceret", "Afsluttet"]);
+
+/** Statuses on the Ikke screenet tab: on the list, with or without a booking. */
+const IKKE_SCREENET_STATUSSER = new Set(["Potentiel skolestarter", "Tid booket"]);
 
 /**
  * Which cases a tab shows. Ændringer is a different list (changes, not
@@ -167,10 +180,10 @@ export function iFane(row: SkolebegynderRow, fane: Fane): boolean {
   switch (fane) {
     case "overblik":
       return OVERBLIK_STATUSSER.has(row.status_tekst);
-    case "naermere-afklaring":
-      return row.status_tekst === "Nærmere afklaring";
+    case "screening-afviklet":
+      return row.status_tekst === "Screening afviklet";
     case "ikke-screenet":
-      return row.status_tekst === "Ikke screenet";
+      return IKKE_SCREENET_STATUSSER.has(row.status_tekst);
     default:
       return false;
   }
@@ -181,16 +194,64 @@ export function faneFraQuery(value: string | null): Fane {
   return FANER.some((f) => f.id === value) ? (value as Fane) : "overblik";
 }
 
-/** Parse ?aar=…; null means "use the newest year in the data". */
+/** Parse ?aar=…; null means "use the coming school year". */
 export function aarFraQuery(value: string | null): number | null {
   const aar = Number(value);
   return Number.isInteger(aar) && aar >= 2000 && aar <= 2100 ? aar : null;
+}
+
+/**
+ * The school start the casework is for: the children starting school next
+ * August — this year before August, next year from August on. The same rule
+ * as befordringssystemet's skoleaarSlutter and the seed's @skoleaar.
+ */
+export function kommendeSkoleaar(today: Date = new Date()): number {
+  return today.getMonth() >= 7 ? today.getFullYear() + 1 : today.getFullYear();
+}
+
+/** skoleaar is the year school starts; shown as the school year, "2027/2028". */
+export function skoleaarTekst(aar: number): string {
+  return `${aar}/${aar + 1}`;
 }
 
 
 // -----------------------------
 // Small display helpers
 // -----------------------------
+
+/**
+ * SX's samlet_resultat for a child it has not screened. The other values
+ * seen in a real export are Alderssvarende dansk, Sprogstøttebehov and
+ * Nærmere afklaring. Keep in step with usp_recalculate_skolebegynder_status.
+ */
+export const EJ_SPROGSCREENET = "Ej sprogscreenet";
+
+/** True when SX has a real screening result for the case. */
+export function erScreenet(row: { samlet_resultat: string | null }): boolean {
+  return row.samlet_resultat !== null && row.samlet_resultat !== EJ_SPROGSCREENET;
+}
+
+/**
+ * The SX results are long Danish compounds ("Sprogstøttebehov",
+ * "Alderssvarende") that cannot wrap, so in a narrow grid column they set its
+ * width. Soft hyphens let the browser break them ("Sprog-støtte-behov") only
+ * when it must; with room they show as one word. For display only — filters
+ * and exports keep the plain text.
+ */
+const DELESTEDER: [RegExp, string][] = [
+  [/([Ss])progstøttebehov/g, "$1prog\u00ADstøtte\u00ADbehov"],
+  [/Alderssvarende/g, "Alders\u00ADsvarende"]
+];
+
+export function brydResultat(tekst: string): string {
+  return DELESTEDER.reduce((t, [moenster, med]) => t.replace(moenster, med), tekst);
+}
+
+/** A percentile as SX writes it: one decimal, decimal comma ("1,2"). */
+export function percentil(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return value.toLocaleString("da-DK", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
 
 export function jaNej(value: boolean | null | undefined): string {
   if (value === null || value === undefined) return "—";

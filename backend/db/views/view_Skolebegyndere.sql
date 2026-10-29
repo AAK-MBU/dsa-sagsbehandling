@@ -12,9 +12,9 @@ GO
 
     Carries every column in the skolebegynder UI sketch, resolved to display
     text (school names, status, skoletilbudstype), alongside the ids the grid
-    needs to edit them. Filtering, column choice and the Overblik / Ikke
-    screenet / Nærmere afklaring tabs are all the frontend's, on top of this
-    one set.
+    needs to edit them. Filtering, column choice and the Overblik / Screening
+    afviklet / Ikke screenet tabs are all the frontend's, on top of this one
+    set.
 
     School names come from view_Skoler (one row per skolekode). The school
     offer is a campus (Skolematrikel), shown with its campus name, and its
@@ -58,6 +58,7 @@ SELECT
     sb.modtaget_tidspunkt,
 
     -- Screening
+    sb.screening_booket_tidspunkt,
     sb.screeningsdato,
     sb.samlet_resultat,
     sb.puf_screeningsresultat,
@@ -73,6 +74,8 @@ SELECT
     ds.skolenavn                      AS distriktsskole,
     sb.oensket_skolekode,
     os.skolenavn                      AS oensket_skole,
+    sb.oensket_skolekode_2,
+    os2.skolenavn                     AS oensket_skole_2,
     sb.soeskende_skolekode,
     ss.skolenavn                      AS soeskende_skole,
     sb.ansoeger_anden_skole,
@@ -91,6 +94,7 @@ SELECT
     sb.gaaafstand_distriktsskole_km,
     sb.gaaafstand_oensket_skole_km,
     sb.gaaafstand_skoletilbud_km,
+    sb.afklaring,
     sb.bemaerkning,
     sb.sagsbehandlingsdato,
     sb.afsluttet_dato,
@@ -129,6 +133,9 @@ LEFT JOIN
 LEFT JOIN
     [dsa].[view_Skoler] os
     ON os.skolekode = sb.oensket_skolekode
+LEFT JOIN
+    [dsa].[view_Skoler] os2
+    ON os2.skolekode = sb.oensket_skolekode_2
 LEFT JOIN
     [dsa].[view_Skoler] ss
     ON ss.skolekode = sb.soeskende_skolekode

@@ -1,24 +1,30 @@
 // The 6 "områder" (areas of work) shown on the front page and in the top nav.
-// Single source of truth so the launcher cards and the nav bar stay in sync.
-// Only Skolebegynderscreeninger is wired up so far (phase 1); the rest are
-// "Kommer snart".
+// Single source of truth so the launcher cards, the nav bar and the student
+// page's area tabs stay in sync — and in this order: the areas
+// alphabetically, then Rapporter last (it is not an area but the reports
+// across them). Only Skolebegynderscreeninger is wired up so far (phase 1);
+// the rest are "Kommer snart".
 
 export type AreaLink = { label: string; href?: string };
 
 export type Area = {
   title: string; // full title (front-page cards)
-  short: string; // short label (top nav)
+  short: string; // short label (top nav, student page tabs) — the full title does not fit beside the search
   accent: string; // left bar + title tint
   bg: string; // card background
   ring: string; // card border
   href?: string; // where the area navigates (when enabled)
+  // The area's tab on the student page: /elev/[cpr]/<elevside>. Areas about a
+  // child have one (shown as "Kommer snart" until enabled); Rapporter does not.
+  elevside?: string;
   links: AreaLink[];
   enabled: boolean;
 };
 
 export const areas: Area[] = [
   {
-    title: "Nyankomne i Modtagelsesklasse",
+    title: "Modtagelsesklasse",
+    elevside: "modtagelsesklasse",
     short: "Modtagelsesklasse",
     accent: "#8a2b2b",
     bg: "#f9ecec",
@@ -27,17 +33,9 @@ export const areas: Area[] = [
     enabled: false,
   },
   {
-    title: "Skoleskiftere og tilflyttere",
-    short: "Skoleskiftere",
-    accent: "#4e7c3a",
-    bg: "#eef5e9",
-    ring: "#cfe2c2",
-    links: [{ label: "Forside" }, { label: "Rapport" }],
-    enabled: false,
-  },
-  {
     title: "Skolebegynderscreeninger",
-    short: "Screeninger",
+    elevside: "skolebegynder",
+    short: "Skolebegyndere",
     accent: "#2c7d90",
     bg: "#e7f2f5",
     ring: "#c2dee5",
@@ -46,16 +44,20 @@ export const areas: Area[] = [
     enabled: true,
   },
   {
-    title: "Udslusning basisundervisning",
-    short: "Udslusning",
-    accent: "#6a4a9c",
-    bg: "#efeaf6",
-    ring: "#d6cbe8",
-    links: [{ label: "Forside" }, { label: "Rapport" }],
-    enabled: false,
+    title: "Skoleskiftere og -tilflyttere",
+    elevside: "skoleskiftere",
+    short: "Skoleskiftere",
+    accent: "#4e7c3a",
+    bg: "#eef5e9",
+    ring: "#cfe2c2",
+    // Draft (2026-10-27): overview, the student page tab and cases without CPR.
+    href: "/skoleskiftere",
+    links: [{ label: "Overblik", href: "/skoleskiftere" }, { label: "Rapport" }],
+    enabled: true,
   },
   {
     title: "Sproglig udvikling",
+    elevside: "sproglig-udvikling",
     short: "Sproglig udvikling",
     accent: "#c2591a",
     bg: "#f9efe6",
@@ -64,8 +66,18 @@ export const areas: Area[] = [
     enabled: false,
   },
   {
-    title: "Dataudtræk",
-    short: "Dataudtræk",
+    title: "Udslusning basisundervisning",
+    elevside: "udslusning",
+    short: "Udslusning",
+    accent: "#6a4a9c",
+    bg: "#efeaf6",
+    ring: "#d6cbe8",
+    links: [{ label: "Forside" }, { label: "Rapport" }],
+    enabled: false,
+  },
+  {
+    title: "Rapporter",
+    short: "Rapporter",
     accent: "#bd9b16",
     bg: "#f9f3dc",
     ring: "#e9dca0",

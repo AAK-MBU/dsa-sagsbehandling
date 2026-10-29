@@ -3,8 +3,9 @@
 Thin by design: every rule — what may change, when status moves, what is
 logged — lives in SkolebegynderService.
 
-Route order matters below: the fixed paths (/aendringer, /masseopdatering)
-are declared before /{skolebegynder_id}, so they are not read as an id.
+Route order matters below: the fixed paths (/aendringer, /masseopdatering,
+/elev/{cpr}) are declared before /{skolebegynder_id}, so they are not read
+as an id.
 """
 
 from fastapi import APIRouter, Query
@@ -31,7 +32,7 @@ def get_overview(
 ):
     """All active cases for the overview grid, newest screening first.
 
-    The Overblik / Ikke screenet / Nærmere afklaring tabs are filters on this
+    The Overblik / Screening afviklet / Ikke screenet tabs are filters on this
     one list — by status_tekst — so the page fetches it once.
     """
 
@@ -80,6 +81,18 @@ def masseopdater(
         data=request.felter.model_dump(exclude_unset=True),
         udfoert_af=udfoert_af,
     )
+
+
+@router.get("/elev/{cpr}", response_model=list[SkolebegynderOverviewRecord])
+def get_elev_skolebegyndere(cpr: str, db: DbSession):
+    """A child's skolebegynder cases, newest school year first.
+
+    For the Elevmappe — the counterpart of befordringssystemet's
+    /bevilling/get_student_bevillinger/{cpr}. The CPR is in the path so
+    PortalAuditLog records whose cases were read.
+    """
+
+    return SkolebegynderService(db=db).get_for_cpr(cpr=cpr)
 
 
 @router.get("/{skolebegynder_id}", response_model=SkolebegynderDetail)

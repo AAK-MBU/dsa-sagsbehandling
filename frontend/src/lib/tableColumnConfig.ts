@@ -17,11 +17,18 @@ export function formatCpr(cpr: string | null | undefined): string {
 // DSA: DSA's statuses (befordringssystemet maps its bevilling statuses here).
 // Keys are lowercased status_tekst.
 export const statusBadgeClasses: Record<string, string> = {
-  "ikke screenet": "bg-slate-100 text-slate-700",
-  "nærmere afklaring": "bg-amber-100 text-amber-800",
-  "under behandling": "bg-dsa-100 text-dsa-800",
-  skoletilbud: "bg-sky-100 text-sky-800",
+  "potentiel skolestarter": "bg-slate-100 text-slate-700",
+  "tid booket": "bg-amber-100 text-amber-800",
+  "screening afviklet": "bg-dsa-100 text-dsa-800",
+  skoleplaceret: "bg-sky-100 text-sky-800",
   afsluttet: "bg-emerald-100 text-emerald-800",
+  // Skoleskiftere og tilflyttere
+  ny: "bg-slate-100 text-slate-700",
+  "afventer sprogvurdering": "bg-amber-100 text-amber-800",
+  "aftalt sprogscreening": "bg-amber-100 text-amber-800",
+  "sendt til ppr": "bg-rose-100 text-rose-800",
+  "afventer skoletilbud": "bg-dsa-100 text-dsa-800",
+  "skoletilbud afsendt": "bg-sky-100 text-sky-800",
   default: "bg-slate-100 text-slate-700"
 };
 

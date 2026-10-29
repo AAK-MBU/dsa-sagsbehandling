@@ -55,6 +55,7 @@ SELECT @blokerende = STRING_AGG(x.tabel + N' (' + CAST(x.antal AS NVARCHAR(20)) 
 FROM (
     SELECT N'Skolebegynder' AS tabel, COUNT(*) AS antal FROM [dsa].[Skolebegynder]
     UNION ALL SELECT N'Skolebegynder_Aendring', COUNT(*) FROM [dsa].[Skolebegynder_Aendring]
+    UNION ALL SELECT N'Skoleskifter', COUNT(*) FROM [dsa].[Skoleskifter]   -- migration 004
 ) x
 WHERE x.antal > 0;
 
@@ -168,20 +169,45 @@ DECLARE @skolebegyndere INT = (
 
 -- Status  (5 rows, skolebegyndere)
 --
--- From the status legend in the skolebegynder UI sketch. The first four are
+-- The caseworkers' own statuses (pre-meeting 2026-10-21, migration 002),
+-- which replaced the status legend in the skolebegynder UI sketch. The first four are
 -- AUTOMATIC: usp_recalculate_skolebegynder_status sets them from the case's
 -- data. Only Afsluttet is set by a person, and the procedure never moves a
 -- case out of it — reopening is a deliberate act by a caseworker.
 INSERT INTO [dsa].[Status] (status_tekst, beskrivelse, aktiv, fagomraade_id, sortering)
 SELECT v.status_tekst, v.beskrivelse, v.aktiv, @skolebegyndere, v.sortering
 FROM (VALUES
-    (N'Ikke screenet',      N'Automatisk: intet screeningsresultat endnu',                         1, 10),
-    (N'Nærmere afklaring',  N'Automatisk: screenet, men PUF-screeningsresultat er ikke udfyldt',    1, 20),
-    (N'Under behandling',   N'Automatisk: screenet og klar til skoleplacering',                    1, 30),
-    (N'Skoletilbud',        N'Automatisk: skoletilbud og skoletilbudstype er udfyldt',              1, 40),
+    (N'Potentiel skolestarter', N'Automatisk: på etableringslisten; ingen booket screening og intet resultat', 1, 10),
+    (N'Tid booket',             N'Automatisk: forældrene har booket en tid til sprogscreening',               1, 20),
+    (N'Screening afviklet',     N'Automatisk: der er et resultat af sprogscreeningen',                         1, 30),
+    (N'Skoleplaceret',          N'Automatisk: skoletilbud og skoletilbudstype er udfyldt',                     1, 40),
     (N'Afsluttet',          N'Manuelt: sagen er afsluttet og brevet er sendt',                     1, 50)
 ) AS v (status_tekst, beskrivelse, aktiv, sortering);
 PRINT CONCAT('Status: ', @@ROWCOUNT, ' row(s) inserted.');
+
+
+-- Status  (7 rows, skoleskiftere og tilflyttere — migration 004)
+--
+-- From the field list. Ny, Afventer sprogvurdering and Sendt til PPR are set
+-- by a caseworker; usp_recalculate_skoleskifter_status derives the rest, and
+-- closes a case the day after its offer date.
+DECLARE @skoleskiftere INT = (
+    SELECT fagomraade_id FROM [dsa].[Fagomraade]
+    WHERE  fagomraade_tekst = N'Skoleskiftere og tilflyttere'
+);
+
+INSERT INTO [dsa].[Status] (status_tekst, beskrivelse, aktiv, fagomraade_id, sortering)
+SELECT v.status_tekst, v.beskrivelse, 1, @skoleskiftere, v.sortering
+FROM (VALUES
+    (N'Ny',                      N'Manuelt: ansøgningen er modtaget og ikke behandlet endnu',          10),
+    (N'Afventer sprogvurdering', N'Manuelt: sprogvurdering er bestilt (skolen eller screening)',       20),
+    (N'Aftalt sprogscreening',   N'Automatisk: der er en screeningsdato, men intet resultat',          30),
+    (N'Sendt til PPR',           N'Manuelt: sagen er overdraget til PPR (særlige behov)',              40),
+    (N'Afventer skoletilbud',    N'Automatisk: sprogvurderingen foreligger',                           50),
+    (N'Skoletilbud afsendt',     N'Automatisk: skoletilbud, skoletilbudstype og dato er udfyldt',      60),
+    (N'Afsluttet',               N'Automatisk dagen efter dato for skoletilbud, eller manuelt',        70)
+) AS v (status_tekst, beskrivelse, sortering);
+PRINT CONCAT('Status (skoleskiftere): ', @@ROWCOUNT, ' row(s) inserted.');
 
 
 -- Skoletilbudstype  (11 rows, shared: fagomraade_id NULL)

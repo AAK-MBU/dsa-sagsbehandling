@@ -1,0 +1,672 @@
+oplysninger_om_barnet:
+  '#type': wizard_page
+  '#title': 'Dig og barnet'
+  obs:
+    '#type': fieldset
+    '#title': Information
+    '#attributes':
+      style: 'background-color: #FFF4CC; border: 1px solid #FFD54F; color: #5C4400; ``'
+    markup_02:
+      '#type': markup
+      '#markup': '<p>Forældre bedes være opmærksomme på at ind- og udmeldelse af SFO skal ske digitalt via<a href="https://dinplads.dk/Auth/LoginAsCitizen/751"> Digital Pladsanvisning.&nbsp;</a></p><p>_________________________________________________________</p><p><strong>Valg af skole </strong>Vælger I ved indskrivning til skolegang eller under skoleforløbet en anden skole end distriktsskolen, herunder en privatskole, kan der ikke senere fremsættes krav om optagelse på distriktsskolen. Overflytning til distriktsskolen behandles efter reglerne om skoleskifte.</p>'
+  section_dine_oplysninger:
+    '#type': section
+    '#title': 'Dine oplysninger'
+    '#attributes':
+      style: 'background: #E5EFFA; padding: 25px;'
+    navn_mitid:
+      '#type': os2forms_nemid_name
+      '#title': Navn
+      '#multiple': false
+      '#readonly': true
+    cpr_nummer_mitid:
+      '#type': os2forms_nemid_cpr
+      '#title': CPR-nummer
+      '#multiple': false
+      '#readonly': true
+    adresse:
+      '#type': os2forms_nemid_address
+      '#title': Adresse
+      '#multiple': false
+      '#readonly': true
+    telefonnummer:
+      '#type': textfield
+      '#title': Telefonnummer
+      '#minlength': 8
+      '#maxlength': 8
+      '#international': true
+      '#international_initial_country': DK
+      '#international_preferred_countries':
+        - DK
+    emailadresse_login:
+      '#type': email
+      '#title': Emailadresse
+  section_oplysninger_om_barnet:
+    '#type': section
+    '#title': 'Oplysninger om barnet'
+    '#attributes':
+      style: 'background: #E5EFFA; padding: 25px;'
+    vaelg_barn:
+      '#type': os2forms_nemid_children_select
+      '#title': 'Vælg dit barn fra listen'
+      '#states':
+        disabled:
+          ':input[name="mit_barn_kommer_ikke_frem_i_listen"]':
+            checked: true
+    mit_barn_kommer_ikke_frem_i_listen:
+      '#type': checkbox
+      '#title': 'Mit barn kommer ikke frem i listen'
+      '#states':
+        invisible:
+          ':input[name="vaelg_barn"]':
+            filled: true
+    mit_har_ikke_et_cpr_nummer:
+      '#type': checkbox
+      '#title': 'Mit barn har ikke et cpr-nummer'
+      '#states':
+        invisible:
+          ':input[name="vaelg_barn"]':
+            filled: true
+    ikke_cpr_nummer:
+      '#type': fieldset
+      '#title': 'Ikke cpr-nummer'
+      '#title_display': invisible
+      '#states':
+        visible:
+          ':input[name="mit_har_ikke_et_cpr_nummer"]':
+            checked: true
+      '#format': container
+      markup_05:
+        '#type': markup
+        '#markup': '<p>Hvis dit barn ikke har et CPR-nummer, kan ansøgning om skoleskift ikke behandles via denne formular.</p><p>I stedet skal du benytte formularen: <a href="https://selvbetjening.aarhuskommune.dk/da/content/ansoegning-om-indmeldelse-i-modtagelsesklasse">Ansøgning om indmeldelse i modtagelsesklasse</a></p><p>&nbsp;</p>'
+    barnets_oplysninger_mitid:
+      '#type': container
+      '#states':
+        visible:
+          ':input[name="vaelg_barn"]':
+            filled: true
+      barnets_navn_mitid:
+        '#type': os2forms_mitid_child_name
+        '#title': 'Barnets navn'
+        '#multiple': false
+        '#readonly': true
+      cpr_nummer_barn_mitid:
+        '#type': os2forms_mitid_child_cpr
+        '#title': 'Barnets CPR-nummer'
+        '#multiple': false
+        '#readonly': true
+      barnets_adresse_mitid:
+        '#type': os2forms_mitid_child_address
+        '#title': Adresse
+        '#multiple': false
+        '#readonly': true
+      foraeldremyndighedsindehaver_2_cpr_nummer:
+        '#type': os2forms_mitid_child_other_guardian
+        '#title': 'Forældremyndighedsindehaver 2 CPR-nummer'
+    barnets_oplysninger_manuelt:
+      '#type': container
+      '#states':
+        visible:
+          ':input[name="mit_barn_kommer_ikke_frem_i_listen"]':
+            checked: true
+      barnets_navn_manuelt:
+        '#type': textfield
+        '#title': 'Barnets navn'
+        '#states':
+          required:
+            ':input[name="mit_barn_kommer_ikke_frem_i_listen"]':
+              checked: true
+      cpr_nummer_barn_manuelt:
+        '#type': textfield
+        '#title': 'Barnets CPR-nummer'
+        '#input_mask': '9999999999'
+        '#pattern': '^(?:(?:31(0[13578]|1[02])|30(0[13-9]|1[0-2])|(?:0[1-9]|1[0-9]|2[0-8])(0[1-9]|1[0-2])|2902(?:[02468][048]|[13579][26]))\d{2}-?\d{4})$'
+        '#pattern_error': 'Angiv et korrekt cpr-nummer.'
+        '#states':
+          required:
+            ':input[name="mit_barn_kommer_ikke_frem_i_listen"]':
+              checked: true
+      barnets_adresse_manuelt:
+        '#type': os2forms_dawa_address
+        '#title': 'Barnets folkeregisteradresse'
+        '#states':
+          required:
+            ':input[name="mit_barn_kommer_ikke_frem_i_listen"]':
+              checked: true
+  container_skole:
+    '#type': container
+    oplysninger_om_nuvaerende_skole:
+      '#type': section
+      '#title': 'Elevens nuværende skoleforhold'
+      '#attributes':
+        style: 'background: #E5EFFA; padding: 25px;'
+      nuvaerende_kommune:
+        '#type': select
+        '#title': 'Nuværende kommune'
+        '#options':
+          'Aabenraa Kommune': 'Aabenraa Kommune'
+          'Aalborg Kommune': 'Aalborg Kommune'
+          'Aarhus Kommune': 'Aarhus Kommune'
+          'Albertslund Kommune': 'Albertslund Kommune'
+          'Allerød Kommune': 'Allerød Kommune'
+          'Assens Kommune': 'Assens Kommune'
+          'Ballerup Kommune': 'Ballerup Kommune'
+          'Billund Kommune': 'Billund Kommune'
+          'Bornholms Regionskommune': 'Bornholms Regionskommune'
+          'Brøndby Kommune': 'Brøndby Kommune'
+          'Brønderslev Kommune': 'Brønderslev Kommune'
+          'Dragør Kommune': 'Dragør Kommune'
+          'Egedal Kommune': 'Egedal Kommune'
+          'Esbjerg Kommune': 'Esbjerg Kommune'
+          'Fanø Kommune': 'Fanø Kommune'
+          'Favrskov Kommune': 'Favrskov Kommune'
+          'Faxe Kommune': 'Faxe Kommune'
+          'Fredensborg Kommune': 'Fredensborg Kommune'
+          'Fredericia Kommune': 'Fredericia Kommune'
+          'Frederiksberg Kommune': 'Frederiksberg Kommune'
+          'Frederikshavn Kommune': 'Frederikshavn Kommune'
+          'Frederikssund Kommune': 'Frederikssund Kommune'
+          'Furesø Kommune': 'Furesø Kommune'
+          'Faaborg-Midtfyn Kommune': 'Faaborg-Midtfyn Kommune'
+          'Gentofte Kommune': 'Gentofte Kommune'
+          'Gladsaxe Kommune': 'Gladsaxe Kommune'
+          'Glostrup Kommune': 'Glostrup Kommune'
+          'Greve Kommune': 'Greve Kommune'
+          'Gribskov Kommune': 'Gribskov Kommune'
+          'Guldborgsund Kommune': 'Guldborgsund Kommune'
+          'Haderslev Kommune': 'Haderslev Kommune'
+          'Halsnæs Kommune': 'Halsnæs Kommune'
+          'Hedensted Kommune': 'Hedensted Kommune'
+          'Helsingør Kommune': 'Helsingør Kommune'
+          'Herlev Kommune': 'Herlev Kommune'
+          'Herning Kommune': 'Herning Kommune'
+          'Hillerød Kommune': 'Hillerød Kommune'
+          'Hjørring Kommune': 'Hjørring Kommune'
+          'Holbæk Kommune': 'Holbæk Kommune'
+          'Holstebro Kommune': 'Holstebro Kommune'
+          'Horsens Kommune': 'Horsens Kommune'
+          'Hvidovre Kommune': 'Hvidovre Kommune'
+          'Høje-Taastrup Kommune': 'Høje-Taastrup Kommune'
+          'Hørsholm Kommune': 'Hørsholm Kommune'
+          'Ikast-Brande Kommune': 'Ikast-Brande Kommune'
+          'Ishøj Kommune': 'Ishøj Kommune'
+          'Jammerbugt Kommune': 'Jammerbugt Kommune'
+          'Kalundborg Kommune': 'Kalundborg Kommune'
+          'Kerteminde Kommune': 'Kerteminde Kommune'
+          'Kolding Kommune': 'Kolding Kommune'
+          'Københavns Kommune': 'Københavns Kommune'
+          'Køge Kommune': 'Køge Kommune'
+          'Langeland Kommune': 'Langeland Kommune'
+          'Lejre Kommune': 'Lejre Kommune'
+          'Lemvig Kommune': 'Lemvig Kommune'
+          'Lolland Kommune': 'Lolland Kommune'
+          'Lyngby-Taarbæk Kommune': 'Lyngby-Taarbæk Kommune'
+          'Læsø Kommune': 'Læsø Kommune'
+          'Mariagerfjord Kommune': 'Mariagerfjord Kommune'
+          'Middelfart Kommune': 'Middelfart Kommune'
+          'Morsø Kommune': 'Morsø Kommune'
+          'Norddjurs Kommune': 'Norddjurs Kommune'
+          'Nordfyns Kommune': 'Nordfyns Kommune'
+          'Nyborg Kommune': 'Nyborg Kommune'
+          'Næstved Kommune': 'Næstved Kommune'
+          'Odder Kommune': 'Odder Kommune'
+          'Odense Kommune': 'Odense Kommune'
+          'Odsherred Kommune': 'Odsherred Kommune'
+          'Randers Kommune': 'Randers Kommune'
+          'Rebild Kommune': 'Rebild Kommune'
+          'Ringkøbing-Skjern Kommune': 'Ringkøbing-Skjern Kommune'
+          'Ringsted Kommune': 'Ringsted Kommune'
+          'Roskilde Kommune': 'Roskilde Kommune'
+          'Rudersdal Kommune': 'Rudersdal Kommune'
+          'Rødovre Kommune': 'Rødovre Kommune'
+          'Samsø Kommune': 'Samsø Kommune'
+          'Silkeborg Kommune': 'Silkeborg Kommune'
+          'Skanderborg Kommune': 'Skanderborg Kommune'
+          'Skive Kommune': 'Skive Kommune'
+          'Slagelse Kommune': 'Slagelse Kommune'
+          'Solrød Kommune': 'Solrød Kommune'
+          'Sorø Kommune': 'Sorø Kommune'
+          'Stevns Kommune': 'Stevns Kommune'
+          'Struer Kommune': 'Struer Kommune'
+          'Svendborg Kommune': 'Svendborg Kommune'
+          'Syddjurs Kommune': 'Syddjurs Kommune'
+          'Sønderborg Kommune': 'Sønderborg Kommune'
+          'Thisted Kommune': 'Thisted Kommune'
+          'Tønder Kommune': 'Tønder Kommune'
+          'Tårnby Kommune': 'Tårnby Kommune'
+          'Vallensbæk Kommune': 'Vallensbæk Kommune'
+          'Varde Kommune': 'Varde Kommune'
+          'Vejen Kommune': 'Vejen Kommune'
+          'Vejle Kommune': 'Vejle Kommune'
+          'Vesthimmerlands Kommune': 'Vesthimmerlands Kommune'
+          'Viborg Kommune': 'Viborg Kommune'
+          'Vordingborg Kommune': 'Vordingborg Kommune'
+          'Ærø Kommune': 'Ærø Kommune'
+      barnets_nuvaerende_skole:
+        '#type': textfield
+        '#title': 'Elevens nuværende skole'
+        '#attributes':
+          style: 'width:32em'
+        '#endpoint': 'https://mbuweb.adm.aarhuskommune.dk/dataapi/entities?type=kommunalskoleFlereLokationer'
+        '#data_key': id
+        '#data_value': value
+        '#use_empty_option': true
+        '#empty_option': Vælg
+        '#use_select2': true
+      gaar_barnet_i_en_normal_klasse:
+        '#type': radios
+        '#title': 'Elevens nuværende skoletilbud'
+        '#options':
+          'Almen klasse': 'Almen klasse'
+          Modtagelsesklasse: Modtagelsesklasse
+          Specialklasse: Specialklasse
+      skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas:
+        '#type': date
+        '#title': 'Skolen har vurderet at mit barn kan udsluses fra modtagelsesklasse til almenklasse pr.'
+        '#states':
+          visible:
+            ':input[name="gaar_barnet_i_en_normal_klasse"]':
+              value: Modtagelsesklasse
+          required:
+            ':input[name="gaar_barnet_i_en_normal_klasse"]':
+              value: Modtagelsesklasse
+      nuvaerende_klasse:
+        '#type': textfield
+        '#title': 'Nuværende klasse'
+        '#description': '<p>F.eks. 3.B</p>'
+oplysninger_om_skoleskifte:
+  '#type': wizard_page
+  '#title': Skoleskiftet
+  oplysninger_om_barnets_modersmaal:
+    '#type': section
+    '#title': 'Oplysninger om barnets modersmål'
+    '#attributes':
+      style: 'background: #E5EFFA; padding: 15px 20px;'
+    container_modersmaal_tea:
+      '#type': container
+      '#attributes':
+        style: 'margin: 0; padding: 0;'
+      registreret_modersmaal:
+        '#type': remote_select_element
+        '#title': 'Registreret modersmål'
+        '#wrapper_attributes':
+          style: 'display:none'
+        '#endpoint': 'https://mbu-os2forms.adm.aarhuskommune.dk/os2forms/api/dsa/get_child_modersmaal/0101005003'
+        '#data_key': value
+        '#data_value': value
+      markup_modersmaal_lis:
+        '#type': computed_twig
+        '#title': 'Barnets registrerede modersmål'
+        '#title_display': invisible
+        '#wrapper_attributes':
+          style: 'margin-top: 0; margin-bottom: 8px;'
+        '#template': |-
+          {% set sprog = data.registreret_modersmaal|default('')|trim %}
+          {% if sprog is not empty and sprog != 'None' and sprog != 'Kunne ikke finde barnets modersmaal' %}
+            <p style="margin: 0 0 8px;">Dit barn er registreret i Børn og Unge med <strong>{{ sprog|escape }}</strong> som modersmål.</p>
+          {% endif %}
+        '#ajax': true
+    container_modersmaal_manuelt:
+      '#type': container
+      '#attributes':
+        style: 'margin: 0; padding: 0;'
+      '#states':
+        visible:
+          - ':input[name="registreret_modersmaal"]':
+              value: None
+          - or
+          - ':input[name="registreret_modersmaal"]':
+              value: 'Kunne ikke finde barnets modersmaal'
+          - or
+          - ':input[name="mit_barn_kommer_ikke_frem_i_listen"]':
+              checked: true
+      markup_04:
+        '#type': markup
+        '#markup': '<p style="margin: 0 0 8px;">Et barns modersmål defineres ud fra hvilket sprog der på et modersmålslignende niveau er talt til og med barnet fra dets fødsel.</p>'
+      hvilket_sprog_er_barnets_modersmaal_01:
+        '#type': select_other
+        '#title': 'Jeg vurderer, at mit barns modersmål er'
+        '#options':
+          Afghansk: Afghansk
+          Afrikaans: Afrikaans
+          Akan: Akan
+          Albansk: Albansk
+          Amharisk: Amharisk
+          Arabisk: Arabisk
+          Aramæisk: Aramæisk
+          Armensk: Armensk
+          Assyrisk: Assyrisk
+          Azerbaijani: Azerbaijani
+          Bemba: Bemba
+          Bengali: Bengali
+          Berberisk: Berberisk
+          Bosnisk: Bosnisk
+          Bulgarsk: Bulgarsk
+          Burmesisk: Burmesisk
+          Cambodiansk: Cambodiansk
+          Cebuano: Cebuano
+          Dansk: Dansk
+          Dari: Dari
+          Engelsk: Engelsk
+          Estisk: Estisk
+          Faeroesk: Faeroesk
+          Farsi: Farsi
+          Filippin: Filippin
+          Finsk: Finsk
+          Fransk: Fransk
+          Fulani: Fulani
+          Galla: Galla
+          Gambiansk: Gambiansk
+          Græsk: Græsk
+          Grønlandsk: Grønlandsk
+          Gujarati: Gujarati
+          Hindi: Hindi
+          Hollandsk: Hollandsk
+          Hviderussisk: Hviderussisk
+          Igbo: Igbo
+          Indonesisk: Indonesisk
+          Irak: Irak
+          Islandsk: Islandsk
+          Italiensk: Italiensk
+          Japansk: Japansk
+          Kannada: Kannada
+          Kinesisk: Kinesisk
+          Kinyarwanda: Kinyarwanda
+          Kirundi: Kirundi
+          Kongo: Kongo
+          Koreansk: Koreansk
+          Kroatisk: Kroatisk
+          Kurdisk: Kurdisk
+          Lettisk: Lettisk
+          Lingala: Lingala
+          Litauisk: Litauisk
+          Malayalam: Malayalam
+          Marathi: Marathi
+          Nepali: Nepali
+          Norsk: Norsk
+          Pakistansk: Pakistansk
+          Palæstinensisk: Palæstinensisk
+          Pashto: Pashto
+          Persisk: Persisk
+          Polsk: Polsk
+          Portugisisk: Portugisisk
+          Punjabi: Punjabi
+          Romani: Romani
+          Rumænsk: Rumænsk
+          Russisk: Russisk
+          Serbokroatisk: Serbokroatisk
+          Singhalesisk: Singhalesisk
+          Slovakisk: Slovakisk
+          Slovensk: Slovensk
+          Somali: Somali
+          Spansk: Spansk
+          Sudanesisk: Sudanesisk
+          Svensk: Svensk
+          Swahili: Swahili
+          Tagalog: Tagalog
+          Tamil: Tamil
+          Tegnsprog: Tegnsprog
+          Telugo: Telugu
+          Thai: Thai
+          Tigre: Tigre
+          Tigrinya: Tigrinya
+          Tjekkisk: Tjekkisk
+          Tjetjensk: Tjetjensk
+          Tunesisk: Tunesisk
+          Turkmensk: Turkmensk
+          Twi-fante: Twi-fante
+          Tyrkisk: Tyrkisk
+          Tysk: Tysk
+          Ukrainsk: Ukrainsk
+          Ungarsk: Ungarsk
+          Urdu: Urdu
+          Usbekisk: Usbekisk
+          Vietnamesisk: Vietnamesisk
+          Wolof: Wolof
+        '#empty_option': '- Vælg -'
+        '#select2': true
+        '#states':
+          required:
+            - ':input[name="registreret_modersmaal"]':
+                value: None
+            - or
+            - ':input[name="registreret_modersmaal"]':
+                value: 'Kunne ikke finde barnets modersmaal'
+            - or
+            - ':input[name="mit_barn_kommer_ikke_frem_i_listen"]':
+                checked: true
+        '#wrapper_attributes':
+          style: 'margin-top: 0; margin-bottom: 8px; width:32em'
+        '#attributes':
+          style: 'width:32em'
+        '#format_attributes':
+          style: 'width:32em'
+  oplysninger_om_skoleskifte_sektion:
+    '#type': section
+    '#title': 'Oplysninger om skoleskift'
+    '#attributes':
+      style: 'background: #E5EFFA; padding: 25px;'
+    soeger_i_skole_inden_for_eller_uden_for_skoledistriktet:
+      '#type': radios
+      '#title': 'Søger I skoleskift ifm. flytning?'
+      '#options':
+        Ja: Ja
+        Nej: Nej
+    container__flytning_info:
+      '#type': container
+      '#states':
+        visible:
+          ':input[name="soeger_i_skole_inden_for_eller_uden_for_skoledistriktet"]':
+            value: Ja
+      hvilken_adresse_flytter_i_til:
+        '#type': os2forms_dawa_address
+        '#title': 'Hvilken adresse flytter I til?'
+        '#required': true
+        '#states':
+          visible:
+            ':input[name="soeger_i_skole_inden_for_eller_uden_for_skoledistriktet"]':
+              value: Ja
+          invisible:
+            ':input[name="vi_kender_endnu_ikke_adressen"]':
+              checked: true
+        '#remove_place_name': 0
+        '#limit_by_municipality': '0751'
+      gaeldende_fra_dato:
+        '#type': date
+        '#title': 'Hvornår flytter I til adressen?'
+        '#required': true
+        '#states':
+          visible:
+            ':input[name="soeger_i_skole_inden_for_eller_uden_for_skoledistriktet"]':
+              value: Ja
+          invisible:
+            ':input[name="vi_kender_endnu_ikke_adressen"]':
+              checked: true
+      vi_kender_endnu_ikke_adressen:
+        '#type': checkbox
+        '#title': 'Vi kender endnu ikke adressen'
+        '#states':
+          invisible:
+            ':input[name="hvilken_adresse_flytter_i_til"]':
+              filled: true
+          visible:
+            ':input[name="soeger_i_skole_inden_for_eller_uden_for_skoledistriktet"]':
+              value: Ja
+    skoleaar_valg:
+      '#type': radios
+      '#title': 'Hvilket skoleår søger du skoleskift for?'
+      '#options':
+        indevaerende: 'Indeværende skoleår'
+        kommende: 'Kommende skoleår'
+      '#required': true
+    du_soeger_skoleskift_for_skoleaaret:
+      '#type': computed_twig
+      '#title': 'Du søger skoleskift for skoleåret'
+      '#states':
+        visible:
+          ':input[name="skoleaar_valg"]':
+            checked: true
+      '#template': |-
+        {%- set m = "now"|date("n") -%}
+        {%- set y = "now"|date("Y") -%}
+        {%- set start = m >= 8 ? y : y - 1 -%}
+        {%- if data.skoleaar_valg == "kommende" -%}{%- set start = start + 1 -%}{%- endif -%}
+        {{ start }}/{{ start + 1 }}
+      '#ajax': true
+    modtagende_skole:
+      '#type': remote_select_element
+      '#title': 'Undertegnede ønsker skoleskift for mit/vores barn til'
+      '#wrapper_attributes':
+        style: 'width:32em'
+      '#attributes':
+        style: 'width:32em'
+      '#endpoint': 'https://mbuweb.adm.aarhuskommune.dk/dataapi/entities?type=skoleemail'
+      '#data_key': id
+      '#data_value': value
+      '#use_empty_option': true
+      '#empty_option': Vælg
+      '#use_select2': true
+    er_der_soeskende_paa_denne_skole:
+      '#type': radios
+      '#title': 'Er der søskende på denne skole?'
+      '#options':
+        Ja: Ja
+        Nej: Nej
+    hvilket_klassetrin_soeskende:
+      '#type': textfield
+      '#title': 'I hvilken klasse?'
+      '#description': '<p>F.eks. 5.A&nbsp;</p>'
+      '#states':
+        visible:
+          ':input[name="er_der_soeskende_paa_denne_skole"]':
+            value: Ja
+    begrund_oenske_om_skoleskift:
+      '#type': textarea
+      '#title': 'Uddyb evt. ønske om skoleskift'
+oplysninger_om_foraeldremyndighed:
+  '#type': wizard_page
+  '#title': Forældremyndighed
+  '#states':
+    visible:
+      ':input[name="foraeldremyndighedsindehaver_2_cpr_nummer"]':
+        filled: true
+  skolen_email_tekstelement:
+    '#type': textfield
+    '#title': 'Skolen email (tekstelement)'
+    '#readonly': true
+    '#wrapper_attributes':
+      style: 'display:none'
+  skolen_email_kilde:
+    '#type': computed_twig
+    '#title': 'Skolens email – hjælpefelt'
+    '#title_display': invisible
+    '#wrapper_attributes':
+      style: 'display:none'
+    '#template': "<span data-skole-email=\"{{ data.modtagende_skole|default('')|escape('html_attr') }}\"></span>"
+    '#ajax': true
+  skolen_navn_tekstelement:
+    '#type': computed_twig
+    '#title': 'Skolens navn (tekstelement)'
+    '#wrapper_attributes':
+      style: 'display:none'
+    '#template': |-
+      {% if data.modtagende_skole is not empty %}
+        {{ webform_token('[webform_submission:values:modtagende_skole:html]', webform_submission)|striptags|trim }}
+      {% endif %}
+    '#whitespace': trim
+    '#ajax': true
+  markup_ingen_anden_foraeldremyndighed:
+    '#type': markup
+    '#states':
+      visible:
+        ':input[name="foraeldremyndighedsindehaver_2_cpr_nummer"]':
+          empty: true
+    '#display_on': view
+    '#markup': '<p>Der er ikke registreret en anden forældremyndighedsindehaver på barnet.</p>'
+  oplysninger_om_den_anden_foraeldremyndighedsindehaver:
+    '#type': section
+    '#title': 'Den anden forældremyndighedsindehaver'
+    '#required': true
+    '#states':
+      visible:
+        ':input[name="foraeldremyndighedsindehaver_2_cpr_nummer"]':
+          filled: true
+    '#attributes':
+      style: 'background: #E5EFFA; padding: 25px;'
+    navn_foraeldre_2:
+      '#type': textfield
+      '#title': Navn
+      '#required': true
+    adresse_foraeldre_2:
+      '#type': os2forms_dawa_address
+      '#title': Adresse
+      '#remove_place_name': 0
+      '#required': true
+    telefonnummer_foraeldre_2:
+      '#type': textfield
+      '#title': Telefonnummer
+      '#minlength': 8
+      '#maxlength': 8
+      '#international': true
+      '#international_initial_country': DK
+      '#international_preferred_countries':
+        - DK
+      '#required': true
+    emailadresse_foraeldre_2:
+      '#type': email
+      '#title': Emailadresse
+      '#required': true
+    den_anden_foraeldremyndighedsindehaver:
+      '#type': fieldset
+      '#title': 'Den anden forældremyndighedsindehaver'
+      '#required': true
+      '#states':
+        visible:
+          ':input[name="foraeldremyndighedsindehaver_2_cpr_nummer"]':
+            filled: true
+      '#attributes':
+        style: 'background-color: #FFF4CC; border: 1px solid #FFD54F; color: #5C4400; ``'
+      markup_oplysning_til_foaeldremyndighed:
+        '#type': markup
+        '#markup': '<p><strong>Der er registreret en anden forældremyndighedsindehaver på barnet, som vil modtage en kvittering ved indsendelse af formularen. Kvitteringen indeholder kun oplysning om ønske om skoleskift - men der vil ikke fremgå adresse, ønsket skole, eller navn på hverken barn eller forældremyndighedsindehavere.</strong></p><p>Hvis du har spørgsmål til ovenstående, kan du kontakte Pladsanvisningen, Aarhus Kommune:</p><p><a href="https://post.borger.dk/send/2ea2e7ff-bad5-471d-a5c0-a63cbbd076d6/d28f3637-faa2-4d3d-bda9-2be57558ff2b//">Skriv sikkert til os (post.borger.dk)</a></p><p><a>Telefon: </a><a href="tel:89403560">89 40 22 22</a></p><p><strong>Åbningstider:</strong><br>Mandag: 09:00 – 11:00<br>Tirsdag: 09:00 – 11:00<br>Torsdag: 09:00 – 11:00</p>'
+  erklaering_sektion:
+    '#type': section
+    '#title': Erklæring
+    '#title_display': invisible
+    '#attributes':
+      style: 'background: #E5EFFA; padding: 25px;'
+    '#format': container
+    kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma:
+      '#type': radios
+      '#title': 'Er der enighed mellem forældremyndighedsindehaverne?'
+      '#options':
+        Ja: Ja
+        Nej: Nej
+    enighed_mellem_foraeldre:
+      '#type': fieldset
+      '#title': 'Enighed mellem forældremyndighedsindehaverne'
+      markup_enighed:
+        '#type': markup
+        '#markup': '<p>Kommunen vil i henhold til Forældreansvarsloven § 3 gøre opmærksom på ved ind- og udmeldelse i skole samt skolefritidsordning &nbsp;kræves enighed mellem forældrene.</p>'
+    der_er_ikke_enighed_mellem_foraeldremyndighedsindehaverne:
+      '#type': fieldset
+      '#title': 'Der er ikke enighed mellem forældremyndighedsindehaverne'
+      '#states':
+        visible:
+          ':input[name="kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma"]':
+            value: Nej
+      '#attributes':
+        style: 'background-color: #FFF4CC; border: 1px solid #FFD54F; color: #5C4400; ``'
+      markup_03:
+        '#type': markup
+        '#markup': '<p>Der kan ikke ansøges om skoleskift, når der ikke er enighed mellem forældremyndighedsindehaverne. Begge forældremyndighedsindehavere skal være enige om skoleskiftet, før ansøgningen kan indsendes.</p>'
+markup_01:
+  '#type': markup
+  '#markup': '<h5><strong>Oplysninger om anvendelse af persondata</strong></h5><p>Aarhus Kommune registrerer og bruger de personoplysninger, du sender til os. Du kan læse om vores behandling af personoplysninger i Børn og Unge på <a href="https://www.aarhus.dk/personoplysningerimbu" target="_blank">aarhus.dk/personoplysningerimbu</a> og specifikt om indskrivning på <a href="https://www.aarhus.dk/indskrivningimbu" target="_blank">aarhus.dk/indskrivningimbu</a>.</p>'
+actions:
+  '#type': webform_actions
+  '#title': 'Send knap(per)'
+  '#states':
+    disabled:
+      ':input[name="kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma"]':
+        value: Nej

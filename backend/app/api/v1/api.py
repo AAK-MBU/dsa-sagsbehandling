@@ -15,7 +15,7 @@ single api_router instead of importing every endpoint router individually.
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import require_auth
-from app.api.v1.endpoints import aktivitet, citizen, lookup, skolebegynder
+from app.api.v1.endpoints import aktivitet, citizen, lookup, skolebegynder, skoleskifter
 from app.core.security import verify_api_key
 
 
@@ -37,6 +37,13 @@ rpa_dependencies = [Depends(verify_api_key)]
 # Register skolebegynder routes (Skolebegynderscreeninger).
 api_router.include_router(
     skolebegynder.router,
+    dependencies=human_dependencies,
+)
+
+
+# Register skoleskifter routes (Skoleskiftere og tilflyttere, draft).
+api_router.include_router(
+    skoleskifter.router,
     dependencies=human_dependencies,
 )
 

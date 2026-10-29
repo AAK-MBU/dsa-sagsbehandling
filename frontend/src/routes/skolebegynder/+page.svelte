@@ -1,20 +1,25 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  import { goto, invalidateAll } from "$app/navigation";
+  import { beforeNavigate, goto, invalidateAll } from "$app/navigation";
   import { page } from "$app/stores";
 
   import DataTable, { type DataTableColumn } from "$lib/components/DataTable.svelte";
+  import ReadOnlyNotice from "$lib/components/ReadOnlyNotice.svelte";
   import { backendFetch } from "$lib/client/backendFetch";
   import { esc } from "$lib/html";
   import {
     FANER,
     aarFraQuery,
+    brydResultat,
     dato,
     faneFraQuery,
     fejltekst,
     iFane,
     jaNej,
+    kommendeSkoleaar,
+    percentil,
+    skoleaarTekst,
     tidspunkt,
     type AendringRow,
     type Fane,
@@ -36,8 +41,10 @@
   // the same view.
   // -----------------------------
 
-  $: aarListe = [...new Set(sager.map((s) => s.skoleaar))].sort((a, b) => b - a);
-  $: aar = aarFraQuery($page.url.searchParams.get("aar")) ?? aarListe[0] ?? null;
+  // The coming school year is always offered and is the default, also before
+  // its first case arrives.
+  $: aarListe = [...new Set([kommendeSkoleaar(), ...sager.map((s) => s.skoleaar)])].sort((a, b) => b - a);
+  $: aar = aarFraQuery($page.url.searchParams.get("aar")) ?? kommendeSkoleaar();
   $: fane = faneFraQuery($page.url.searchParams.get("fane"));
 
   function skiftVisning(nyAar: number | null, nyFane: Fane) {
@@ -53,7 +60,7 @@
 
   $: antal = {
     overblik: aarSager.filter((s) => iFane(s, "overblik")).length,
-    "naermere-afklaring": aarSager.filter((s) => iFane(s, "naermere-afklaring")).length,
+    "screening-afviklet": aarSager.filter((s) => iFane(s, "screening-afviklet")).length,
     "ikke-screenet": aarSager.filter((s) => iFane(s, "ikke-screenet")).length,
     aendringer: aarAendringer.length
   } as Record<Fane, number>;
@@ -71,6 +78,25 @@
   const toOptions = (list: { id: number; label: string }[]) =>
     list.map((o) => ({ value: o.id, label: o.label }));
 
+  // A note shown as text (a closed case's remark): wrapped like ombryd, but
+  // capped at three lines, with the full text on hover — a long remark must
+  // neither widen its column nor make the row tall.
+  const notat = (tekst: string | null) =>
+    tekst
+      ? `<span class="line-clamp-3" style="white-space: normal; max-width: 16rem;" title="${esc(tekst)}">${esc(tekst)}</span>`
+      : "";
+
+  // DataTable cells are nowrap, so one long value ("Henvist til anden skole
+  // end distriktsskolen") widens its whole column. Wrapped text keeps the
+  // default view inside a normal screen width.
+  const ombryd = (html: string, maxRem = 10) =>
+    `<span style="white-space: normal; display: inline-block; max-width: ${maxRem}rem;">${html}</span>`;
+
+  // Columns whose values have a known, short width (dates, Ja/Nej, numbers):
+  // width 1px makes the browser size them to their content and give the
+  // spare width to the columns that can use it (names, schools, remarks).
+  const FAST = "w-px";
+
   // Every value from the API goes through esc() — DataTable renders these
   // strings as HTML. See $lib/html.
   $: alleKolonner = [
@@ -78,37 +104,90 @@
       key: "navn",
       label: "Navn",
       filterType: "text",
-      render: (row: SkolebegynderRow) =>
-        `<a href="/skolebegynder/${row.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
-        (row.navne_adresse_beskyttelse
-          ? ` <span title="Navne- og adressebeskyttelse" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">Beskyttet</span>`
-          : "") +
-        (row.aabne_aendringer > 0
-          ? ` <span title="${row.aabne_aendringer} uhåndteret ændring(er)" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">!</span>`
-          : "")
+      // The CPR sits under the name rather than in a column of its own — one
+      // column less, which is what lets the grid fit a 13" laptop — and the
+      // Navn search finds either, typed with or without the dash.
+      filterValues: (row: SkolebegynderRow) => [row.navn ?? "", row.cpr, formatCpr(row.cpr)],
+      // Markers are short words on their own line, not symbols: a "!" or "≠"
+      // only explained itself through a tooltip on a 10px target.
+      render: (row: SkolebegynderRow) => {
+        const maerker = [
+          row.navne_adresse_beskyttelse
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">Beskyttet</span>`
+            : "",
+          row.aabne_aendringer > 0
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">${row.aabne_aendringer} ${row.aabne_aendringer === 1 ? "ændring" : "ændringer"}</span>`
+            : "",
+          row.skoler_afviger
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-fuchsia-100 text-fuchsia-800" title="Distriktsskole, ønsket skole og skoletilbud er ikke den samme skole">Skoler afviger</span>`
+            : ""
+        ].filter(Boolean);
+        return ombryd(
+          `<a href="/elev/${esc(row.cpr)}/skolebegynder?sag=${row.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
+            `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(row.cpr))}</span>` +
+            (maerker.length ? `<span class="mt-1 flex flex-wrap gap-1">${maerker.join("")}</span>` : ""),
+          12
+        );
+      }
     },
-    { key: "cpr", label: "CPR", filterType: "text", render: (row: SkolebegynderRow) => esc(formatCpr(row.cpr)) },
+    { key: "cpr", class: FAST, label: "CPR", filterType: "text", render: (row: SkolebegynderRow) => esc(formatCpr(row.cpr)) },
     {
       key: "status_tekst",
       label: "Status",
       filterType: "select",
       multiSelect: true,
       render: (row: SkolebegynderRow) =>
-        `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusBadgeClass(row.status_tekst)}">${esc(row.status_tekst)}</span>`
+        // Below 2xl a long status ("Screening afviklet") may wrap rather than
+        // set the column's width — the rows are two lines tall there anyway.
+        `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium whitespace-normal max-w-[6.5rem] 2xl:whitespace-nowrap 2xl:max-w-none ${getStatusBadgeClass(row.status_tekst)}">${esc(row.status_tekst)}</span>`
     },
-    { key: "screeningsdato", label: "Screeningsdato", filterType: "text", render: (row: SkolebegynderRow) => esc(dato(row.screeningsdato)) },
-    { key: "samlet_resultat", label: "Samlet resultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.samlet_resultat) },
+    {
+      key: "screening_booket_tidspunkt",
+      class: FAST,
+      label: "Booket tid",
+      filterType: "text",
+      render: (row: SkolebegynderRow) => esc(row.screening_booket_tidspunkt ? tidspunkt(row.screening_booket_tidspunkt) : "")
+    },
+    { key: "screeningsdato", class: FAST, label: "Screenet", filterType: "text", render: (row: SkolebegynderRow) => esc(dato(row.screeningsdato)) },
+    { key: "samlet_resultat", label: "Samlet resultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(brydResultat(esc(row.samlet_resultat))) },
     {
       key: "puf_screeningsresultat",
-      label: "PUF-screeningsresultat",
+      // Short header labels where the long word would set the column width
+      // (the header does not wrap inside a word): "Screenet" for the date,
+      // "PUF-resultat" for "PUF-screeningsresultat". The export keeps the full
+      // names.
+      label: "PUF-resultat",
       filterType: "select",
       multiSelect: true,
       editable: true,
-      render: (row: SkolebegynderRow) => esc(row.puf_screeningsresultat)
+      render: (row: SkolebegynderRow) => ombryd(brydResultat(esc(row.puf_screeningsresultat)))
     },
     { key: "dagtilbud", label: "Indmeldt dagtilbud", filterType: "text", render: (row: SkolebegynderRow) => esc(row.dagtilbud) },
-    { key: "distriktsskole", label: "Distriktsskole", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.distriktsskole) },
-    { key: "oensket_skole", label: "Ønsket skole", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.oensket_skole) },
+    { key: "distriktsskole", label: "Distriktsskole", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(esc(row.distriktsskole)) },
+    {
+      key: "oensket_skole",
+      label: "Ønsket skole",
+      filterType: "select",
+      multiSelect: true,
+      // Parents can give two schools; the second goes under the first,
+      // numbered, and the filter finds a school given as either. The
+      // sibling's school sits under the wishes rather than in a column of its
+      // own: it matters for the decision only as "does the sibling guarantee
+      // apply here".
+      filterValues: (row: SkolebegynderRow) =>
+        row.oensket_skole_2 ? [row.oensket_skole ?? "", row.oensket_skole_2] : [row.oensket_skole ?? ""],
+      render: (row: SkolebegynderRow) =>
+        ombryd(
+          (row.oensket_skole_2
+            ? `1. ${esc(row.oensket_skole)}<br><span class="text-gray-600">2. ${esc(row.oensket_skole_2)}</span>`
+            : esc(row.oensket_skole)) +
+            (row.soeskende_skole
+              ? row.soeskende_skolekode === row.oensket_skolekode
+                ? `<br><span class="text-[11px] text-emerald-700">Søskende går her</span>`
+                : `<br><span class="text-[11px] text-gray-500">Søskende på ${esc(row.soeskende_skole)}</span>`
+              : "")
+        )
+    },
     { key: "soeskende_skole", label: "Skoleønske søskende", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.soeskende_skole) },
     {
       key: "skoletilbud_matrikel_id",
@@ -118,7 +197,7 @@
       editable: true,
       selectOptions: toOptions(lookups.skolematrikel),
       filterValues: (row: SkolebegynderRow) => [row.skoletilbud_matrikel ?? ""],
-      render: (row: SkolebegynderRow) => esc(row.skoletilbud_matrikel)
+      render: (row: SkolebegynderRow) => ombryd(esc(row.skoletilbud_matrikel))
     },
     {
       key: "skoletilbudstype_id",
@@ -128,7 +207,7 @@
       editable: true,
       selectOptions: toOptions(lookups.skoletilbudstyper),
       filterValues: (row: SkolebegynderRow) => [row.skoletilbudstype_tekst ?? ""],
-      render: (row: SkolebegynderRow) => esc(row.skoletilbudstype_tekst)
+      render: (row: SkolebegynderRow) => ombryd(esc(row.skoletilbudstype_tekst))
     },
     {
       key: "skoleplaceringsaarsag_id",
@@ -142,6 +221,7 @@
     },
     {
       key: "krav_paa_befordring",
+      class: FAST,
       label: "Krav på befordring",
       filterType: "select",
       editable: true,
@@ -159,9 +239,11 @@
       filterValues: (row: SkolebegynderRow) => [row.brevskabelon_tekst ?? ""],
       render: (row: SkolebegynderRow) => esc(row.brevskabelon_tekst)
     },
-    { key: "bemaerkning", label: "Bemærkning", filterType: "text", editable: true, render: (row: SkolebegynderRow) => esc(row.bemaerkning) },
+    { key: "afklaring", label: "Afklaring", filterType: "text", editable: true, multiline: true, render: (row: SkolebegynderRow) => notat(row.afklaring) },
+    { key: "bemaerkning", label: "Bemærkning", filterType: "text", editable: true, multiline: true, render: (row: SkolebegynderRow) => notat(row.bemaerkning) },
     {
       key: "skoler_afviger",
+      class: FAST,
       label: "Skoler afviger",
       filterType: "select",
       filterValues: (row: SkolebegynderRow) => [jaNej(row.skoler_afviger)],
@@ -170,22 +252,23 @@
           ? `<span title="Distriktsskole, ønsket skole og skoletilbud er ikke den samme skole" class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-fuchsia-100 text-fuchsia-800">Afviger</span>`
           : ""
     },
-    { key: "gaaafstand_distriktsskole_km", label: "Gåafstand distriktsskole (km)", filterType: "text" },
-    { key: "gaaafstand_oensket_skole_km", label: "Gåafstand ønsket skole (km)", filterType: "text" },
-    { key: "gaaafstand_skoletilbud_km", label: "Gåafstand skoletilbud (km)", filterType: "text" },
+    { key: "gaaafstand_distriktsskole_km", class: FAST, label: "Gåafstand distriktsskole (km)", filterType: "text" },
+    { key: "gaaafstand_oensket_skole_km", class: FAST, label: "Gåafstand ønsket skole (km)", filterType: "text" },
+    { key: "gaaafstand_skoletilbud_km", class: FAST, label: "Gåafstand skoletilbud (km)", filterType: "text" },
     { key: "modersmaal", label: "Modersmål", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.modersmaal) },
-    { key: "tilflyttet_dk_dato", label: "Tilflyttet DK", filterType: "text", render: (row: SkolebegynderRow) => esc(row.tilflyttet_dk_dato ? dato(row.tilflyttet_dk_dato) : "") },
+    { key: "tilflyttet_dk_dato", class: FAST, label: "Tilflyttet DK", filterType: "text", render: (row: SkolebegynderRow) => esc(row.tilflyttet_dk_dato ? dato(row.tilflyttet_dk_dato) : "") },
     {
       key: "ppr_status",
+      class: FAST,
       label: "PPR",
       filterType: "select",
       filterValues: (row: SkolebegynderRow) => [jaNej(row.ppr_status)],
       render: (row: SkolebegynderRow) => esc(row.ppr_status ? "Ja" : "")
     },
     { key: "navn_konsulent", label: "Konsulent", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => esc(row.navn_konsulent) },
-    { key: "of_percentil", label: "Ordforråd (percentil)", filterType: "text" },
-    { key: "sf_percentil", label: "Sprogforståelse (percentil)", filterType: "text" },
-    { key: "sagsbehandlingsdato", label: "Sagsbehandlingsdato", filterType: "text", render: (row: SkolebegynderRow) => esc(row.sagsbehandlingsdato ? dato(row.sagsbehandlingsdato) : "") }
+    { key: "of_percentil", class: FAST, label: "Ordforråd (percentil)", filterType: "text", render: (row: SkolebegynderRow) => esc(row.of_percentil === null ? "" : percentil(row.of_percentil)) },
+    { key: "sf_percentil", class: FAST, label: "Sprogforståelse (percentil)", filterType: "text", render: (row: SkolebegynderRow) => esc(row.sf_percentil === null ? "" : percentil(row.sf_percentil)) },
+    { key: "sagsbehandlingsdato", class: FAST, label: "Sagsbehandlingsdato", filterType: "text", render: (row: SkolebegynderRow) => esc(row.sagsbehandlingsdato ? dato(row.sagsbehandlingsdato) : "") }
   ] satisfies DataTableColumn[];
 
 
@@ -193,23 +276,37 @@
   // Column chooser — per tab, remembered in this browser
   // -----------------------------
 
-  // The tab columns from the sketch: Overblik is the full work grid, the
-  // other two the short lists ("Navn, CPR, PUF screeningsresultat,
-  // Bemærkning, Tilflyttet til DK" for Nærmere afklaring).
+  // Overblik is where the placement decision is made, so by default it shows
+  // what that decision needs and nothing else — who, the result, the schools
+  // in play and what was decided — and fits a normal screen without
+  // scrolling. Letter-step fields (skabelon, krav på befordring), daycare and
+  // remarks are one click away in "Kolonner" and on the case page.
+  // Screening afviklet is the queue those decisions are made from, so it
+  // gets Overblik's columns — derived from them, so the two cannot drift —
+  // with Afklaring in place of Status: every row there has the same status,
+  // and the afklaring note belongs to exactly this step. Ikke screenet shows
+  // the booked screening time.
+  const OVERBLIK_KOLONNER = [
+    "navn", "status_tekst", "screeningsdato", "samlet_resultat", "puf_screeningsresultat",
+    "distriktsskole", "oensket_skole", "skoletilbud_matrikel_id", "skoletilbudstype_id"
+  ];
+
   const STANDARD_KOLONNER: Record<Exclude<Fane, "aendringer">, string[]> = {
-    overblik: [
-      "navn", "cpr", "status_tekst", "samlet_resultat", "puf_screeningsresultat", "dagtilbud",
-      "distriktsskole", "oensket_skole", "soeskende_skole", "skoletilbud_matrikel_id",
-      "skoletilbudstype_id", "skoleplaceringsaarsag_id", "krav_paa_befordring", "brevskabelon_id",
-      "bemaerkning", "skoler_afviger"
-    ],
-    "naermere-afklaring": [
-      "navn", "cpr", "screeningsdato", "samlet_resultat", "puf_screeningsresultat", "bemaerkning", "tilflyttet_dk_dato"
-    ],
-    "ikke-screenet": ["navn", "cpr", "distriktsskole", "dagtilbud", "ppr_status", "tilflyttet_dk_dato", "bemaerkning"]
+    overblik: OVERBLIK_KOLONNER,
+    "screening-afviklet": [...OVERBLIK_KOLONNER.filter((k) => k !== "status_tekst"), "afklaring"],
+    "ikke-screenet": [
+      "navn", "status_tekst", "screening_booket_tidspunkt", "distriktsskole", "dagtilbud", "ppr_status",
+      "tilflyttet_dk_dato", "bemaerkning"
+    ]
   };
 
-  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v1";
+  // Bumped whenever a default changes, so choices saved against the old
+  // default do not hide the new one. v2: Overblik 16 -> 9 columns.
+  // v3: Screeningsdato added to Overblik. v4: the caseworkers' statuses —
+  // tab "naermere-afklaring" became "screening-afviklet". v5: Screening
+  // afviklet gets Overblik's columns. v6: CPR under the name, not a column
+  // of its own (13" laptops).
+  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v6";
 
   let synlige: Record<string, string[]> = { ...STANDARD_KOLONNER };
   let visKolonnevaelger = false;
@@ -267,76 +364,116 @@
 
 
   // -----------------------------
-  // Inline editing of one row (DataTable's Redigér / Gem)
+  // Editing in the grid
+  //
+  // No Redigér button: the editable columns are inputs on every open case.
+  // Changes are held here as drafts, marked yellow in the grid, and saved
+  // together from the bar under it. Nothing reaches the database before Gem
+  // — the caseworkers are not all at home in spreadsheets, so an explicit
+  // save is the safe default. (Double-click to edit a single cell was the
+  // alternative considered; see the decision 2026-10-21.)
   // -----------------------------
 
-  let editingRowId: number | null = null;
-  let editableRow: Record<string, any> | null = null;
+  type Kladde = Record<string, any>;
+  let kladder: Record<number, Kladde> = {};
 
-  function startRedigering(row: SkolebegynderRow) {
-    if (row.status_tekst === "Afsluttet") {
-      vis("fejl", `${row.navn ?? "Sagen"} er afsluttet. Åbn sagen og genåbn den, før den kan ændres.`);
-      return;
+  /** The value a cell's input shows for a stored row. Ja/Nej works in numbers. */
+  function redigeringsvaerdi(row: SkolebegynderRow, key: string): any {
+    const v = (row as Record<string, any>)[key];
+    if (key === "krav_paa_befordring") return v === null || v === undefined ? null : v ? 1 : 0;
+    return v ?? null;
+  }
+
+  function aendrCelle(row: SkolebegynderRow, key: string, value: any) {
+    const id = row.skolebegynder_id;
+    const original = redigeringsvaerdi(row, key);
+    // Text is compared as typed (trimmed only on save), so the input never
+    // rewrites what the caseworker is in the middle of typing.
+    const somFoer = typeof value === "string" ? value === (original ?? "") : value === original;
+
+    const kladde = { ...(kladder[id] ?? {}) };
+    if (somFoer) delete kladde[key];
+    else kladde[key] = value;
+
+    const naeste = { ...kladder };
+    if (Object.keys(kladde).length > 0) naeste[id] = kladde;
+    else delete naeste[id];
+    kladder = naeste;
+  }
+
+  $: antalAendringer = Object.values(kladder).reduce((n, k) => n + Object.keys(k).length, 0);
+  $: antalSager = Object.keys(kladder).length;
+
+  function tilFelter(kladde: Kladde): SkolebegynderFelter {
+    const felter: Record<string, any> = {};
+    for (const [key, v] of Object.entries(kladde)) {
+      if (key === "krav_paa_befordring") felter[key] = v === null ? null : v === 1;
+      else if (typeof v === "string") felter[key] = v.trim() || null;
+      else felter[key] = v;
     }
-    besked = null;
-    editingRowId = row.skolebegynder_id;
-    editableRow = {
-      puf_screeningsresultat: row.puf_screeningsresultat,
-      skoletilbud_matrikel_id: row.skoletilbud_matrikel_id,
-      skoletilbudstype_id: row.skoletilbudstype_id,
-      skoleplaceringsaarsag_id: row.skoleplaceringsaarsag_id,
-      // The Ja/Nej select works in numbers; mapped back on save.
-      krav_paa_befordring: row.krav_paa_befordring === null ? null : row.krav_paa_befordring ? 1 : 0,
-      brevskabelon_id: row.brevskabelon_id,
-      bemaerkning: row.bemaerkning
-    };
-  }
-
-  function annullerRedigering() {
-    editingRowId = null;
-    editableRow = null;
-  }
-
-  function aendrFelt(key: string, value: any) {
-    if (editableRow) editableRow = { ...editableRow, [key]: value };
+    return felter;
   }
 
   let gemmer = false;
 
-  async function gemRaekke(row: SkolebegynderRow) {
-    if (!editableRow || gemmer) return;
+  // One PUT per case, each with only its changed fields. A case that fails
+  // keeps its drafts, so the caseworker sees what did not get saved.
+  async function gemAendringer() {
+    if (gemmer || antalSager === 0) return;
     gemmer = true;
+    besked = null;
 
-    const felter: SkolebegynderFelter = {
-      puf_screeningsresultat: editableRow.puf_screeningsresultat || null,
-      skoletilbud_matrikel_id: editableRow.skoletilbud_matrikel_id,
-      skoletilbudstype_id: editableRow.skoletilbudstype_id,
-      skoleplaceringsaarsag_id: editableRow.skoleplaceringsaarsag_id,
-      krav_paa_befordring: editableRow.krav_paa_befordring === null ? null : editableRow.krav_paa_befordring === 1,
-      brevskabelon_id: editableRow.brevskabelon_id,
-      bemaerkning: editableRow.bemaerkning || null
-    };
+    const navne = new Map(sager.map((s) => [s.skolebegynder_id, s.navn ?? "Sagen"]));
+    const tilbage = { ...kladder };
+    const fejl: string[] = [];
+    let gemt = 0;
 
     try {
-      const res = await backendFetch(`/skolebegynder/${row.skolebegynder_id}`, {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(felter)
-      });
-
-      if (!res.ok) {
-        vis("fejl", await fejltekst(res));
-        return;
+      for (const [id, kladde] of Object.entries(kladder)) {
+        const res = await backendFetch(`/skolebegynder/${id}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(tilFelter(kladde))
+        });
+        if (res.ok) {
+          gemt++;
+          delete tilbage[Number(id)];
+        } else {
+          fejl.push(`${navne.get(Number(id))}: ${await fejltekst(res)}`);
+        }
       }
-
-      const opdateret = await res.json();
-      annullerRedigering();
-      vis("ok", `${opdateret.navn ?? "Sagen"} er gemt — status: ${opdateret.status_tekst}.`);
+      kladder = tilbage;
       await invalidateAll();
     } finally {
       gemmer = false;
     }
+
+    if (fejl.length > 0) {
+      vis("fejl", `${gemt} sag(er) gemt. Kunne ikke gemme: ${fejl.join(" · ")}`);
+    } else {
+      vis("ok", `${gemt} sag(er) gemt.`);
+    }
   }
+
+  function fortrydAendringer() {
+    if (antalAendringer > 3 && !confirm(`Fortryd alle ${antalAendringer} ændringer?`)) return;
+    kladder = {};
+  }
+
+  // Leaving the page drops the drafts, so ask first. Switching tab or year
+  // stays on the page and keeps them.
+  beforeNavigate((navigation) => {
+    if (antalAendringer === 0) return;
+    if (navigation.type === "leave") {
+      // Closing or reloading the tab: the browser shows its own warning.
+      navigation.cancel();
+      return;
+    }
+    if (navigation.to?.url.pathname === $page.url.pathname) return;
+    if (!confirm(`Du har ${antalAendringer} ugemt(e) ændring(er). Vil du forlade siden uden at gemme?`)) {
+      navigation.cancel();
+    }
+  });
 
 
   // -----------------------------
@@ -352,7 +489,6 @@
   $: if (visningsNoegle !== forrigeVisning) {
     forrigeVisning = visningsNoegle;
     valgte = [];
-    annullerRedigering();
   }
 
   // Only ids actually in the current tab are ever sent.
@@ -364,14 +500,10 @@
     skoletilbud_matrikel_id: MasseFelt;
     skoletilbudstype_id: MasseFelt;
     skoleplaceringsaarsag_id: MasseFelt;
-    brevskabelon_id: MasseFelt;
-    krav_paa_befordring: "" | "ja" | "nej";
   } = {
     skoletilbud_matrikel_id: "",
     skoletilbudstype_id: "",
-    skoleplaceringsaarsag_id: "",
-    brevskabelon_id: "",
-    krav_paa_befordring: ""
+    skoleplaceringsaarsag_id: ""
   };
 
   function masseFelter(): SkolebegynderFelter {
@@ -379,12 +511,12 @@
     if (masse.skoletilbud_matrikel_id !== "") felter.skoletilbud_matrikel_id = Number(masse.skoletilbud_matrikel_id);
     if (masse.skoletilbudstype_id !== "") felter.skoletilbudstype_id = Number(masse.skoletilbudstype_id);
     if (masse.skoleplaceringsaarsag_id !== "") felter.skoleplaceringsaarsag_id = Number(masse.skoleplaceringsaarsag_id);
-    if (masse.brevskabelon_id !== "") felter.brevskabelon_id = Number(masse.brevskabelon_id);
-    if (masse.krav_paa_befordring !== "") felter.krav_paa_befordring = masse.krav_paa_befordring === "ja";
     return felter;
   }
 
-  $: masseKlar = Object.values(masse).some((v) => v !== "") && valgteIFane.length > 0;
+  // Not alongside unsaved drafts: two pending ways of changing the same
+  // cases at once is one too many to keep track of.
+  $: masseKlar = Object.values(masse).some((v) => v !== "") && valgteIFane.length > 0 && antalAendringer === 0;
 
   let masseopdaterer = false;
 
@@ -410,7 +542,7 @@
       const resultat = await res.json();
       vis("ok", `${resultat.opdaterede} sag(er) opdateret, ${resultat.statusaendringer} statusændring(er).`);
       valgte = [];
-      masse = { skoletilbud_matrikel_id: "", skoletilbudstype_id: "", skoleplaceringsaarsag_id: "", brevskabelon_id: "", krav_paa_befordring: "" };
+      masse = { skoletilbud_matrikel_id: "", skoletilbudstype_id: "", skoleplaceringsaarsag_id: "" };
       await invalidateAll();
     } finally {
       masseopdaterer = false;
@@ -423,6 +555,73 @@
   // -----------------------------
 
   let haandterer: number | null = null;
+
+  // The Ændringer grid. Same DataTable as the other tabs; its cells are HTML
+  // strings, so the "Markér som håndteret" button carries its id in a data
+  // attribute and one click handler around the grid acts on it.
+  $: aendringsKolonner = [
+    {
+      key: "navn",
+      label: "Navn",
+      filterType: "text",
+      filterValues: (a: AendringRow) => [a.navn ?? "", a.cpr, formatCpr(a.cpr)],
+      render: (a: AendringRow) =>
+        ombryd(
+          `<a href="/elev/${esc(a.cpr)}/skolebegynder?sag=${a.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(a.navn ?? "—")}</a>` +
+            `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(a.cpr))}</span>`,
+          12
+        )
+    },
+    {
+      key: "adresse_tekst",
+      label: "Adresse",
+      filterType: "text",
+      render: (a: AendringRow) => ombryd(esc(a.navne_adresse_beskyttelse ? "Beskyttet" : (a.adresse_tekst ?? "—")), 14)
+    },
+    { key: "distriktsskole", label: "Distriktsskole", filterType: "select", multiSelect: true, render: (a: AendringRow) => esc(a.distriktsskole ?? "—") },
+    {
+      key: "aendringsaarsag_tekst",
+      label: "Ændringsårsag",
+      filterType: "select",
+      multiSelect: true,
+      render: (a: AendringRow) =>
+        ombryd(`<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 leading-6">${esc(a.aendringsaarsag_tekst)}</span>`, 14)
+    },
+    { key: "beskrivelse", label: "Beskrivelse", filterType: "text", render: (a: AendringRow) => ombryd(esc(a.beskrivelse ?? ""), 20) },
+    {
+      key: "status_tekst",
+      label: "Status",
+      filterType: "select",
+      multiSelect: true,
+      render: (a: AendringRow) =>
+        `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium whitespace-normal max-w-[6.5rem] 2xl:whitespace-nowrap 2xl:max-w-none ${getStatusBadgeClass(a.status_tekst)}">${esc(a.status_tekst)}</span>`
+    },
+    { key: "registreret_tidspunkt", class: FAST, label: "Registreret", filterType: "text", render: (a: AendringRow) => esc(tidspunkt(a.registreret_tidspunkt)) },
+    ...(kanRedigere
+      ? [
+          {
+            key: "_haandter",
+            label: "",
+            filterable: false,
+            sortable: false,
+            render: (a: AendringRow) =>
+              `<button type="button" data-haandter="${a.aendring_id}" ${haandterer !== null ? "disabled" : ""}
+                 class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border border-dsa-200 bg-white text-dsa-700 hover:bg-dsa-50 disabled:opacity-50">
+                 ${haandterer === a.aendring_id ? "Markerer…" : "Markér som håndteret"}
+               </button>`
+          }
+        ]
+      : [])
+  ] satisfies DataTableColumn[];
+
+  function klikIAendringer(event: MouseEvent) {
+    const knap = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-haandter]");
+    if (!knap || knap.disabled) return;
+    const aendring = aarAendringer.find((a) => a.aendring_id === Number(knap.dataset.haandter));
+    if (aendring) haandter(aendring);
+  }
+
+  let aendringerFiltreret = 0;
 
   async function haandter(aendring: AendringRow) {
     if (haandterer !== null) return;
@@ -451,12 +650,9 @@
 </script>
 
 
-<svelte:head>
-  <title>DSA – Skolebegynderscreeninger</title>
-</svelte:head>
-
-
 <section class="w-full">
+
+  <ReadOnlyNotice />
 
   <!-- Header -->
   <div class="flex items-end justify-between gap-4 mb-6 flex-wrap">
@@ -466,7 +662,7 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <label class="text-[13px] text-gray-600" for="skoleaar">Skolestart</label>
+      <label class="text-[13px] text-gray-600" for="skoleaar">Skoleår</label>
       <select
         id="skoleaar"
         class="border border-dsa-200 rounded-full bg-white px-3 py-1.5 text-sm"
@@ -474,7 +670,7 @@
         on:change={(e) => skiftVisning(Number((e.target as HTMLSelectElement).value), fane)}
       >
         {#each aarListe as a}
-          <option value={a}>{a}</option>
+          <option value={a}>{skoleaarTekst(a)}</option>
         {/each}
       </select>
 
@@ -495,26 +691,32 @@
 
 
   {#if sager.length === 0}
-    <div class="bg-white rounded-2xl px-6 py-10 text-center text-gray-500" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
+    <div class="rounded-2xl px-6 py-10 text-center text-gray-500 kort">
       Der er ingen skolebegyndere i systemet endnu.
     </div>
   {:else}
 
-    <!-- Tabs -->
-    <div class="flex gap-1 border-b border-dsa-100 mb-5">
+    <!-- Tabs: separate boxed buttons, so each reads as clickable on its own;
+         the chosen one filled in the header purple. -->
+    <div class="flex gap-2 mb-5 flex-wrap" role="tablist">
       {#each FANER as f}
         <button
           type="button"
-          class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition-colors {fane === f.id
-            ? 'border-dsa-600 text-dsa-800'
-            : 'border-transparent text-gray-500 hover:text-dsa-700'}"
+          role="tab"
+          aria-selected={fane === f.id}
+          class="inline-flex items-center px-4 py-2 rounded-lg border text-sm font-medium transition-colors {fane === f.id
+            ? 'text-white border-transparent shadow'
+            : 'bg-white text-gray-700 border-[#d3cce2] shadow-sm hover:bg-dsa-50 hover:border-dsa-400 hover:text-dsa-800'}"
+          style={fane === f.id ? "background-color: #271347;" : ""}
           on:click={() => skiftVisning(aar, f.id)}
         >
           {f.label}
           <span
-            class="ml-1.5 inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1.5 rounded-full text-[11px] font-bold {f.id === 'aendringer' && antal[f.id] > 0
+            class="ml-2 inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1.5 rounded-full text-[11px] font-bold {f.id === 'aendringer' && antal[f.id] > 0
               ? 'bg-amber-500 text-white'
-              : 'bg-dsa-100 text-dsa-800'}"
+              : fane === f.id
+                ? 'bg-white/20 text-white'
+                : 'bg-dsa-100 text-dsa-800'}"
           >
             {antal[f.id]}
           </span>
@@ -539,54 +741,20 @@
     {#if fane === "aendringer"}
 
       <!-- Ændringer -->
-      <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
-        {#if aarAendringer.length === 0}
-          <p class="px-6 py-10 text-center text-gray-500 text-sm">Ingen uhåndterede ændringer.</p>
-        {:else}
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-white text-left" style="background-color: #271347;">
-                <th class="px-4 py-3 font-semibold">Navn</th>
-                <th class="px-4 py-3 font-semibold">CPR</th>
-                <th class="px-4 py-3 font-semibold">Adresse</th>
-                <th class="px-4 py-3 font-semibold">Distriktsskole</th>
-                <th class="px-4 py-3 font-semibold">Ændringsårsag</th>
-                <th class="px-4 py-3 font-semibold">Beskrivelse</th>
-                <th class="px-4 py-3 font-semibold">Registreret</th>
-                <th class="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each aarAendringer as a (a.aendring_id)}
-                <tr class="border-b border-gray-100 last:border-0">
-                  <td class="px-4 py-3">
-                    <a href="/skolebegynder/{a.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">{a.navn ?? "—"}</a>
-                  </td>
-                  <td class="px-4 py-3 font-mono text-[13px]">{formatCpr(a.cpr)}</td>
-                  <td class="px-4 py-3">{a.navne_adresse_beskyttelse ? "Beskyttet" : (a.adresse_tekst ?? "—")}</td>
-                  <td class="px-4 py-3">{a.distriktsskole ?? "—"}</td>
-                  <td class="px-4 py-3">
-                    <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">{a.aendringsaarsag_tekst}</span>
-                  </td>
-                  <td class="px-4 py-3 text-gray-600">{a.beskrivelse ?? ""}</td>
-                  <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{tidspunkt(a.registreret_tidspunkt)}</td>
-                  <td class="px-4 py-3 text-right">
-                    {#if kanRedigere}
-                      <button
-                        type="button"
-                        class="px-3 py-1.5 rounded-full text-xs font-medium text-dsa-700 hover:bg-dsa-50 disabled:opacity-50"
-                        disabled={haandterer !== null}
-                        on:click={() => haandter(a)}
-                      >
-                        Markér som håndteret
-                      </button>
-                    {/if}
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        {/if}
+      <p class="text-[13px] text-gray-500 mb-3">
+        Viser {aendringerFiltreret} af {aarAendringer.length} uhåndterede ændringer
+      </p>
+      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+      <div class="rounded-2xl overflow-hidden kort" on:click={klikIAendringer}>
+        <DataTable
+          data={aarAendringer}
+          columns={aendringsKolonner}
+          getRowId={(row) => row.aendring_id}
+          compact
+          stickyFirstColumn
+          bind:filteredCount={aendringerFiltreret}
+          emptyMessage="Ingen uhåndterede ændringer"
+        />
       </div>
 
     {:else}
@@ -595,6 +763,9 @@
       <div class="flex items-center justify-between gap-4 mb-3 flex-wrap">
         <p class="text-[13px] text-gray-500">
           Viser {filteredCount} af {faneSager.length} sager
+          {#if kanRedigere}
+            · Ret felterne direkte i tabellen, og tryk <span class="font-medium text-gray-700">Gem ændringer</span>.
+          {/if}
         </p>
 
         <div class="relative">
@@ -663,28 +834,13 @@
             </label>
           {/if}
 
-          {#if lookups.brevskabeloner.length > 0}
-            <label class="flex flex-col text-xs text-gray-600">
-              Skabelon
-              <select class="mt-1 border border-gray-300 rounded px-2 py-1 text-sm bg-white min-w-40" bind:value={masse.brevskabelon_id}>
-                <option value="">— uændret —</option>
-                {#each lookups.brevskabeloner as o}
-                  <option value={o.id}>{o.label}</option>
-                {/each}
-              </select>
-            </label>
-          {/if}
+          <!-- Skabelon and krav på befordring belong to the letter step, which
+               gets its own view; they stay settable on the case page. -->
 
-          <label class="flex flex-col text-xs text-gray-600">
-            Krav på befordring
-            <select class="mt-1 border border-gray-300 rounded px-2 py-1 text-sm bg-white" bind:value={masse.krav_paa_befordring}>
-              <option value="">— uændret —</option>
-              <option value="ja">Ja</option>
-              <option value="nej">Nej</option>
-            </select>
-          </label>
-
-          <div class="flex gap-2 ml-auto">
+          <div class="flex gap-2 ml-auto items-center">
+            {#if antalAendringer > 0}
+              <span class="text-xs text-amber-800">Gem eller fortryd dine ændringer i tabellen først.</span>
+            {/if}
             <button
               type="button"
               class="px-3 py-1.5 rounded-full text-sm text-gray-600 hover:bg-white"
@@ -706,25 +862,58 @@
 
 
       <!-- Grid -->
-      <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow: 0 1px 3px rgba(39,19,71,0.08);">
+      <div class="rounded-2xl overflow-hidden kort">
         <DataTable
           data={faneSager}
           columns={kolonner}
           getRowId={(row) => row.skolebegynder_id}
           selectable={kanRedigere}
           bind:selectedIds={valgte}
-          editable={kanRedigere}
-          {editingRowId}
-          {editableRow}
-          onEdit={startRedigering}
-          onSave={gemRaekke}
-          onCancel={annullerRedigering}
-          onInputChange={aendrFelt}
+          compact
+          stickyFirstColumn
+          alwaysEditable={kanRedigere}
+          drafts={kladder}
+          isRowEditable={(row) => row.status_tekst !== "Afsluttet"}
+          getEditValue={redigeringsvaerdi}
+          onCellChange={aendrCelle}
           bind:filteredCount
           emptyMessage="Ingen sager i denne fane"
         />
       </div>
 
+    {/if}
+
+
+    <!-- Unsaved changes: on every tab, since drafts survive a tab switch -->
+    {#if antalAendringer > 0}
+      <div
+        class="sticky bottom-4 z-30 mt-4 mx-auto max-w-3xl px-5 py-3 rounded-2xl bg-amber-50 border border-amber-300 flex items-center gap-4 flex-wrap"
+        style="box-shadow: 0 6px 20px rgba(39,19,71,0.15);"
+        role="status"
+      >
+        <span class="text-sm text-amber-900">
+          <strong>{antalAendringer} ugemt{antalAendringer === 1 ? "" : "e"} ændring{antalAendringer === 1 ? "" : "er"}</strong>
+          i {antalSager} sag{antalSager === 1 ? "" : "er"}. Ændrede felter er markeret med gult.
+        </span>
+        <div class="ml-auto flex gap-2">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-full text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40"
+            disabled={gemmer}
+            on:click={fortrydAendringer}
+          >
+            Fortryd
+          </button>
+          <button
+            type="button"
+            class="px-5 py-2 rounded-full text-sm font-semibold text-white bg-dsa-600 hover:bg-dsa-700 disabled:opacity-40"
+            disabled={gemmer}
+            on:click={gemAendringer}
+          >
+            {gemmer ? "Gemmer…" : "Gem ændringer"}
+          </button>
+        </div>
+      </div>
     {/if}
 
   {/if}
