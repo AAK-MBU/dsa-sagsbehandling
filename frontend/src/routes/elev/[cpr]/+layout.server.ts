@@ -2,6 +2,7 @@ import { error } from "@sveltejs/kit";
 
 import { backendUserFetcher } from "$lib/server/backendApi";
 import type { SkolebegynderRow } from "$lib/skolebegynder";
+import type { SkoleskifterRow } from "$lib/skoleskifter";
 
 import type { LayoutServerLoad } from "./$types";
 
@@ -27,10 +28,11 @@ export const load: LayoutServerLoad = async (event) => {
 
   const api = backendUserFetcher(event);
 
-  const [stamdataRes, parentsRes, skolebegynderRes] = await Promise.all([
+  const [stamdataRes, parentsRes, skolebegynderRes, skoleskifterRes] = await Promise.all([
     api(`/citizen/stamdata/${cpr}`),
     api(`/citizen/stamdata/${cpr}/parents`),
-    api(`/skolebegynder/elev/${cpr}`)
+    api(`/skolebegynder/elev/${cpr}`),
+    api(`/skoleskifter/elev/${cpr}`)
   ]);
 
   if (!stamdataRes.ok) {
@@ -45,16 +47,22 @@ export const load: LayoutServerLoad = async (event) => {
   }
 
   const skolebegynderSager: SkolebegynderRow[] = skolebegynderRes.ok ? await skolebegynderRes.json() : [];
+  const skoleskifterSager: SkoleskifterRow[] = skoleskifterRes.ok ? await skoleskifterRes.json() : [];
 
   return {
     stamdata,
     parents: (parentsRes.ok ? await parentsRes.json() : []) as any[],
     skolebegynderSager,
+    skoleskifterSager,
     // Per area tab (keyed by Area.elevside): all cases, and the open ones.
     sagsantal: {
       skolebegynder: {
         alle: skolebegynderSager.length,
         aabne: skolebegynderSager.filter((s) => s.status_tekst !== "Afsluttet").length
+      },
+      skoleskiftere: {
+        alle: skoleskifterSager.length,
+        aabne: skoleskifterSager.filter((s) => s.status_tekst !== "Afsluttet").length
       }
     } as Record<string, { alle: number; aabne: number }>
   };

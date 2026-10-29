@@ -219,3 +219,74 @@ class CitizenService:
         result = self.db.execute(sql, {"cpr": cpr})
 
         return self._rows_to_dicts(result)
+
+
+    # DSA: not in befordringssystemet.
+    def get_soeskende(self, cpr: str) -> list[dict]:
+        """The child's siblings, with their school and their cases in DSA.
+
+        DSA has no family register, so a sibling is a child who shares a
+        custody holder (Foraelder) with this one — the "markering af samme
+        familie" the skoleskifter sketch asks for. Half-siblings with one
+        shared parent count; that is the point, as both families are on the
+        same applications.
+
+        Returns:
+            One dict per sibling: cpr, adresseringsnavn, protection, skole_navn,
+            elevklassetrin, and ``sager`` — their skolebegynder and skoleskifter
+            cases, newest first, as (omraade, beskrivelse, status_tekst,
+            skoletilbud, dato).
+        """
+
+        soeskende = self._rows_to_dicts(self.db.execute(
+            text("""
+                SELECT DISTINCT
+                    e.cpr,
+                    e.adresseringsnavn,
+                    e.navne_adresse_beskyttelse,
+                    sk.skolenavn AS skole_navn,
+                    e.elevklassetrin
+                FROM
+                    [dsa].[Foraelder] f1
+                INNER JOIN
+                    [dsa].[Foraelder] f2
+                    ON  f2.cpr_foraelder = f1.cpr_foraelder
+                    AND f2.cpr_elev <> f1.cpr_elev
+                INNER JOIN
+                    [dsa].[Elev] e
+                    ON e.cpr = f2.cpr_elev
+                LEFT JOIN
+                    [dsa].[view_Skoler] sk
+                    ON sk.skolekode = e.skolekode
+                WHERE
+                    f1.cpr_elev = :cpr
+            """),
+            {"cpr": cpr},
+        ))
+
+        for s in soeskende:
+            s["sager"] = self._rows_to_dicts(self.db.execute(
+                text("""
+                    SELECT
+                        N'skolebegynder'                          AS omraade,
+                        CONCAT(N'Skolebegynder ', skoleaar)       AS beskrivelse,
+                        status_tekst,
+                        skoletilbud_matrikel                      AS skoletilbud,
+                        CAST(modtaget_tidspunkt AS DATE)          AS dato
+                    FROM [dsa].[view_Skolebegyndere]
+                    WHERE cpr = :cpr
+                    UNION ALL
+                    SELECT
+                        N'skoleskiftere',
+                        variant,
+                        status_tekst,
+                        skoletilbud_matrikel,
+                        CAST(modtaget_tidspunkt AS DATE)
+                    FROM [dsa].[view_Skoleskiftere]
+                    WHERE cpr = :cpr
+                    ORDER BY dato DESC
+                """),
+                {"cpr": s["cpr"]},
+            ))
+
+        return soeskende
