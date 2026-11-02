@@ -100,12 +100,14 @@
   $: tdPad = compact ? "px-2.5 py-2 2xl:px-4 2xl:py-3" : "px-4 py-3";
   $: editPad = compact ? "px-1.5 py-1.5 2xl:px-2" : "px-2 py-1.5";
   $: filterPad = compact ? "px-2 py-2 2xl:px-3" : "px-3 py-2";
-  $: selectBredde = compact ? "w-28 2xl:w-36" : "w-36";
-  // Text fields fill their cell, so a remark column that the table widens
-  // gives a wider field; the minimum keeps a narrow column usable. Selects
-  // stay fixed — their options can be far longer than the cell. The input
-  // carries size="1": its built-in width (about 20 characters) would
-  // otherwise count as the column's minimum and widen the grid.
+  $: selectBredde = compact ? "w-full min-w-28 2xl:min-w-36" : "w-full min-w-36";
+  // Fields fill their cell, so a column that the table widens gives a wider
+  // field; the minimum keeps a narrow column usable. A select's longest
+  // option does not set the column's minimum (a percentage width), so on a
+  // narrow screen the grid is as before; with spare width the browser leans
+  // it toward the select columns. The input carries size="1": its built-in
+  // width (about 20 characters) would otherwise count as the column's minimum
+  // and widen the grid.
   $: inputBredde = compact ? "w-full min-w-20 2xl:min-w-32" : "w-full min-w-32";
 
   // The sticky first column starts where the (fixed-width) checkbox column ends.
