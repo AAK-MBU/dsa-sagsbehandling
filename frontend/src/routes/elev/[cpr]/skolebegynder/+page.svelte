@@ -11,6 +11,7 @@
     fejltekst,
     jaNej,
     percentil,
+    PUF_RESULTATER,
     skoleaarTekst,
     tidspunkt,
     type AendringRow,
@@ -445,7 +446,12 @@
 
         <label class="flex flex-col gap-1">
           <span class="text-gray-600">PUF-screeningsresultat</span>
-          <input class="border border-gray-300 rounded px-2.5 py-1.5" maxlength="100" bind:value={form.puf_screeningsresultat} />
+          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.puf_screeningsresultat}>
+            <option value="">— Vælg —</option>
+            {#each PUF_RESULTATER as r}
+              <option value={r}>{r}</option>
+            {/each}
+          </select>
         </label>
 
         <label class="flex flex-col gap-1">

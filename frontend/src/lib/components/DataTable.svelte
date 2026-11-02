@@ -559,7 +559,10 @@
                       value={value ?? ""}
                       on:change={(event) => {
                         const target = event.target as HTMLSelectElement;
-                        onCellChange(row, column.key, target.value === "" ? null : Number(target.value));
+                        // Options are ids (numbers) or, for a fixed list
+                        // like PUF-resultat, the text itself — keep its type.
+                        const opt = column.selectOptions?.find((o) => String(o.value) === target.value);
+                        onCellChange(row, column.key, opt ? opt.value : null);
                       }}
                     >
                       <option value="">—</option>

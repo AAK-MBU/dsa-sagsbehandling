@@ -12,6 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.skolebegynder import PufResultat
+
 
 class SkoleskifterOverviewRecord(BaseModel):
     """One row of the overview grid (view_Skoleskiftere)."""
@@ -121,7 +123,7 @@ class SkoleskifterUpdateRequest(BaseModel):
     resultat_2: str | None = Field(default=None, max_length=100)
     point_3: float | None = None
     resultat_3: str | None = Field(default=None, max_length=100)
-    samlet_resultat: str | None = Field(default=None, max_length=100)
+    samlet_resultat: PufResultat | None = None
 
     skoletilbud_matrikel_id: int | None = None
     skoletilbudstype_id: int | None = None

@@ -19,6 +19,7 @@
     jaNej,
     kommendeSkoleaar,
     percentil,
+    PUF_RESULTATER,
     skoleaarTekst,
     tidspunkt,
     type AendringRow,
@@ -160,6 +161,7 @@
       filterType: "select",
       multiSelect: true,
       editable: true,
+      selectOptions: PUF_RESULTATER.map((r) => ({ value: r, label: r })),
       render: (row: SkolebegynderRow) => ombryd(brydResultat(esc(row.puf_screeningsresultat)))
     },
     { key: "dagtilbud", label: "Indmeldt dagtilbud", filterType: "text", render: (row: SkolebegynderRow) => esc(row.dagtilbud) },

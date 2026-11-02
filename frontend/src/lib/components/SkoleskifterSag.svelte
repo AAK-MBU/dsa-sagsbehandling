@@ -3,7 +3,7 @@
 
   import { backendFetch } from "$lib/client/backendFetch";
   import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate } from "$lib/dates";
-  import { dato, fejltekst, skoleaarTekst, tidspunkt, type Lookups } from "$lib/skolebegynder";
+  import { dato, fejltekst, PUF_RESULTATER, skoleaarTekst, tidspunkt, type Lookups } from "$lib/skolebegynder";
   import {
     AFSLUTTET,
     ALDERSSVARENDE,
@@ -336,12 +336,12 @@
         </table>
         <label class="flex flex-col gap-1">
           <span class="text-gray-600">Samlet resultat</span>
-          <input class={felt} list="ss-resultater" bind:value={form.samlet_resultat} />
-          <datalist id="ss-resultater">
-            <option value={ALDERSSVARENDE}></option>
-            <option value="Sprogstøttebehov"></option>
-            <option value="Intet dansk sprog"></option>
-          </datalist>
+          <select class={felt} bind:value={form.samlet_resultat}>
+            <option value="">— Vælg —</option>
+            {#each PUF_RESULTATER as r}
+              <option value={r}>{r}</option>
+            {/each}
+          </select>
           <span class="text-[12px] text-gray-500">"{ALDERSSVARENDE}" afslutter sagen.</span>
         </label>
       </fieldset>
