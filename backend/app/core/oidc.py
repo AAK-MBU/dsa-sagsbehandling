@@ -9,6 +9,11 @@ from oidc_auth import OIDCConfig
 
 from app.core.config import settings
 
+# DSA: DSA's federation is Entra ID (v2.0), not B2C — leave OIDC_DISCOVERY_URL
+# unset. oidc-auth then reads {issuer}/.well-known/openid-configuration, and
+# Entra's endpoints carry no query string, so the problem below cannot arise.
+# The note is kept for a B2C deployment (befordringssystemet's dev):
+#
 # OIDC_DISCOVERY_URL must use Azure B2C's path-based /tfp/ form:
 #
 #   https://<tenant>.b2clogin.com/tfp/<tenant>.onmicrosoft.com/<policy>/v2.0/

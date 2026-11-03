@@ -61,6 +61,8 @@ class Settings:
     # a URI to redirect the user to post logout"), so leaving this unset turns
     # every logout into an error page. It does *not* have to be a registered
     # reply URL — B2C validates redirect_uri but not this.
+    # DSA: against Entra ID, register it on the app registration next to the
+    # redirect URI; Entra may decline to redirect to an unregistered address.
     oidc_post_logout_redirect: str | None = (
         os.getenv("OIDC_POST_LOGOUT_REDIRECT") or None
     )
