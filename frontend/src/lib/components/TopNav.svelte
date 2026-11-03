@@ -1,9 +1,16 @@
 <script lang="ts">
+  import { dev } from "$app/environment";
+  import { env as publicEnv } from "$env/dynamic/public";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { areas } from "$lib/areas";
   import { backendFetch } from "$lib/client/backendFetch";
   import { formatCpr } from "$lib/tableColumnConfig";
+
+  // DSA: which environment this is, shown beside the name — "LOKAL", "DEV".
+  // Set per compose file (docker-compose_local/dev.yml); prod sets none and
+  // shows nothing. `npm run dev` without Docker counts as local.
+  const miljoe = publicEnv.PUBLIC_ENVIRONMENT_LABEL || (dev ? "LOKAL" : "");
 
   const currentPath = $derived($page.url.pathname);
 
@@ -149,6 +156,12 @@
       <span class="font-bold text-[15px] text-white whitespace-nowrap">
         DSA<span class="hidden min-[1680px]:inline">-sagsbehandling</span>
       </span>
+      {#if miljoe}
+        <span
+          class="px-1.5 py-0.5 rounded bg-yellow-300 text-yellow-950 text-[10px] font-bold tracking-wider leading-none"
+          title="Dette er ikke produktion (miljø: {miljoe})"
+        >{miljoe}</span>
+      {/if}
     </a>
 
     <!-- Områder -->
