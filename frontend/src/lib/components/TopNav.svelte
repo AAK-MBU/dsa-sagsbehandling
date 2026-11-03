@@ -120,8 +120,35 @@
   <div class="flex items-center px-4 md:px-6 h-14">
 
     <!-- DSA logo → forside -->
-    <a href="/" class="flex items-center pr-5 mr-3 shrink-0 border-r border-white/15" title="Til forsiden">
-      <span class="font-bold text-[15px] text-white">DSA</span>
+    <!-- DSA: the mark is built like befordringssystemet's bus — a white line
+         icon in a small coloured square. Two speech bubbles: dansk som
+         andetsprog, two languages in conversation. -->
+    <a href="/" class="flex items-center gap-2.5 pr-5 mr-3 shrink-0 border-r border-white/15" title="Til forsiden">
+      <span
+        class="w-8 h-8 rounded flex items-center justify-center shrink-0"
+        style="background: linear-gradient(135deg, #9a7dd2, #6a3fb5);"
+      >
+        <svg
+          class="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffffff"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <!-- front bubble, tail down-left -->
+          <path d="M14 9a2 2 0 0 1-2 2H7l-4 3.5V4a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2z" />
+          <!-- back bubble, tail down-right -->
+          <path d="M17 7h2a2 2 0 0 1 2 2v12l-4-3.5h-6a2 2 0 0 1-2-2V14" />
+        </svg>
+      </span>
+      <!-- The full name only from 1680px: at 1280 and 1536 it squeezed the last område
+           (Rapporter) out of the bar. Below that the icon carries it. -->
+      <span class="font-bold text-[15px] text-white whitespace-nowrap">
+        DSA<span class="hidden min-[1680px]:inline">-sagsbehandling</span>
+      </span>
     </a>
 
     <!-- Områder -->

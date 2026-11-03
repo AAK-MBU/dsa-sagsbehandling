@@ -77,6 +77,12 @@ export function statusPage({
     padding: 1.25rem 1.75rem;
     background: #271347;
   }
+  /* DSA: the top bar's mark (TopNav.svelte) — keep the two in step. */
+  header .mark {
+    width: 2rem; height: 2rem; border-radius: 0.25rem; flex: none;
+    background: linear-gradient(135deg, #9a7dd2, #6a3fb5);
+    display: flex; align-items: center; justify-content: center;
+  }
   header p { margin: 0; color: #fff; font-size: 0.8rem; letter-spacing: 0.18em; font-weight: 700; }
   header span { display: block; color: #bba9e2; font-size: 0.62rem; letter-spacing: 0.14em; font-weight: 500; }
   .body { padding: 1.75rem; }
@@ -105,7 +111,13 @@ export function statusPage({
 <body>
   <main class="card">
     <header>
-      <p>DSA<span>AARHUS KOMMUNE</span></p>
+      <div class="mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 9a2 2 0 0 1-2 2H7l-4 3.5V4a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2z" />
+          <path d="M17 7h2a2 2 0 0 1 2 2v12l-4-3.5h-6a2 2 0 0 1-2-2V14" />
+        </svg>
+      </div>
+      <p>DSA-sagsbehandling<span>AARHUS KOMMUNE</span></p>
     </header>
     <div class="body">
       <h1>${escapeHtml(heading)}</h1>
