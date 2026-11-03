@@ -57,11 +57,19 @@
 
   $: aarSager = sager.filter((s) => s.skoleaar === aar);
   $: aarAendringer = aendringer.filter((a) => a.skoleaar === aar);
-  $: faneSager = fane === "aendringer" ? [] : aarSager.filter((s) => iFane(s, fane));
+  $: faneSager = fane === "aendringer" ? [] : sorterFane(aarSager.filter((s) => iFane(s, fane)), fane);
+
+  // The sketch: on Nærmere afklaring the newest screening results go on top —
+  // results keep arriving from week 2 to week 6. ISO dates sort as text; no
+  // date sorts last. Other tabs keep the API's order.
+  function sorterFane(rows: SkolebegynderRow[], f: Fane): SkolebegynderRow[] {
+    if (f !== "naermere-afklaring") return rows;
+    return [...rows].sort((a, b) => (b.screeningsdato ?? "").localeCompare(a.screeningsdato ?? ""));
+  }
 
   $: antal = {
     overblik: aarSager.filter((s) => iFane(s, "overblik")).length,
-    "screening-afviklet": aarSager.filter((s) => iFane(s, "screening-afviklet")).length,
+    "naermere-afklaring": aarSager.filter((s) => iFane(s, "naermere-afklaring")).length,
     "ikke-screenet": aarSager.filter((s) => iFane(s, "ikke-screenet")).length,
     aendringer: aarAendringer.length
   } as Record<Fane, number>;
@@ -283,10 +291,10 @@
   // in play and what was decided — and fits a normal screen without
   // scrolling. Letter-step fields (skabelon, krav på befordring), daycare and
   // remarks are one click away in "Kolonner" and on the case page.
-  // Screening afviklet is the queue those decisions are made from, so it
-  // gets Overblik's columns — derived from them, so the two cannot drift —
-  // with Afklaring in place of Status: every row there has the same status,
-  // and the afklaring note belongs to exactly this step. Ikke screenet shows
+  // Nærmere afklaring follows the sketch (Navn, CPR, PUF-resultat,
+  // Bemærkning, Tilflyttet DK), plus when the child was screened — the tab is
+  // sorted by it — the school the case is about, and the Afklaring note, which
+  // belongs to exactly this step. CPR sits under the name. Ikke screenet shows
   // the booked screening time.
   const OVERBLIK_KOLONNER = [
     "navn", "status_tekst", "screeningsdato", "samlet_resultat", "puf_screeningsresultat",
@@ -295,7 +303,10 @@
 
   const STANDARD_KOLONNER: Record<Exclude<Fane, "aendringer">, string[]> = {
     overblik: OVERBLIK_KOLONNER,
-    "screening-afviklet": [...OVERBLIK_KOLONNER.filter((k) => k !== "status_tekst"), "afklaring"],
+    "naermere-afklaring": [
+      "navn", "screeningsdato", "puf_screeningsresultat", "afklaring", "bemaerkning",
+      "distriktsskole", "tilflyttet_dk_dato"
+    ],
     "ikke-screenet": [
       "navn", "status_tekst", "screening_booket_tidspunkt", "distriktsskole", "dagtilbud", "ppr_status",
       "tilflyttet_dk_dato", "bemaerkning"
@@ -307,8 +318,9 @@
   // v3: Screeningsdato added to Overblik. v4: the caseworkers' statuses —
   // tab "naermere-afklaring" became "screening-afviklet". v5: Screening
   // afviklet gets Overblik's columns. v6: CPR under the name, not a column
-  // of its own (13" laptops).
-  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v6";
+  // of its own (13" laptops). v7: Screening afviklet tab replaced by
+  // Nærmere afklaring, with the sketch's columns.
+  const KOLONNE_NOEGLE = "dsa.skolebegynder.kolonner.v7";
 
   let synlige: Record<string, string[]> = { ...STANDARD_KOLONNER };
   let visKolonnevaelger = false;

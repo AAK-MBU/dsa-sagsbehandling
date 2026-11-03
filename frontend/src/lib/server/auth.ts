@@ -32,9 +32,13 @@ export function getLoginUrl() {
  *
  * Mirrors getLoginUrl: create_oidc_router() mounts /auth/logout next to
  * /auth/login, so the same prefix rules apply.
+ *
+ * DSA: defaults to the app's own /logout (routes/logout), which ends the DSA
+ * session and goes straight to /logged-out instead of through Microsoft's
+ * sign-out pages.
  */
 export function getLogoutUrl() {
-  return publicEnv.PUBLIC_OIDC_LOGOUT_URL || "/api/auth/logout";
+  return publicEnv.PUBLIC_OIDC_LOGOUT_URL || "/logout";
 }
 
 

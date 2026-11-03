@@ -69,6 +69,8 @@ services:
       # same-origin /api/auth/login, which assumes the edge proxy forwards /api
       # to the backend. Set an absolute URL where it does not.
       PUBLIC_OIDC_LOGIN_URL: ${PUBLIC_OIDC_LOGIN_URL:-}
+      # DSA: deliberately no PUBLIC_ENVIRONMENT_LABEL — prod shows no marker
+      # beside the name; local and dev set one in their compose files.
     depends_on:
       api:
         condition: service_healthy

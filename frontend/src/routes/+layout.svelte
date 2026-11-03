@@ -1,6 +1,7 @@
 <script lang="ts">
   import "../app.css";
   import { page } from "$app/stores";
+  import favicon from "$lib/assets/favicon.svg";
   import TopNav from "$lib/components/TopNav.svelte";
   import { sidetitel } from "$lib/sidetitel";
 
@@ -25,4 +26,7 @@
     navn: $page.data.stamdata?.adresseringsnavn ?? $page.data.sag?.navn,
     cpr: $page.data.sag?.cpr ?? $page.params.cpr,
   })}</title>
+  <!-- DSA: the tab icon — the top bar's speech bubbles (befordringssystemet:
+       speedometer.png). Without one the browser showed its own default. -->
+  <link rel="icon" href={favicon} type="image/svg+xml" />
 </svelte:head>

@@ -1,9 +1,16 @@
 <script lang="ts">
+  import { dev } from "$app/environment";
+  import { env as publicEnv } from "$env/dynamic/public";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { areas } from "$lib/areas";
   import { backendFetch } from "$lib/client/backendFetch";
   import { formatCpr } from "$lib/tableColumnConfig";
+
+  // DSA: which environment this is, shown beside the name — "LOKAL", "DEV".
+  // Set per compose file (docker-compose_local/dev.yml); prod sets none and
+  // shows nothing. `npm run dev` without Docker counts as local.
+  const miljoe = publicEnv.PUBLIC_ENVIRONMENT_LABEL || (dev ? "LOKAL" : "");
 
   const currentPath = $derived($page.url.pathname);
 
@@ -120,14 +127,41 @@
   <div class="flex items-center px-4 md:px-6 h-14">
 
     <!-- DSA logo → forside -->
+    <!-- DSA: the mark is built like befordringssystemet's bus — a white line
+         icon in a small coloured square. Two speech bubbles: dansk som
+         andetsprog, two languages in conversation. -->
     <a href="/" class="flex items-center gap-2.5 pr-5 mr-3 shrink-0 border-r border-white/15" title="Til forsiden">
-      <div
-        class="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white"
+      <span
+        class="w-8 h-8 rounded flex items-center justify-center shrink-0"
         style="background: linear-gradient(135deg, #9a7dd2, #6a3fb5);"
       >
-        D
-      </div>
-      <span class="font-bold text-[15px] text-white">DSA</span>
+        <svg
+          class="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffffff"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <!-- front bubble, tail down-left -->
+          <path d="M14 9a2 2 0 0 1-2 2H7l-4 3.5V4a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2z" />
+          <!-- back bubble, tail down-right -->
+          <path d="M17 7h2a2 2 0 0 1 2 2v12l-4-3.5h-6a2 2 0 0 1-2-2V14" />
+        </svg>
+      </span>
+      <!-- The full name only from 1680px: at 1280 and 1536 it squeezed the last område
+           (Rapporter) out of the bar. Below that the icon carries it. -->
+      <span class="font-bold text-[15px] text-white whitespace-nowrap">
+        DSA<span class="hidden min-[1680px]:inline">-sagsbehandling</span>
+      </span>
+      {#if miljoe}
+        <span
+          class="px-1.5 py-0.5 rounded bg-yellow-300 text-yellow-950 text-[10px] font-bold tracking-wider leading-none"
+          title="Dette er ikke produktion (miljø: {miljoe})"
+        >{miljoe}</span>
+      {/if}
     </a>
 
     <!-- Områder -->
