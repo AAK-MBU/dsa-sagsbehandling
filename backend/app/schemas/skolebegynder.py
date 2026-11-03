@@ -7,8 +7,13 @@ return. The request schemas list the fields a caseworker may edit — the
 """
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# PUF's assessment after a screening — one of two. Checked here only; the
+# database column stays free text for now. Also used by the skoleskifter schemas.
+PufResultat = Literal["Alderssvarende dansk", "Sprogstøttebehov"]
 
 
 class SkolebegynderOverviewRecord(BaseModel):
@@ -126,7 +131,7 @@ class SkolebegynderUpdateRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    puf_screeningsresultat: str | None = Field(default=None, max_length=100)
+    puf_screeningsresultat: PufResultat | None = None
     skoletilbud_matrikel_id: int | None = None
     skoletilbudstype_id: int | None = None
     skoleplaceringsaarsag_id: int | None = None

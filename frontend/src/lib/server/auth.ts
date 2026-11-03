@@ -18,7 +18,9 @@ export type SessionProbe =
  * root_path="/api", so behind the edge reverse proxy the browser reaches it at
  * /api/auth/login. Deployments without that proxy — docker-compose_local.yml
  * publishes the API directly on :8000 — must set PUBLIC_OIDC_LOGIN_URL to an
- * absolute URL instead.
+ * absolute URL instead. DSA: not so — routes/api/auth/[...path] forwards
+ * /api/auth/* to the backend itself, which is how local login works with this
+ * left empty.
  */
 export function getLoginUrl() {
   return publicEnv.PUBLIC_OIDC_LOGIN_URL || "/api/auth/login";

@@ -226,6 +226,13 @@ export function skoleaarTekst(aar: number): string {
  */
 export const EJ_SPROGSCREENET = "Ej sprogscreenet";
 
+/**
+ * PUF's assessment after a screening: one of these two, nothing else. Used
+ * for PUF-resultat here and for a skoleskift's samlet_resultat. Keep in step
+ * with PufResultat in the backend schemas.
+ */
+export const PUF_RESULTATER = ["Alderssvarende dansk", "Sprogstøttebehov"] as const;
+
 /** True when SX has a real screening result for the case. */
 export function erScreenet(row: { samlet_resultat: string | null }): boolean {
   return row.samlet_resultat !== null && row.samlet_resultat !== EJ_SPROGSCREENET;
