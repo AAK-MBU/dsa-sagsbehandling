@@ -17,6 +17,12 @@
 export { escapeHtml } from "$lib/html";
 import { escapeHtml } from "$lib/html";
 
+// DSA: the tab icon, embedded so these pages make no icon request — see the
+// <link rel="icon"> below. The same file as the app's (routes/+layout.svelte).
+import faviconSvg from "$lib/assets/favicon.svg?raw";
+
+const FAVICON = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
+
 
 export type StatusPage = {
   /** Browser tab title; the product name is appended. */
@@ -46,8 +52,9 @@ export function statusPage({
 <title>${escapeHtml(title)} · DSA</title>
 <!-- Suppresses the browser's automatic /favicon.ico request. That request goes
      through the auth guard like any other, and an anonymous one used to consume
-     the login attempt before the user had made one. -->
-<link rel="icon" href="data:,">
+     the login attempt before the user had made one. DSA: still no request —
+     the icon is inline, a data: URL. -->
+<link rel="icon" href="${FAVICON}" type="image/svg+xml">
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
