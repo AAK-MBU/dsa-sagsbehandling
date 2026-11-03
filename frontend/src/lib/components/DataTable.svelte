@@ -361,8 +361,14 @@
 
         {#each columns as column, ci}
           {@const fast = stickyFirstColumn && ci === 0}
+          <!-- DSA: whitespace-nowrap (befordringssystemet: whitespace-normal).
+               A label wider than its column ("Tilflyttet DK" over a date,
+               "Samlet resultat") broke onto two lines and made the whole header
+               row taller, so its height changed with the tab, the visible
+               columns and the screen width. One line always; the column widens
+               to fit its label instead. -->
           <th
-            class={`${thPad} font-semibold whitespace-normal min-w-24 text-left ${fast ? `sticky z-20 ${stickyKant} ${daekV}` : ""} ${column.class ?? ""}`}
+            class={`${thPad} font-semibold whitespace-nowrap min-w-24 text-left ${fast ? `sticky z-20 ${stickyKant} ${daekV}` : ""} ${column.class ?? ""}`}
             style={fast ? `${stickyVenstre} background-color: #271347;` : ""}
           >
             {column.label}
