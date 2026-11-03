@@ -36,6 +36,7 @@
 
 <script lang="ts">
   import { onMount } from "svelte";
+  import { afterNavigate } from "$app/navigation";
 
   import {
     tablePrimaryActionButtonClass,
@@ -241,6 +242,20 @@
     filters = {};
     currentPage = 1;
   }
+
+  // DSA: a new view starts clean. Pages switch tab or year by changing the
+  // address (?fane=, ?aar=) while this same table stays mounted with new rows,
+  // so without this a filter typed on one tab silently kept narrowing the next
+  // one. Every address change clears filters, page and an open dropdown, on
+  // every page that uses the table. A save does not navigate (it reloads the
+  // data in place), so filters survive saving. `from` is null on first load.
+  afterNavigate(({ from, to }) => {
+    if (!from || !to) return;
+    if (from.url.pathname === to.url.pathname && from.url.search === to.url.search) return;
+    clearFilters();
+    openDropdown = null;
+    triggerEl = null;
+  });
 
 
   // -----------------------------
