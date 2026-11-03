@@ -877,6 +877,11 @@
 
       <!-- Grid -->
       <div class="rounded-2xl overflow-hidden kort">
+        <!-- Keyed on tab and year: the three case tabs share this one table, so
+             without the key its filters, sort and page carried over into the
+             next tab's list, unseen — while Ændringer, a different component,
+             cleared them. A new list starts clean, as selections already do. -->
+        {#key visningsNoegle}
         <DataTable
           data={faneSager}
           columns={kolonner}
@@ -893,6 +898,7 @@
           bind:filteredCount
           emptyMessage="Ingen sager i denne fane"
         />
+        {/key}
       </div>
 
     {/if}
