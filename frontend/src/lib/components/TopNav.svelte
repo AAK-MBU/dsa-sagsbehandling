@@ -120,13 +120,7 @@
   <div class="flex items-center px-4 md:px-6 h-14">
 
     <!-- DSA logo → forside -->
-    <a href="/" class="flex items-center gap-2.5 pr-5 mr-3 shrink-0 border-r border-white/15" title="Til forsiden">
-      <div
-        class="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white"
-        style="background: linear-gradient(135deg, #9a7dd2, #6a3fb5);"
-      >
-        D
-      </div>
+    <a href="/" class="flex items-center pr-5 mr-3 shrink-0 border-r border-white/15" title="Til forsiden">
       <span class="font-bold text-[15px] text-white">DSA</span>
     </a>
 

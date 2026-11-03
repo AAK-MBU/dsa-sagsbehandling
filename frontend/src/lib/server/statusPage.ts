@@ -77,11 +77,6 @@ export function statusPage({
     padding: 1.25rem 1.75rem;
     background: #271347;
   }
-  header .mark {
-    width: 2rem; height: 2rem; border-radius: 0.5rem; flex: none;
-    background: linear-gradient(135deg, #9a7dd2, #6a3fb5);
-    color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center;
-  }
   header p { margin: 0; color: #fff; font-size: 0.8rem; letter-spacing: 0.18em; font-weight: 700; }
   header span { display: block; color: #bba9e2; font-size: 0.62rem; letter-spacing: 0.14em; font-weight: 500; }
   .body { padding: 1.75rem; }
@@ -110,7 +105,6 @@ export function statusPage({
 <body>
   <main class="card">
     <header>
-      <div class="mark">D</div>
       <p>DSA<span>AARHUS KOMMUNE</span></p>
     </header>
     <div class="body">
