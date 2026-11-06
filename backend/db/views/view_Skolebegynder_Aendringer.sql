@@ -14,6 +14,9 @@ GO
     mother tongue appears twice, once per ændringsårsag, so each can be
     handled on its own. Columns follow the sketch: Navn, CPR, Adresse,
     Distriktskole, Ændringsårsag.
+
+    The child's columns come from view_Elev_Aktuel (migration 006). Depends
+    on it and on view_Skoler: create those first.
 */
 
 CREATE OR ALTER VIEW [dsa].[view_Skolebegynder_Aendringer]
@@ -39,7 +42,7 @@ INNER JOIN
     [dsa].[Skolebegynder] sb
     ON sb.skolebegynder_id = ae.skolebegynder_id
 INNER JOIN
-    [dsa].[Elev] e
+    [dsa].[view_Elev_Aktuel] e
     ON e.cpr = sb.cpr
 LEFT JOIN
     [dsa].[Adresse] a

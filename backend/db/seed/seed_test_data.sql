@@ -2,9 +2,11 @@
    Test-data reset + seed for a DSA dev database.
 
    DESTRUCTIVE: clears every case table (Skolebegynder, its changes,
-   Sagsaktivitet, SkoleHistorik, Foraelder, Elev, Adresse, PortalAuditLog)
-   and inserts a fictional cohort of skolebegyndere. Lookups are NOT
-   touched — run seed_lookup_data.sql first.
+   Sagsaktivitet, Skoleskifter, the Elev_* history tables, Foraelder, Elev,
+   Adresse, PortalAuditLog) and inserts a fictional cohort of
+   skolebegyndere. Lookups are NOT touched — run seed_lookup_data.sql
+   first. ElevOld (migration 006's copy of the old Elev) is not touched
+   either.
 
    All names, CPR numbers and address ids are made up. The addresses are
    real Aarhus streets with invented numbers and GUIDs; nothing here links a
@@ -56,12 +58,37 @@
    themselves are made up. puf_screeningsresultat is not in the SX export and
    remains ILLUSTRATIVE.
 
+   Elevhistorik (migration 006), step 6c: each child's current school,
+   mother tongue, PPR status and arrival date are the values this file has
+   always given them, now as the open period in the Elev_* tables; the
+   earlier periods are derived from those values and the child's cases.
+   Every child has at least one row in Elev_Skolehistorik, Elev_Modersmaal,
+   Elev_Sprogstoettebehov and Elev_PPR; only the children who came to
+   Denmark recently are in Elev_Indrejse. Expected after step 6c:
+     Elev_Skolehistorik     school years back to 0. klasse and the years
+                            before school; time in another kommune for the
+                            tilflyttere; a move between districts for about
+                            one child in five; an earlier school for some
+     Elev_Modersmaal        one row each; every fourth child first
+                            registered with Engelsk
+     Elev_Sprogstoettebehov an open period where the screening found a need
+                            (and in modtagelsesklasse); otherwise an
+                            earlier, closed period
+     Elev_PPR               an open period for the PPR children and the
+                            cases sent to PPR; otherwise one or two
+                            earlier, closed periods
+     Elev_Indrejse          the six children with an arrival date and the
+                            children in modtagelsesklasse (~19); every
+                            third of them with an earlier first entry
+
    Statuses are not hand-set except Afsluttet: the cases are inserted as
    "Potentiel skolestarter" and usp_recalculate_skolebegynder_status derives the rest,
    so this file also exercises the status rule.
 
-   Requires migration 001, seed_lookup_data.sql (including Skolematrikel),
-   the views and the stored procedure usp_recalculate_skolebegynder_status.
+   Requires migrations 001-006, seed_lookup_data.sql (including
+   Skolematrikel) and the stored procedures. The preview in step 8 reads the
+   tables, not the views, so it works whichever version of the views is in
+   place.
 
    Runs inside a transaction that ROLLBACKs by default — change the final
    ROLLBACK to COMMIT once the previewed data looks correct.
@@ -122,6 +149,13 @@ BEGIN
     RETURN;
 END;
 
+IF OBJECT_ID(N'[dsa].[Elev_Sprogstoettebehov]', N'U') IS NULL
+   OR COL_LENGTH(N'dsa.Elev', N'modersmaal') IS NOT NULL
+BEGIN
+    RAISERROR('STOPPET: databasen mangler migration 006 (Elev_*-tabellerne). Koer 006_elev_historik.sql foerst.', 16, 1);
+    RETURN;
+END;
+
 
 BEGIN TRANSACTION;
 
@@ -134,7 +168,11 @@ DELETE FROM [dsa].[Skolebegynder_Aendring];
 DELETE FROM [dsa].[Sagsaktivitet];
 DELETE FROM [dsa].[Skolebegynder];
 DELETE FROM [dsa].[Skoleskifter];
-DELETE FROM [dsa].[SkoleHistorik];
+DELETE FROM [dsa].[Elev_Indrejse];
+DELETE FROM [dsa].[Elev_Modersmaal];
+DELETE FROM [dsa].[Elev_PPR];
+DELETE FROM [dsa].[Elev_Sprogstoettebehov];
+DELETE FROM [dsa].[Elev_Skolehistorik];
 DELETE FROM [dsa].[Foraelder];
 DELETE FROM [dsa].[Elev];
 DELETE FROM [dsa].[Adresse];
@@ -368,13 +406,30 @@ PRINT CONCAT('Adresse: ', @@ROWCOUNT, ' row(s).');
    address-protected, one with a father who must not know the address.
 ------------------------------------------------------------ */
 
-INSERT INTO [dsa].[Elev]
-    (cpr, adresseringsnavn, navne_adresse_beskyttelse, adresse_id, koen, modersmaal,
-     distriktsskolekode, skolekode, sprogstoettebehov, ppr_status, tilflyttet_dk_dato,
-     elevklassetrin, klassebetegnelse)
+-- The children with the values Elev held before migration 006. Elev gets
+-- the person; the rest is each child's CURRENT period in the Elev_* tables
+-- (step 6c), so the cohort looks as it always has.
+IF OBJECT_ID(N'tempdb..#elev_kilde') IS NOT NULL DROP TABLE #elev_kilde;
+
+CREATE TABLE #elev_kilde (
+    cpr         VARCHAR(10)   NOT NULL PRIMARY KEY,
+    navn        NVARCHAR(200) NULL,
+    beskyttet   BIT           NULL,
+    adresse_id  NVARCHAR(36)  NULL,
+    koen        NVARCHAR(20)  NULL,
+    modersmaal  NVARCHAR(50)  NULL,
+    distrikt    INT           NULL,   -- distriktsskolekode
+    skolekode   INT           NULL,
+    ppr         BIT           NULL,   -- known by PPR now
+    tilflyttet  DATE          NULL,   -- latest arrival in Denmark
+    klassetrin  NVARCHAR(20)  NULL,
+    klasse      NVARCHAR(50)  NULL
+);
+
+INSERT INTO #elev_kilde
+    (cpr, navn, beskyttet, adresse_id, koen, modersmaal, distrikt, skolekode, ppr, tilflyttet, klassetrin, klasse)
 SELECT STUFF(v.cpr, 5, 2, RIGHT(CONCAT('0', CAST(SUBSTRING(v.cpr, 5, 2) AS INT) + @cpr_aar_skift), 2)), v.navn, v.beskyttet, v.adresse_id, v.koen, v.modersmaal,
-       v.distrikt, v.skolekode, NULL, v.ppr, v.tilflyttet,
-       v.klassetrin, v.klasse
+       v.distrikt, v.skolekode, v.ppr, v.tilflyttet, v.klassetrin, v.klasse
 FROM (VALUES
     (N'1203204102', N'Amira Hassan', 0, N'0d5b7a1e-1111-4a6e-9c01-000000000001', N'Pige', N'Arabisk', 751008, NULL, 0, NULL, NULL, NULL),
     (N'0507204113', N'Yusuf Ali', 0, N'0d5b7a1e-1111-4a6e-9c01-000000000002', N'Dreng', N'Somali', 751044, NULL, 0, NULL, NULL, NULL),
@@ -517,6 +572,10 @@ FROM (VALUES
     (N'2402144088', N'Zeynep Kovač', 0, N'0d5b7a1e-1111-4a6e-9c01-000000000147', N'Pige', N'Bosnisk', 751003, 751003, 0, NULL, N'5.', N'5.B'),
     (N'1508174753', N'Yusuf Kovač', 0, N'0d5b7a1e-1111-4a6e-9c01-000000000147', N'Dreng', N'Bosnisk', 751003, 751003, 0, NULL, N'2.', N'2.A')
 ) AS v (cpr, navn, beskyttet, adresse_id, koen, modersmaal, distrikt, skolekode, ppr, tilflyttet, klassetrin, klasse);
+
+INSERT INTO [dsa].[Elev] (cpr, adresseringsnavn, navne_adresse_beskyttelse, adresse_id, koen)
+SELECT cpr, navn, beskyttet, adresse_id, koen
+FROM   #elev_kilde;
 
 PRINT CONCAT('Elev: ', @@ROWCOUNT, ' row(s).');
 
@@ -2114,6 +2173,308 @@ JOIN   [dsa].[SagsaktivitetType] t ON t.type_kode = N'sag_oprettet';
 
 
 /* ------------------------------------------------------------
+   6c. Elevhistorik (migration 006)
+
+   Each child's CURRENT period carries the values step 4 gave the child
+   (#elev_kilde) — school, klassetrin, klasse, district, mother tongue, PPR,
+   arrival date — so nothing about the cohort as it stands changes. The
+   earlier periods are derived from those values and the child's cases,
+   deterministically: n, the CPR's three serial digits, picks which children
+   get which kind of history.
+
+   Conventions, as the tables have them:
+     Elev_Skolehistorik      gyldig_til NULL = current (at most one per child)
+     Elev_Modersmaal         gyldig_til 9999-12-31 = current
+     Elev_PPR /
+     Elev_Sprogstoettebehov  slutdato 9999-12-31 = current
+------------------------------------------------------------ */
+
+-- The first day of the current school year; @skoleaar is the NEXT one.
+DECLARE @aar_start date = DATEFROMPARTS(@skoleaar - 1, 8, 1);
+DECLARE @aaben     date = '99991231';
+
+IF OBJECT_ID(N'tempdb..#elev_info') IS NOT NULL DROP TABLE #elev_info;
+
+SELECT
+    k.cpr, k.modersmaal, k.distrikt, k.skolekode, k.ppr, k.klassetrin, k.klasse,
+    nn.n,
+    f.foedt,
+    -- 4 from '4.', NULL before school
+    TRY_CAST(LEFT(k.klassetrin, CHARINDEX(N'.', k.klassetrin + N'.') - 1) AS INT) AS trin,
+    CASE WHEN k.klasse LIKE N'%.[A-Z]' THEN RIGHT(k.klasse, 1) END AS bogstav,
+    a.ankomst,
+    -- In Denmark since: birth, or the latest arrival
+    COALESCE(a.ankomst, f.foedt) AS dk_fra,
+    h.i_aarhus_fra,
+    -- Every fourth child moved between districts; before that, this district
+    CASE WHEN nn.n % 4 = 1 THEN DATEADD(DAY, -(120 + nn.n % 500), @i_dag) END AS flyttet,
+    CASE WHEN alt.kode = k.distrikt THEN 751013 ELSE alt.kode END AS tidl_distrikt,
+    sb.sprogstoettebehov   AS sb_sprog,
+    sb.screeningsdato      AS sb_screening,
+    sb.sagsbehandlingsdato AS sb_sagsbeh,
+    ss.nuvaerende_skoletilbud AS ss_tilbud,
+    ss.screeningsdato      AS ss_screening,
+    ss.samlet_resultat     AS ss_resultat,
+    ss.ppr_sendt_dato      AS ss_ppr_sendt,
+    COALESCE(ss.modersmaal_skole, ss.modersmaal_foraelder) AS ss_modersmaal
+INTO #elev_info
+FROM #elev_kilde k
+CROSS APPLY (SELECT CAST(SUBSTRING(k.cpr, 7, 3) AS INT) AS n) nn
+-- Born: the CPR's date, 20yy (all children here are born after 2000). A
+-- shifted 29 February that does not exist becomes the 28th.
+CROSS APPLY (SELECT COALESCE(
+        TRY_CONVERT(date, CONCAT('20', SUBSTRING(k.cpr, 5, 2), SUBSTRING(k.cpr, 3, 2), LEFT(k.cpr, 2)), 112),
+        DATEFROMPARTS(2000 + CAST(SUBSTRING(k.cpr, 5, 2) AS INT), CAST(SUBSTRING(k.cpr, 3, 2) AS INT), 28)
+    ) AS foedt) f
+OUTER APPLY (SELECT TOP (1) x.sprogstoettebehov, x.screeningsdato, x.sagsbehandlingsdato
+             FROM [dsa].[Skolebegynder] x WHERE x.cpr = k.cpr ORDER BY x.skoleaar DESC) sb
+OUTER APPLY (SELECT TOP (1) x.nuvaerende_skoletilbud, x.nuvaerende_kommune, x.modtaget_tidspunkt,
+                    x.screeningsdato, x.samlet_resultat, x.ppr_sendt_dato, x.modersmaal_skole, x.modersmaal_foraelder
+             FROM [dsa].[Skoleskifter] x WHERE x.cpr = k.cpr ORDER BY x.modtaget_tidspunkt DESC) ss
+-- Arrived in Denmark: the date step 4 has, or — a child in modtagelsesklasse
+-- is newly arrived — 5 to 18 months ago.
+CROSS APPLY (SELECT CASE
+        WHEN k.tilflyttet IS NOT NULL THEN k.tilflyttet
+        WHEN ss.nuvaerende_skoletilbud = N'Modtagelsesklasse' THEN DATEADD(DAY, -(150 + nn.n % 400), @i_dag)
+    END AS ankomst) a
+-- In Aarhus since: a child applying from another kommune moved here shortly
+-- before the application; everyone else has lived here since dk_fra.
+CROSS APPLY (SELECT MAX(d.dato) AS i_aarhus_fra
+             FROM (VALUES
+                 (COALESCE(a.ankomst, f.foedt)),
+                 (CASE WHEN ss.nuvaerende_kommune <> N'Aarhus Kommune'
+                       THEN DATEADD(DAY, -(20 + nn.n % 40), CAST(ss.modtaget_tidspunkt AS date)) END)
+             ) d (dato)) h
+CROSS APPLY (SELECT CHOOSE(nn.n % 5 + 1, 751008, 751014, 751044, 751025, 751020) AS kode) alt;
+
+
+-- --- Elev_Indrejse: only the children who came to Denmark ------------------
+
+INSERT INTO [dsa].[Elev_Indrejse] (cpr, foerste_indrejse, seneste_indrejse)
+SELECT e.cpr,
+       -- Every third had been here before, 1½-3 years earlier.
+       CASE WHEN e.n % 3 = 0 AND DATEADD(MONTH, -(18 + e.n % 18), e.ankomst) > DATEADD(MONTH, 6, e.foedt)
+            THEN DATEADD(MONTH, -(18 + e.n % 18), e.ankomst)
+            ELSE e.ankomst END,
+       e.ankomst
+FROM   #elev_info e
+WHERE  e.ankomst IS NOT NULL;
+
+PRINT CONCAT('Elev_Indrejse: ', @@ROWCOUNT, ' row(s).');
+
+
+-- --- Elev_Modersmaal -----------------------------------------------------------
+
+-- The current mother tongue: step 4's, or — a child applying from another
+-- kommune, not registered in Aarhus — the one the application gives, from
+-- when the child moved here. Every fourth child of the others was first
+-- registered with Engelsk and corrected half way to today.
+INSERT INTO [dsa].[Elev_Modersmaal] (cpr, modersmaal, gyldig_fra, gyldig_til)
+SELECT e.cpr, N'Engelsk', e.dk_fra, DATEADD(DAY, -1, r.rettet)
+FROM   #elev_info e
+CROSS APPLY (SELECT DATEADD(DAY, DATEDIFF(DAY, e.dk_fra, @i_dag) / 2, e.dk_fra) AS rettet) r
+WHERE  e.modersmaal IS NOT NULL AND e.n % 4 = 0
+UNION ALL
+SELECT e.cpr,
+       COALESCE(e.modersmaal, e.ss_modersmaal),
+       CASE WHEN e.modersmaal IS NULL THEN e.i_aarhus_fra
+            WHEN e.n % 4 = 0 THEN r.rettet
+            ELSE e.dk_fra END,
+       @aaben
+FROM   #elev_info e
+CROSS APPLY (SELECT DATEADD(DAY, DATEDIFF(DAY, e.dk_fra, @i_dag) / 2, e.dk_fra) AS rettet) r;
+
+PRINT CONCAT('Elev_Modersmaal: ', @@ROWCOUNT, ' row(s).');
+
+
+-- --- Elev_Skolehistorik ------------------------------------------------------
+
+-- Periods: every school year back to 0. klasse (k = 0 is the current one),
+-- and the time before school — for a child not at school yet, up to now.
+-- Each is cut where the child arrived in Denmark, where it moved to Aarhus
+-- (before that: another kommune, no school or district code) and where it
+-- moved between districts.
+WITH perioder AS (
+    SELECT e.cpr, t.k, e.trin - t.k AS trin_p,
+           DATEADD(YEAR, -t.k, @aar_start) AS fra,
+           CASE WHEN t.k = 0 THEN NULL
+                ELSE DATEADD(DAY, -1, DATEADD(YEAR, 1 - t.k, @aar_start)) END AS til
+    FROM   #elev_info e
+    JOIN   (VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9), (10)) t (k)
+           ON t.k <= e.trin
+    UNION ALL
+    SELECT e.cpr, ISNULL(e.trin, -1) + 1, NULL,
+           e.dk_fra,
+           CASE WHEN e.trin IS NULL THEN NULL
+                ELSE DATEADD(DAY, -1, DATEADD(YEAR, -e.trin, @aar_start)) END
+    FROM   #elev_info e
+),
+segmenter AS (
+    -- In another kommune: from dk_fra until the move to Aarhus.
+    SELECT p.cpr, p.k, p.trin_p, CAST(0 AS BIT) AS i_aarhus, x.fra, x.til
+    FROM   perioder p
+    JOIN   #elev_info e ON e.cpr = p.cpr
+    CROSS APPLY (SELECT
+            CASE WHEN p.fra > e.dk_fra THEN p.fra ELSE e.dk_fra END AS fra,
+            CASE WHEN p.til IS NOT NULL AND p.til < DATEADD(DAY, -1, e.i_aarhus_fra) THEN p.til
+                 ELSE DATEADD(DAY, -1, e.i_aarhus_fra) END AS til) x
+    WHERE  x.fra <= x.til
+    UNION ALL
+    -- In Aarhus: from i_aarhus_fra; split where the child moved district.
+    SELECT p.cpr, p.k, p.trin_p, CAST(1 AS BIT), y.fra, y.til
+    FROM   perioder p
+    JOIN   #elev_info e ON e.cpr = p.cpr
+    CROSS APPLY (SELECT CASE WHEN p.fra > e.i_aarhus_fra THEN p.fra ELSE e.i_aarhus_fra END AS fra) x
+    CROSS APPLY (VALUES
+        -- before the move (only movers)
+        (x.fra,
+         CASE WHEN p.til IS NOT NULL AND p.til < DATEADD(DAY, -1, e.flyttet) THEN p.til
+              ELSE DATEADD(DAY, -1, e.flyttet) END,
+         1),
+        -- after it, or the whole segment
+        (CASE WHEN e.flyttet > x.fra THEN e.flyttet ELSE x.fra END, p.til, 0)
+    ) y (fra, til, foer_flytning)
+    WHERE  (y.foer_flytning = 0 AND (y.til IS NULL OR y.fra <= y.til))
+        OR (y.foer_flytning = 1 AND e.flyttet IS NOT NULL AND y.fra <= y.til)
+)
+INSERT INTO [dsa].[Elev_Skolehistorik]
+    (cpr, skolekode, elevklassetrin, klassebetegnelse, distriktsskolekode, gyldig_fra, gyldig_til, kilde)
+SELECT s.cpr,
+       CASE WHEN s.i_aarhus = 0 OR s.trin_p IS NULL AND s.k > 0 THEN NULL
+            WHEN s.k = 0 THEN e.skolekode
+            -- Every third child at school changed school after 1. klasse:
+            -- from its district school, or from another one if it attends
+            -- the district school now.
+            WHEN e.n % 3 = 0 AND s.trin_p < 2 AND e.skolekode IS NOT NULL
+                THEN CASE WHEN e.distrikt <> e.skolekode THEN e.distrikt ELSE e.tidl_distrikt END
+            ELSE e.skolekode END,
+       CASE WHEN s.k = 0 THEN e.klassetrin
+            WHEN s.trin_p IS NOT NULL THEN CONCAT(s.trin_p, N'.') END,
+       CASE WHEN s.k = 0 THEN e.klasse
+            WHEN s.i_aarhus = 1 AND s.trin_p IS NOT NULL AND e.bogstav IS NOT NULL
+                THEN CONCAT(s.trin_p, N'.', e.bogstav) END,
+       CASE WHEN s.i_aarhus = 0 THEN NULL
+            WHEN e.flyttet IS NOT NULL AND s.fra < e.flyttet THEN e.tidl_distrikt
+            ELSE e.distrikt END,
+       s.fra, s.til,
+       CASE WHEN s.i_aarhus = 1 THEN N'LIS' ELSE N'Ansøgning' END
+FROM   segmenter s
+JOIN   #elev_info e ON e.cpr = s.cpr;
+
+PRINT CONCAT('Elev_Skolehistorik: ', @@ROWCOUNT, ' row(s).');
+
+
+-- --- Elev_Sprogstoettebehov --------------------------------------------------
+
+-- Open: the skolebegynder screening found a need (from the decision), the
+-- skoleskifter assessment did (from the screening), or the child is in
+-- modtagelsesklasse (since arriving). Everyone else: one earlier, closed
+-- period — in dagtilbud before the screening, or a school year or two ago.
+-- Every third child with an open period also had one in dagtilbud.
+WITH behov AS (
+    SELECT e.*,
+           CASE WHEN e.sb_sprog = 1
+                    THEN COALESCE(e.sb_sagsbeh, e.sb_screening, DATEADD(DAY, -30, @i_dag))
+                WHEN e.ss_resultat = N'Sprogstøttebehov' THEN e.ss_screening
+                WHEN e.ss_tilbud = N'Modtagelsesklasse' AND e.ss_resultat IS NULL
+                    THEN DATEADD(DAY, 14, e.dk_fra)
+           END AS aaben_fra,
+           -- earliest start of an earlier period: age 3 in dagtilbud, or 1-2
+           -- school years ago; never before the child came to Denmark
+           x.tidl_fra
+    FROM   #elev_info e
+    CROSS APPLY (SELECT MAX(d.dato) AS tidl_fra
+                 FROM (VALUES
+                     (CASE WHEN e.trin IS NULL THEN DATEADD(MONTH, 36 + e.n % 12, e.foedt)
+                           ELSE DATEADD(YEAR, -(1 + e.n % 2), @aar_start) END),
+                     (DATEADD(DAY, 14, e.dk_fra))
+                 ) d (dato)) x
+)
+INSERT INTO [dsa].[Elev_Sprogstoettebehov] (cpr, startdato, slutdato)
+SELECT b.cpr, b.aaben_fra, @aaben
+FROM   behov b
+WHERE  b.aaben_fra IS NOT NULL
+UNION ALL
+SELECT b.cpr, b.tidl_fra, y.slut
+FROM   behov b
+CROSS APPLY (SELECT CASE WHEN b.aaben_fra IS NOT NULL
+                         THEN DATEADD(DAY, -30, b.aaben_fra)
+                         ELSE COALESCE(DATEADD(DAY, -1, COALESCE(b.sb_screening, b.ss_screening)),
+                                       DATEADD(DAY, 200 + b.n % 200, b.tidl_fra)) END AS slut_oensket) x
+CROSS APPLY (SELECT CASE WHEN x.slut_oensket >= @i_dag THEN DATEADD(DAY, -1, @i_dag)
+                         ELSE x.slut_oensket END AS slut0) z
+CROSS APPLY (SELECT CASE WHEN z.slut0 < b.tidl_fra AND b.aaben_fra IS NULL THEN b.tidl_fra
+                         ELSE z.slut0 END AS slut) y
+WHERE  (b.aaben_fra IS NULL OR (b.n % 3 = 0 AND y.slut >= b.tidl_fra))
+  AND  b.tidl_fra < @i_dag;
+
+PRINT CONCAT('Elev_Sprogstoettebehov: ', @@ROWCOUNT, ' row(s).');
+
+
+-- --- Elev_PPR ----------------------------------------------------------------
+
+-- Open: the PPR children from step 4, and the skoleskifter cases sent to PPR
+-- (from the day they were sent). Everyone else: an earlier, closed period of
+-- one to four months; every fifth of those a second one later.
+INSERT INTO [dsa].[Elev_PPR] (cpr, startdato, slutdato)
+SELECT e.cpr,
+       COALESCE(e.ss_ppr_sendt, x.fra),
+       @aaben
+FROM   #elev_info e
+CROSS APPLY (SELECT MAX(d.dato) AS fra
+             FROM (VALUES (DATEADD(DAY, -(60 + e.n % 300), @i_dag)), (DATEADD(DAY, 14, e.dk_fra))) d (dato)) x
+WHERE  e.ppr = 1 OR e.ss_ppr_sendt IS NOT NULL
+UNION ALL
+SELECT e.cpr, x.fra,
+       CASE WHEN DATEADD(DAY, 30 + e.n % 90, x.fra) >= @i_dag THEN DATEADD(DAY, -1, @i_dag)
+            ELSE DATEADD(DAY, 30 + e.n % 90, x.fra) END
+FROM   #elev_info e
+CROSS APPLY (SELECT MAX(d.dato) AS fra
+             FROM (VALUES
+                 (DATEADD(DAY, -(250 + e.n % 700), @i_dag)),
+                 (DATEADD(YEAR, 2, e.foedt)),
+                 (DATEADD(DAY, 7, e.dk_fra))
+             ) d (dato)) x
+WHERE  NOT (e.ppr = 1 OR e.ss_ppr_sendt IS NOT NULL);
+
+DECLARE @ppr_rows INT = @@ROWCOUNT;
+
+INSERT INTO [dsa].[Elev_PPR] (cpr, startdato, slutdato)
+SELECT p.cpr, DATEADD(DAY, 120, p.slutdato), DATEADD(DAY, 165, p.slutdato)
+FROM   [dsa].[Elev_PPR] p
+JOIN   #elev_info e ON e.cpr = p.cpr
+WHERE  e.n % 5 = 0
+  AND  p.slutdato <> @aaben
+  AND  DATEADD(DAY, 165, p.slutdato) < @i_dag;
+
+PRINT CONCAT('Elev_PPR: ', @ppr_rows + @@ROWCOUNT, ' row(s).');
+
+
+-- Every child needs a row in each history table but Elev_Indrejse, and one
+-- open school period; stop rather than commit a cohort with gaps.
+DECLARE @mangler NVARCHAR(2000) = (   -- RAISERROR takes no (max) argument
+    SELECT STRING_AGG(CONCAT(x.tabel, N' (', x.antal, N')'), N', ')
+    FROM (
+        SELECT N'Elev_Skolehistorik' AS tabel, COUNT(*) AS antal FROM [dsa].[Elev] e
+            WHERE NOT EXISTS (SELECT 1 FROM [dsa].[Elev_Skolehistorik] h WHERE h.cpr = e.cpr AND h.gyldig_til IS NULL)
+        UNION ALL SELECT N'Elev_Modersmaal', COUNT(*) FROM [dsa].[Elev] e
+            WHERE NOT EXISTS (SELECT 1 FROM [dsa].[Elev_Modersmaal] h WHERE h.cpr = e.cpr AND h.modersmaal IS NOT NULL)
+        UNION ALL SELECT N'Elev_Sprogstoettebehov', COUNT(*) FROM [dsa].[Elev] e
+            WHERE NOT EXISTS (SELECT 1 FROM [dsa].[Elev_Sprogstoettebehov] h WHERE h.cpr = e.cpr)
+        UNION ALL SELECT N'Elev_PPR', COUNT(*) FROM [dsa].[Elev] e
+            WHERE NOT EXISTS (SELECT 1 FROM [dsa].[Elev_PPR] h WHERE h.cpr = e.cpr)
+    ) x
+    WHERE x.antal > 0);
+
+IF @mangler IS NOT NULL
+BEGIN
+    ROLLBACK TRANSACTION;
+    RAISERROR('STOPPET: elever uden historik i %s.', 16, 1, @mangler);
+    RETURN;
+END;
+
+
+/* ------------------------------------------------------------
    7. Derive statuses — exercises the status rule
 ------------------------------------------------------------ */
 
@@ -2123,25 +2484,55 @@ EXEC [dsa].[usp_recalculate_skoleskifter_status] @today = @i_dag;
 
 /* ------------------------------------------------------------
    8. Preview — runs before the COMMIT/ROLLBACK decision
+
+   From the tables, not the views, so it runs whichever version of the
+   views is in place. The counts match the header.
 ------------------------------------------------------------ */
 
-SELECT status_tekst, COUNT(*) AS antal
-FROM   [dsa].[view_Skolebegyndere]
-GROUP BY status_tekst, status_sortering
-ORDER BY status_sortering;
+SELECT sb.skoleaar, s.status_tekst, COUNT(*) AS antal
+FROM   [dsa].[Skolebegynder] sb
+JOIN   [dsa].[Status] s ON s.status_id = sb.status_id
+GROUP BY sb.skoleaar, s.status_tekst, s.sortering
+ORDER BY sb.skoleaar DESC, s.sortering;
 
-SELECT skolebegynder_id, skoleaar, navn, status_tekst, distriktsskole, oensket_skole,
-       skoletilbud_matrikel, skoletilbudstype_tekst, skoler_afviger, aabne_aendringer
-FROM   [dsa].[view_Skolebegyndere]
-ORDER BY skoleaar, status_sortering, navn;
+SELECT ss.variant, s.status_tekst, COUNT(*) AS antal
+FROM   [dsa].[Skoleskifter] ss
+JOIN   [dsa].[Status] s ON s.status_id = ss.status_id
+GROUP BY ss.variant, s.status_tekst, s.sortering
+ORDER BY ss.variant, s.sortering;
 
-SELECT * FROM [dsa].[view_Skolebegynder_Aendringer] ORDER BY registreret_tidspunkt;
+-- Rows and children per history table; aabne = open (current) periods.
+SELECT N'Elev' AS tabel, COUNT(*) AS rows_, COUNT(DISTINCT cpr) AS elever, NULL AS aabne FROM [dsa].[Elev]
+UNION ALL SELECT N'Elev_Skolehistorik', COUNT(*), COUNT(DISTINCT cpr), SUM(CASE WHEN gyldig_til IS NULL THEN 1 ELSE 0 END) FROM [dsa].[Elev_Skolehistorik]
+UNION ALL SELECT N'Elev_Modersmaal', COUNT(*), COUNT(DISTINCT cpr), SUM(CASE WHEN gyldig_til = '99991231' THEN 1 ELSE 0 END) FROM [dsa].[Elev_Modersmaal]
+UNION ALL SELECT N'Elev_Sprogstoettebehov', COUNT(*), COUNT(DISTINCT cpr), SUM(CASE WHEN slutdato = '99991231' THEN 1 ELSE 0 END) FROM [dsa].[Elev_Sprogstoettebehov]
+UNION ALL SELECT N'Elev_PPR', COUNT(*), COUNT(DISTINCT cpr), SUM(CASE WHEN slutdato = '99991231' THEN 1 ELSE 0 END) FROM [dsa].[Elev_PPR]
+UNION ALL SELECT N'Elev_Indrejse', COUNT(*), COUNT(DISTINCT cpr), NULL FROM [dsa].[Elev_Indrejse];
 
+-- A few whole histories: a 4th grader who changed school after 1. klasse,
+-- a 7th grader moving here from Silkeborg, a newly arrived 2nd grader in
+-- modtagelsesklasse, and a skolebegynder who moved district and is known
+-- by PPR.
+SELECT e.adresseringsnavn, h.*
+FROM   [dsa].[Elev_Skolehistorik] h
+JOIN   [dsa].[Elev] e ON e.cpr = h.cpr
+WHERE  e.adresseringsnavn IN (N'Sofiia Abdi', N'Emre Karimi', N'Yusuf Kovač', N'Fatima Karimi')
+ORDER BY e.adresseringsnavn, h.gyldig_fra;
 
-SELECT variant, indgang, status_tekst, COUNT(*) AS antal
-FROM   [dsa].[view_Skoleskiftere]
-GROUP BY variant, indgang, status_tekst, status_sortering
-ORDER BY variant, indgang, status_sortering;
+SELECT e.adresseringsnavn, x.tabel, x.vaerdi, x.fra, x.til
+FROM   [dsa].[Elev] e
+CROSS APPLY (
+    SELECT N'Modersmaal' AS tabel, m.modersmaal AS vaerdi, m.gyldig_fra AS fra, m.gyldig_til AS til
+        FROM [dsa].[Elev_Modersmaal] m WHERE m.cpr = e.cpr
+    UNION ALL SELECT N'Sprogstoettebehov', NULL, s.startdato, s.slutdato
+        FROM [dsa].[Elev_Sprogstoettebehov] s WHERE s.cpr = e.cpr
+    UNION ALL SELECT N'PPR', NULL, p.startdato, p.slutdato
+        FROM [dsa].[Elev_PPR] p WHERE p.cpr = e.cpr
+    UNION ALL SELECT N'Indrejse', N'første', i.foerste_indrejse, i.seneste_indrejse
+        FROM [dsa].[Elev_Indrejse] i WHERE i.cpr = e.cpr
+) x
+WHERE  e.adresseringsnavn IN (N'Sofiia Abdi', N'Emre Karimi', N'Yusuf Kovač', N'Fatima Karimi')
+ORDER BY e.adresseringsnavn, x.tabel, x.fra;
 
 
 -- Change to COMMIT once the preview above looks right.
