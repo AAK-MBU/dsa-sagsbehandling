@@ -29,6 +29,10 @@ GO
     aabne_aendringer counts unhandled rows in Skolebegynder_Aendring — the
     "!" on the Ændringer tab.
 
+    The child's columns come from view_Elev_Aktuel (migration 006): Elev
+    plus the current period of each Elev_* history table. Depends on it and
+    on view_Skoler: create those first.
+
     navne_adresse_beskyttelse is passed through, not acted on. Deciding what a
     protected child's row may show is the application's job, and it must be
     done before this view reaches a screen.
@@ -119,7 +123,7 @@ SELECT
 FROM
     [dsa].[Skolebegynder] sb
 INNER JOIN
-    [dsa].[Elev] e
+    [dsa].[view_Elev_Aktuel] e
     ON e.cpr = sb.cpr
 LEFT JOIN
     [dsa].[Adresse] a

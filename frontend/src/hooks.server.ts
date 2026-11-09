@@ -8,19 +8,27 @@ import {
   serializeLoginAttemptCleared,
   serializeReturnTo
 } from "$lib/server/auth";
-import { loggedOutPage } from "$lib/server/loggedOut";
+import { LOGGED_OUT_PATH, loggedOutPage } from "$lib/server/loggedOut";
 import { noAccessPage } from "$lib/server/noAccess";
 
 
 /**
  * Paths that must stay reachable without a session.
  *
- * These are the endpoints that *establish* a session — /api/auth passes login
- * and logout through to the backend, and /callback is the OIDC return leg
- * carrying the authorization code. Guarding either would deadlock the flow
- * into a redirect loop.
+ * Most of these are the endpoints that *establish* a session — /api/auth passes
+ * login and logout through to the backend, and /callback is the OIDC return leg
+ * carrying the authorization code. Guarding either would deadlock the flow into
+ * a redirect loop.
+ *
+ * /health is here for a different reason: it is the container healthcheck's
+ * probe, and the healthcheck has no session and cannot get one. Guarded, it
+ * would answer 401 to an anonymous non-document request — correctly, by the
+ * rule below — and the container would report unhealthy for ever. See
+ * routes/health/+server.ts.
  */
-const PUBLIC_PATHS = ["/callback", "/api/auth"];
+// DSA: /logout ends the session itself (routes/logout), so like /api/auth it
+// must not send an anonymous caller to the IdP first.
+const PUBLIC_PATHS = ["/callback", "/api/auth", "/logout", "/health"];
 
 
 function matchesPath(pathname: string, candidate: string) {
@@ -56,6 +64,18 @@ function isPublicPath(pathname: string) {
  * thing look intermittent.
  */
 function isDocumentRequest(request: Request) {
+  // DSA: a speculative prefetch or prerender looks exactly like a navigation
+  // (Sec-Fetch-Dest: document), but nobody asked for it. Edge and Chrome send
+  // one from the address bar while "localhost" is still being typed; it set
+  // the login-attempt marker, and the real navigation a second later then
+  // reported a failed login. Sec-Purpose is the standard header, Purpose the
+  // older spelling.
+  const purpose = request.headers.get("sec-purpose") ?? request.headers.get("purpose");
+
+  if (purpose?.includes("prefetch")) {
+    return false;
+  }
+
   const dest = request.headers.get("sec-fetch-dest");
 
   if (dest) {
@@ -108,10 +128,6 @@ function loginLoopDiagnostic() {
     { status: 503, headers }
   );
 }
-
-
-/** Path B2C returns the browser to once it has ended the session. */
-export const LOGGED_OUT_PATH = "/logged-out";
 
 
 export const handle: Handle = async ({ event, resolve }) => {

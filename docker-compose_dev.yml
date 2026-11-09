@@ -14,12 +14,12 @@ services:
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
       OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
-      # Must be Azure B2C's /tfp/ path form, not ?p=<policy> — see
-      # backend/app/core/oidc.py for why the query form breaks login.
+      # DSA: empty for Entra ID (read from the issuer). A B2C issuer needs the
+      # /tfp/ path form — see backend/app/core/oidc.py.
       OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL}
-      # Where the IdP returns the browser after logout. Required — B2C rejects a
-      # logout request that omits it (AADB2C90036), so an unset value turns every
-      # logout into an error page. Point it at this deployment's /logged-out.
+      # Where the IdP returns the browser after logout. Point it at this
+      # deployment's /logged-out (B2C rejects a logout without it, AADB2C90036).
+      # DSA: register it on the Entra app registration next to the redirect URI.
       OIDC_POST_LOGOUT_REDIRECT: ${OIDC_POST_LOGOUT_REDIRECT}
       # IdP role claim values allowed to write; everyone else is read-only.
       EDIT_ROLES: ${EDIT_ROLES:-admin,user-edit}
@@ -27,7 +27,13 @@ services:
       OIDC_ENVIRONMENT: ${OIDC_ENVIRONMENT}
       SESSION_SECRET: ${SESSION_SECRET}
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      # /health/ready, not /health: /health returns a literal {"status":"ok"}
+      # and touches nothing, so it cannot fail while the API is unable to serve
+      # a single request. /health/ready takes a pooled connection and runs
+      # SELECT 1, so pool exhaustion and an unreachable database both show up.
+      # 127.0.0.1 rather than localhost, which resolves to [::1] first while the
+      # server binds IPv4 — curl retries the next address, wget does not.
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8000/health/ready || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -54,11 +60,21 @@ services:
       # same-origin /api/auth/login, which assumes the edge proxy forwards /api
       # to the backend. Set an absolute URL where it does not.
       PUBLIC_OIDC_LOGIN_URL: ${PUBLIC_OIDC_LOGIN_URL:-}
+      # DSA: the marker beside the name in the top bar, so this environment is
+      # never mistaken for prod. Fixed here rather than in .env: the compose
+      # file is what makes a folder dev, and one image serves dev and prod.
+      PUBLIC_ENVIRONMENT_LABEL: DEV
     depends_on:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      # Two corrections, both needed. localhost resolves to [::1] first and the
+      # server binds 0.0.0.0 (IPv4 only), so wget was refused at the TCP layer
+      # and never reached HTTP. And "/" is behind the auth guard, which answers
+      # 401 to an anonymous non-document request by design — wget --spider exits
+      # non-zero on a 4xx. /health is an unguarded liveness route added for this;
+      # see frontend/src/routes/health/+server.ts.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/health"]
       interval: 30s
       timeout: 10s
       retries: 3

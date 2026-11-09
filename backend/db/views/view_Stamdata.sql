@@ -21,7 +21,11 @@ GO
     its own route for them (e.g. /skolebegynder/elev/{cpr}), as
     befordringssystemet has /bevilling/get_student_bevillinger/{cpr}.
 
-    Depends on view_Skoler: create that first.
+    DSA (migration 006): the child is read from view_Elev_Aktuel — Elev plus
+    the current period of each Elev_* history table, under Elev's old column
+    names — so this view's columns are unchanged.
+
+    Depends on view_Skoler and view_Elev_Aktuel: create those first.
 */
 
 CREATE OR ALTER VIEW [dsa].[view_Stamdata]
@@ -48,7 +52,7 @@ SELECT
     e.sprogstoettebehov,
     e.ppr_status
 
-FROM [dsa].[Elev] e
+FROM [dsa].[view_Elev_Aktuel] e
 
 LEFT JOIN [dsa].[Adresse] ad
     ON ad.adresse_id = e.adresse_id

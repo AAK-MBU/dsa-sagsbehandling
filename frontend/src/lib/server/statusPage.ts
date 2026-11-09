@@ -17,6 +17,12 @@
 export { escapeHtml } from "$lib/html";
 import { escapeHtml } from "$lib/html";
 
+// DSA: the tab icon, embedded so these pages make no icon request — see the
+// <link rel="icon"> below. The same file as the app's (routes/+layout.svelte).
+import faviconSvg from "$lib/assets/favicon.svg?raw";
+
+const FAVICON = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
+
 
 export type StatusPage = {
   /** Browser tab title; the product name is appended. */
@@ -46,8 +52,9 @@ export function statusPage({
 <title>${escapeHtml(title)} · DSA</title>
 <!-- Suppresses the browser's automatic /favicon.ico request. That request goes
      through the auth guard like any other, and an anonymous one used to consume
-     the login attempt before the user had made one. -->
-<link rel="icon" href="data:,">
+     the login attempt before the user had made one. DSA: still no request —
+     the icon is inline, a data: URL. -->
+<link rel="icon" href="${FAVICON}" type="image/svg+xml">
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
@@ -77,10 +84,11 @@ export function statusPage({
     padding: 1.25rem 1.75rem;
     background: #271347;
   }
+  /* DSA: the top bar's mark (TopNav.svelte) — keep the two in step. */
   header .mark {
-    width: 2rem; height: 2rem; border-radius: 0.5rem; flex: none;
+    width: 2rem; height: 2rem; border-radius: 0.25rem; flex: none;
     background: linear-gradient(135deg, #9a7dd2, #6a3fb5);
-    color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: center;
   }
   header p { margin: 0; color: #fff; font-size: 0.8rem; letter-spacing: 0.18em; font-weight: 700; }
   header span { display: block; color: #bba9e2; font-size: 0.62rem; letter-spacing: 0.14em; font-weight: 500; }
@@ -110,8 +118,13 @@ export function statusPage({
 <body>
   <main class="card">
     <header>
-      <div class="mark">D</div>
-      <p>DSA<span>AARHUS KOMMUNE</span></p>
+      <div class="mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 9a2 2 0 0 1-2 2H7l-4 3.5V4a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2z" />
+          <path d="M17 7h2a2 2 0 0 1 2 2v12l-4-3.5h-6a2 2 0 0 1-2-2V14" />
+        </svg>
+      </div>
+      <p>DSA-sagsbehandling<span>AARHUS KOMMUNE</span></p>
     </header>
     <div class="body">
       <h1>${escapeHtml(heading)}</h1>

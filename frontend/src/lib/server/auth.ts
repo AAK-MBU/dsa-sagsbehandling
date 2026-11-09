@@ -18,7 +18,9 @@ export type SessionProbe =
  * root_path="/api", so behind the edge reverse proxy the browser reaches it at
  * /api/auth/login. Deployments without that proxy — docker-compose_local.yml
  * publishes the API directly on :8000 — must set PUBLIC_OIDC_LOGIN_URL to an
- * absolute URL instead.
+ * absolute URL instead. DSA: not so — routes/api/auth/[...path] forwards
+ * /api/auth/* to the backend itself, which is how local login works with this
+ * left empty.
  */
 export function getLoginUrl() {
   return publicEnv.PUBLIC_OIDC_LOGIN_URL || "/api/auth/login";
@@ -30,9 +32,13 @@ export function getLoginUrl() {
  *
  * Mirrors getLoginUrl: create_oidc_router() mounts /auth/logout next to
  * /auth/login, so the same prefix rules apply.
+ *
+ * DSA: defaults to the app's own /logout (routes/logout), which ends the DSA
+ * session and goes straight to /logged-out instead of through Microsoft's
+ * sign-out pages.
  */
 export function getLogoutUrl() {
-  return publicEnv.PUBLIC_OIDC_LOGOUT_URL || "/api/auth/logout";
+  return publicEnv.PUBLIC_OIDC_LOGOUT_URL || "/logout";
 }
 
 

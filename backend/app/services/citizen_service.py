@@ -81,7 +81,8 @@ class CitizenService:
 
         Notes:
             Reads [Elev] directly rather than view_Stamdata, which joins in
-            what the search does not need.
+            what the search does not need. (Name and CPR stayed on Elev in
+            migration 006, so this needs none of the history tables.)
 
             Digits and text are handled as separate statements so each can use an
             index:
@@ -253,7 +254,9 @@ class CitizenService:
                     ON  f2.cpr_foraelder = f1.cpr_foraelder
                     AND f2.cpr_elev <> f1.cpr_elev
                 INNER JOIN
-                    [dsa].[Elev] e
+                    -- DSA: the sibling's current school and klassetrin live in
+                    -- Elev_Skolehistorik since migration 006.
+                    [dsa].[view_Elev_Aktuel] e
                     ON e.cpr = f2.cpr_elev
                 LEFT JOIN
                     [dsa].[view_Skoler] sk

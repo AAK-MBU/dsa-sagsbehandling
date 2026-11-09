@@ -26,7 +26,10 @@ GO
     ansoegningsdata (the raw form) is left out; the case detail reads it from
     the table.
 
-    Depends on view_Skoler: create that first.
+    The child's columns come from view_Elev_Aktuel (migration 006): Elev
+    plus the current period of each Elev_* history table.
+
+    Depends on view_Skoler and view_Elev_Aktuel: create those first.
 */
 
 CREATE OR ALTER VIEW [dsa].[view_Skoleskiftere]
@@ -99,7 +102,7 @@ SELECT
 FROM
     [dsa].[Skoleskifter] ss
 INNER JOIN
-    [dsa].[Elev] e
+    [dsa].[view_Elev_Aktuel] e
     ON e.cpr = ss.cpr
 LEFT JOIN
     [dsa].[Adresse] a

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Unicode, text
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Unicode, text
 from sqlalchemy.dialects.mssql import DATETIME2
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,12 +15,13 @@ DB_SCHEMA = "dsa"
 
 
 class Elev(Base):
-    """The child as it is now — the current snapshot.
+    """The child as a person — CPR, name, protection, address, koen.
 
-    Same role as befordringssystemet's Elev: refreshed from LIS / TEA, keyed
-    on CPR. History of school and sprogstøttebehov lives in SkoleHistorik.
-    distriktsskolekode and skolekode are skolekoder without an FK — resolve
-    them through view_Skoler.
+    Same role as befordringssystemet's Elev, keyed on CPR. DSA (migration
+    006): everything that changes over time lives in the Elev_* tables
+    (models/elev_historik.py), one row per period. view_Elev_Aktuel puts each table's current
+    period back beside the person under Elev's old column names; read the
+    child through that (or view_Stamdata), not through this model.
     """
 
     __tablename__ = "Elev"
@@ -38,20 +39,6 @@ class Elev(Base):
     )
 
     koen: Mapped[str | None] = mapped_column(Unicode(20), nullable=True)
-    modersmaal: Mapped[str | None] = mapped_column(Unicode(100), nullable=True)
-    distriktsskolekode: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    skolekode: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    elevklassetrin: Mapped[str | None] = mapped_column(Unicode(20), nullable=True)
-    klassebetegnelse: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
-    sprogstoettebehov: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    ppr_status: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    tilflyttet_dk_dato: Mapped[date | None] = mapped_column(Date, nullable=True)
-
-    opdateret_tidspunkt: Mapped[datetime] = mapped_column(
-        DATETIME2,
-        nullable=False,
-        server_default=text("sysdatetime()"),
-    )
 
     adresse = relationship("Adresse")
 
@@ -94,39 +81,6 @@ class Foraelder(Base):
 
     elev = relationship("Elev")
     adresse = relationship("Adresse")
-
-
-class SkoleHistorik(Base):
-    """A child's school and sprogstøttebehov over time, one row per period.
-
-    gyldig_til NULL marks the current period; the database allows one per
-    child (UX_SkoleHistorik_aaben).
-    """
-
-    __tablename__ = "SkoleHistorik"
-    __table_args__ = {"schema": DB_SCHEMA}
-
-    skolehistorik_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-
-    cpr: Mapped[str] = mapped_column(
-        String(10),
-        ForeignKey(f"{DB_SCHEMA}.Elev.cpr"),
-        nullable=False,
-    )
-
-    skolekode: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    elevklassetrin: Mapped[str | None] = mapped_column(Unicode(20), nullable=True)
-    klassebetegnelse: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
-    sprogstoettebehov: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    gyldig_fra: Mapped[date] = mapped_column(Date, nullable=False)
-    gyldig_til: Mapped[date | None] = mapped_column(Date, nullable=True)
-    kilde: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
-
-    oprettet_tidspunkt: Mapped[datetime] = mapped_column(
-        DATETIME2,
-        nullable=False,
-        server_default=text("sysdatetime()"),
-    )
 
 
 class SagsaktivitetType(Base):

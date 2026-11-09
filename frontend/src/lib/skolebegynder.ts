@@ -152,16 +152,16 @@ export type SkolebegynderFelter = {
 // Tabs
 // -----------------------------
 
-export type Fane = "overblik" | "screening-afviklet" | "ikke-screenet" | "aendringer";
+export type Fane = "overblik" | "naermere-afklaring" | "ikke-screenet" | "aendringer";
 
 // Ordered by how much the caseworker has to DO in each, not by process step:
-// Overblik (the decision) -> Screening afviklet (screened, still to be
-// placed — the work queue) -> Ændringer (a decision may need reviewing) ->
-// Ikke screenet (mostly waiting on the screening in SX). The skolebegynder
-// sketch also puts Ændringer next to Overblik and Ikke screenet last.
+// Overblik (the decision) -> Nærmere afklaring (waiting on PUF — the work
+// queue) -> Ændringer (a decision may need reviewing) -> Ikke screenet
+// (mostly waiting on the screening in SX). The skolebegynder sketch also puts
+// Ændringer next to Overblik and Ikke screenet last.
 export const FANER: { id: Fane; label: string }[] = [
   { id: "overblik", label: "Overblik" },
-  { id: "screening-afviklet", label: "Screening afviklet" },
+  { id: "naermere-afklaring", label: "Nærmere afklaring" },
   { id: "aendringer", label: "Ændringer" },
   { id: "ikke-screenet", label: "Ikke screenet" }
 ];
@@ -173,15 +173,29 @@ const OVERBLIK_STATUSSER = new Set(["Screening afviklet", "Skoleplaceret", "Afsl
 const IKKE_SCREENET_STATUSSER = new Set(["Potentiel skolestarter", "Tid booket"]);
 
 /**
+ * SX's samlet_resultat when the screening alone cannot decide; PUF then
+ * assesses the child. Spelled as in the SX export.
+ */
+export const NAERMERE_AFKLARING = "Nærmere afklaring";
+
+/**
  * Which cases a tab shows. Ændringer is a different list (changes, not
  * cases) and is not filtered here.
+ *
+ * Nærmere afklaring follows the skolebegynder sketch: SX said "Nærmere
+ * afklaring" and PUF-resultat is not filled in yet. Filling it in moves the
+ * case to Overblik only ("Alle screenet"). A closed case is done either way.
  */
 export function iFane(row: SkolebegynderRow, fane: Fane): boolean {
   switch (fane) {
     case "overblik":
       return OVERBLIK_STATUSSER.has(row.status_tekst);
-    case "screening-afviklet":
-      return row.status_tekst === "Screening afviklet";
+    case "naermere-afklaring":
+      return (
+        row.samlet_resultat === NAERMERE_AFKLARING &&
+        !row.puf_screeningsresultat &&
+        row.status_tekst !== "Afsluttet"
+      );
     case "ikke-screenet":
       return IKKE_SCREENET_STATUSSER.has(row.status_tekst);
     default:
@@ -225,6 +239,13 @@ export function skoleaarTekst(aar: number): string {
  * Nærmere afklaring. Keep in step with usp_recalculate_skolebegynder_status.
  */
 export const EJ_SPROGSCREENET = "Ej sprogscreenet";
+
+/**
+ * PUF's assessment after a screening: one of these two, nothing else. Used
+ * for PUF-resultat here and for a skoleskift's samlet_resultat. Keep in step
+ * with PufResultat in the backend schemas.
+ */
+export const PUF_RESULTATER = ["Alderssvarende dansk", "Sprogstøttebehov"] as const;
 
 /** True when SX has a real screening result for the case. */
 export function erScreenet(row: { samlet_resultat: string | null }): boolean {
