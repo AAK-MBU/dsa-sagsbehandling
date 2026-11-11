@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* DSA: from befordringssystemet's app.css. Without it Tailwind's dark: variant
+   follows the operating system's dark mode, and DSA has no dark theme. The
+   date picker's day cells carry dark: classes, so on a PC in dark mode
+   today's date was filled dark grey (dark:bg-gray-600) instead of the light
+   grey (bg-gray-100) it shows in befordring. Scoped to a .dark class, which
+   nothing sets, those classes never apply. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* The date picker (DateInput.svelte) builds its calendar from HTML strings
    inside this package, so Tailwind only generates those classes if it scans
    here. Without this line the picker still works and still shows the week
