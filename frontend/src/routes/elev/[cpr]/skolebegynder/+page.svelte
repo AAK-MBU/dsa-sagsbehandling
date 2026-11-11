@@ -3,6 +3,7 @@
 
   import { backendFetch } from "$lib/client/backendFetch";
   import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate } from "$lib/dates";
+  import DateInput from "$lib/components/DateInput.svelte";
   import { erEgenKommentar } from "$lib/kommentarEjer";
   import {
     EJ_SPROGSCREENET,
@@ -456,7 +457,7 @@
 
         <label class="flex flex-col gap-1">
           <span class="text-gray-600">Sagsbehandlingsdato</span>
-          <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 rounded px-2.5 py-1.5" bind:value={form.sagsbehandlingsdato} />
+          <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 rounded px-2.5 py-1.5" bind:value={form.sagsbehandlingsdato} />
         </label>
 
         <label class="flex flex-col gap-1">

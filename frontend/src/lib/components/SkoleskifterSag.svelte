@@ -3,6 +3,7 @@
 
   import { backendFetch } from "$lib/client/backendFetch";
   import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate } from "$lib/dates";
+  import DateInput from "$lib/components/DateInput.svelte";
   import { dato, fejltekst, PUF_RESULTATER, skoleaarTekst, tidspunkt, type Lookups } from "$lib/skolebegynder";
   import {
     AFSLUTTET,
@@ -324,7 +325,7 @@
       <fieldset class="contents" disabled={laast}>
         <label class="flex flex-col gap-1 max-w-56">
           <span class="text-gray-600">Screeningsdato</span>
-          <input type="date" min={MIN_DATE} max={MAX_DATE} class={felt} bind:value={form.screeningsdato} />
+          <DateInput min={MIN_DATE} max={MAX_DATE} class={felt} bind:value={form.screeningsdato} />
         </label>
         <table class="materialer w-full border-collapse">
           <thead><tr class="text-left text-gray-500"><th class="font-medium"></th><th class="font-medium">Point</th><th class="font-medium">Resultat</th></tr></thead>
@@ -401,7 +402,7 @@
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-gray-600">Dato for skoletilbud</span>
-          <input type="date" min={MIN_DATE} max={MAX_DATE} class={felt} bind:value={form.dato_skoletilbud} />
+          <DateInput min={MIN_DATE} max={MAX_DATE} class={felt} bind:value={form.dato_skoletilbud} />
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-gray-600">Klassetrin</span>
@@ -413,7 +414,7 @@
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-gray-600">Start i visitationsklasse</span>
-          <input type="date" min={MIN_DATE} max={MAX_DATE} class={felt} bind:value={form.start_visitationsklasse} />
+          <DateInput min={MIN_DATE} max={MAX_DATE} class={felt} bind:value={form.start_visitationsklasse} />
         </label>
         <label class="flex flex-col gap-1 md:col-span-2 xl:col-span-3">
           <span class="text-gray-600">Bemærkning</span>
