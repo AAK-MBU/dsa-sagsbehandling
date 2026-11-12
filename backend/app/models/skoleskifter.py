@@ -17,8 +17,13 @@ from app.core.database import Base
 
 DB_SCHEMA = "dsa"
 
-# The three kinds of case (CK_Skoleskifter_variant).
-VARIANTER = ("Tilflytter", "Skoleskift internt", "Skoleskift udefra")
+# The three kinds of case (CK_Skoleskifter_variant). Two flows (migration 007):
+# "Skoleskift internt" is the intern flow, the other two the ekstern flow.
+VARIANTER = ("Tilflytter", "Skoleskift internt", "Skoleskift eksternt")
+VARIANT_INTERN = "Skoleskift internt"
+
+# The school's sprogvurdering in the intern flow (CK_Skoleskifter_skolens_sprogvurdering).
+SKOLENS_SPROGVURDERINGER = ("Afventer optagelse i Sprog+", "Fortsat behov for sprogstøtte")
 
 # How the case came (CK_Skoleskifter_skoletilbud): Modtagelsesklasse straight
 # from the parents, Almen klasse through the receiving school's form.
@@ -32,8 +37,9 @@ class Skoleskifter(Base):
     """A skoleskifter / tilflytter case.
 
     status_id is derived by usp_recalculate_skoleskifter_status, except the
-    manual statuses (Ny, Afventer sprogvurdering, Sendt til PPR, Afsluttet by
-    hand) — write the data or the manual status, then recalculate.
+    manual statuses (Ny, Sendt til PPR, Afsluttet by hand) — write the data
+    or the manual status, then recalculate. Which steps apply depends on the
+    flow (migration 007): VARIANT_INTERN or not.
     """
 
     __tablename__ = "Skoleskifter"
@@ -81,6 +87,22 @@ class Skoleskifter(Base):
     soeskende_klasse: Mapped[str | None] = mapped_column(Unicode(20), nullable=True)
     begrundelse: Mapped[str | None] = mapped_column(Unicode, nullable=True)
     skolens_afgoerelse: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
+    andet_modersmaal: Mapped[bool | None] = mapped_column(Boolean, nullable=True)  # ekstern, migration 007
+
+    # --- Case work (migration 007) ---
+    sagsbehandler_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey(f"{DB_SCHEMA}.Sagsbehandler.sagsbehandler_id"),
+        nullable=True,
+    )
+
+    # --- Intern: the school's sprogvurdering ---
+    dato_forespoergsel_skole: Mapped[date | None] = mapped_column(Date, nullable=True)
+    dato_svar_skole: Mapped[date | None] = mapped_column(Date, nullable=True)
+    skolens_sprogvurdering: Mapped[str | None] = mapped_column(Unicode(50), nullable=True)
+
+    # --- Ekstern: PUF's screening (screeningsdato below is the day held) ---
+    dato_indkaldelse_screening: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # --- Language assessment (PUF) ---
     screeningsdato: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -93,6 +115,20 @@ class Skoleskifter(Base):
     samlet_resultat: Mapped[str | None] = mapped_column(Unicode(100), nullable=True)
 
     # --- Decision ---
+    # Ekstern: a free place on the wished school; if not, the alternative
+    # school contacted (it has two days to answer), and a temporary offer.
+    ledig_plads: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    kontaktet_skole_matrikel_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey(f"{DB_SCHEMA}.Skolematrikel.matrikel_id"),
+        nullable=True,
+    )
+    dato_kontakt_skole: Mapped[date | None] = mapped_column(Date, nullable=True)
+    midlertidigt_skoletilbud_matrikel_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey(f"{DB_SCHEMA}.Skolematrikel.matrikel_id"),
+        nullable=True,
+    )
     skoletilbud_matrikel_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey(f"{DB_SCHEMA}.Skolematrikel.matrikel_id"),
@@ -110,6 +146,13 @@ class Skoleskifter(Base):
     bemaerkning: Mapped[str | None] = mapped_column(Unicode, nullable=True)
     ppr_sendt_dato: Mapped[date | None] = mapped_column(Date, nullable=True)
     afsluttet_dato: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # --- Letters (the day each was sent) and befordring, migration 007 ---
+    optagelsesbrev_sendt: Mapped[date | None] = mapped_column(Date, nullable=True)
+    sprogstoettebrev_sendt: Mapped[date | None] = mapped_column(Date, nullable=True)
+    partshoeringsbrev_sendt: Mapped[date | None] = mapped_column(Date, nullable=True)
+    krav_paa_befordring: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    befordring_bemaerkning: Mapped[str | None] = mapped_column(Unicode, nullable=True)
 
     # --- Bookkeeping, as on Skolebegynder ---
     # updated_at is maintained by trg_Skoleskifter_UpdatedAt.

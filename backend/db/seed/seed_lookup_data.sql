@@ -186,11 +186,12 @@ FROM (VALUES
 PRINT CONCAT('Status: ', @@ROWCOUNT, ' row(s) inserted.');
 
 
--- Status  (7 rows, skoleskiftere og tilflyttere — migration 004)
+-- Status  (10 rows, skoleskiftere og tilflyttere — migrations 004 and 007)
 --
--- From the field list. Ny, Afventer sprogvurdering and Sendt til PPR are set
--- by a caseworker; usp_recalculate_skoleskifter_status derives the rest, and
--- closes a case the day after its offer date.
+-- The two flows (migration 007): intern (the school's sprogvurdering) and
+-- ekstern (PUF's screening). Ny and Sendt til PPR are set by a caseworker,
+-- Afsluttet by hand or the day after the offer date;
+-- usp_recalculate_skoleskifter_status derives the rest.
 DECLARE @skoleskiftere INT = (
     SELECT fagomraade_id FROM [dsa].[Fagomraade]
     WHERE  fagomraade_tekst = N'Skoleskiftere og tilflyttere'
@@ -199,13 +200,16 @@ DECLARE @skoleskiftere INT = (
 INSERT INTO [dsa].[Status] (status_tekst, beskrivelse, aktiv, fagomraade_id, sortering)
 SELECT v.status_tekst, v.beskrivelse, 1, @skoleskiftere, v.sortering
 FROM (VALUES
-    (N'Ny',                      N'Manuelt: ansøgningen er modtaget og ikke behandlet endnu',          10),
-    (N'Afventer sprogvurdering', N'Manuelt: sprogvurdering er bestilt (skolen eller screening)',       20),
-    (N'Aftalt sprogscreening',   N'Automatisk: der er en screeningsdato, men intet resultat',          30),
-    (N'Sendt til PPR',           N'Manuelt: sagen er overdraget til PPR (særlige behov)',              40),
-    (N'Afventer skoletilbud',    N'Automatisk: sprogvurderingen foreligger',                           50),
-    (N'Skoletilbud afsendt',     N'Automatisk: skoletilbud, skoletilbudstype og dato er udfyldt',      60),
-    (N'Afsluttet',               N'Automatisk dagen efter dato for skoletilbud, eller manuelt',        70)
+    (N'Ny',                          N'Ansøgningen er modtaget og ikke behandlet endnu',                       10),
+    (N'Afventer sprogvurdering',     N'Automatisk (intern): skolen er bedt om en sprogvurdering',              20),
+    (N'Indkaldt til sprogscreening', N'Automatisk (ekstern): barnet er indkaldt til sprogscreening',           30),
+    (N'Klar til afgørelse',          N'Automatisk (intern): skolens sprogvurdering foreligger',                35),
+    (N'Sendt til PPR',               N'Manuelt: sagen er overdraget til PPR (særlige behov)',                  40),
+    (N'Afventer skoletilbud',        N'Automatisk (ekstern): sprogscreeningens resultat foreligger',           50),
+    (N'Afventer skolens svar',       N'Automatisk (ekstern): en alternativ skole er kontaktet (to dages frist)', 52),
+    (N'Partshøring',                 N'Automatisk (ekstern): partshøringsbrevet er sendt',                     55),
+    (N'Skoletilbud afsendt',         N'Automatisk: skoletilbud, skoletilbudstype og dato er udfyldt',          60),
+    (N'Afsluttet',                   N'Manuelt, eller automatisk dagen efter dato for skoletilbud',            70)
 ) AS v (status_tekst, beskrivelse, sortering);
 PRINT CONCAT('Status (skoleskiftere): ', @@ROWCOUNT, ' row(s) inserted.');
 

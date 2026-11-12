@@ -14,6 +14,9 @@ export type SkoleskifterRow = {
   distriktsskolekode: number | null;
   distriktsskole: string | null;
   variant: Variant;
+  forloeb: Forloeb;
+  sagsbehandler_id: number | null;
+  sagsbehandler_tekst: string | null;
   status_id: number;
   status_tekst: string;
   status_sortering: number | null;
@@ -39,8 +42,20 @@ export type SkoleskifterRow = {
   soeskende_paa_skolen: boolean | null;
   soeskende_klasse: string | null;
   skolens_afgoerelse: string | null;
+  andet_modersmaal: boolean | null;
+  dato_forespoergsel_skole: string | null;
+  dato_svar_skole: string | null;
+  skolens_sprogvurdering: SkolensSprogvurdering | null;
+  dato_indkaldelse_screening: string | null;
   screeningsdato: string | null;
   samlet_resultat: string | null;
+  ledig_plads: boolean | null;
+  kontaktet_skole_matrikel_id: number | null;
+  kontaktet_skole: string | null;
+  dato_kontakt_skole: string | null;
+  midlertidigt_skoletilbud_matrikel_id: number | null;
+  midlertidigt_skoletilbud: string | null;
+  start_visitationsklasse: string | null;
   skoletilbud_matrikel_id: number | null;
   skoletilbud_matrikel: string | null;
   skoletilbudstype_id: number | null;
@@ -50,6 +65,11 @@ export type SkoleskifterRow = {
   bemaerkning: string | null;
   ppr_sendt_dato: string | null;
   afsluttet_dato: string | null;
+  optagelsesbrev_sendt: string | null;
+  sprogstoettebrev_sendt: string | null;
+  partshoeringsbrev_sendt: string | null;
+  krav_paa_befordring: boolean | null;
+  befordring_bemaerkning: string | null;
   ventetid_dage: number | null;
   dage_hos_ppr: number | null;
   updated_at: string;
@@ -82,15 +102,38 @@ export type Soeskende = {
 };
 
 /**
- * The three kinds of case (PUF's own description). The robot sets it from
- * the form; the caseworker can correct it. All three are assessed by PUF.
- * - Tilflytter: new to Aarhus Kommune — current kommune not Aarhus, moving.
- * - Skoleskift internt (A): between two Aarhus schools.
- * - Skoleskift udefra (B): from another kommune's school, not moving.
+ * The three kinds of case. The robot sets it from the form; the caseworker
+ * can correct it. They follow two flows (PUF, 2026-11; migration 007):
+ * - Skoleskift internt: between two Aarhus folkeskoler — the intern flow,
+ *   where the school assesses the Danish.
+ * - Skoleskift eksternt (e.g. from a private school) and Tilflytter (new to
+ *   Aarhus Kommune): the ekstern flow, where PUF screens the child.
  */
-export type Variant = "Tilflytter" | "Skoleskift internt" | "Skoleskift udefra";
+export type Variant = "Tilflytter" | "Skoleskift internt" | "Skoleskift eksternt";
 
-export const VARIANTER: Variant[] = ["Tilflytter", "Skoleskift internt", "Skoleskift udefra"];
+export const VARIANTER: Variant[] = ["Skoleskift internt", "Skoleskift eksternt", "Tilflytter"];
+
+/** The case's flow: view_Skoleskiftere.forloeb. */
+export type Forloeb = "Intern" | "Ekstern";
+
+/** The school's reply in the intern flow (CK_Skoleskifter_skolens_sprogvurdering). */
+export type SkolensSprogvurdering = "Afventer optagelse i Sprog+" | "Fortsat behov for sprogstøtte";
+
+export const SKOLENS_SPROGVURDERINGER: SkolensSprogvurdering[] = [
+  "Afventer optagelse i Sprog+",
+  "Fortsat behov for sprogstøtte"
+];
+
+/** An earlier language assessment of the child, for the case's history strip. */
+export type TidligereScreening = {
+  kilde: string;
+  dato: string | null;
+  resultat: string | null;
+  detalje: string | null;
+};
+
+/** The school an alternative is asked to answer within (PUF: "to dage"). */
+export const SVARFRIST_DAGE = 2;
 
 /**
  * How the case came (migration 005): straight from the parents when the
@@ -99,11 +142,15 @@ export const VARIANTER: Variant[] = ["Tilflytter", "Skoleskift internt", "Skoles
  */
 export type Indgang = "Modtagelsesklasse" | "Via skolen";
 
-/** The screening result that closes the case: the child is not DSA's. */
+/**
+ * The screening result meaning age-appropriate Danish. In the ekstern flow it
+ * no longer closes the case on its own: the admission letter goes first, then
+ * the caseworker closes it (PUF, 2026-11).
+ */
 export const ALDERSSVARENDE = "Alderssvarende dansk";
 
 /** The statuses a caseworker sets; usp_recalculate_skoleskifter_status derives the rest. */
-export const MANUELLE_STATUSSER = ["Ny", "Afventer sprogvurdering", "Sendt til PPR"] as const;
+export const MANUELLE_STATUSSER = ["Ny", "Sendt til PPR"] as const;
 
 export const AFSLUTTET = "Afsluttet";
 

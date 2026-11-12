@@ -42,13 +42,17 @@
      - offers at a secondary campus, a specialklasse, and cases where district
        school, wanted school and offer differ (skoler_afviger)
 
-   Skoleskiftere og tilflyttere (migrations 004-005, draft), 42 cases shaped
-   like the OS2Forms submissions, expected after step 7: Ny 9, Afventer
-   sprogvurdering 7, Aftalt sprogscreening 5, Sendt til PPR 4, Afventer
-   skoletilbud 7, Skoletilbud afsendt 5, Afsluttet 5 (two on a passed offer
-   date, three on "Alderssvarende dansk"). 13 straight from modtagelsesklasse,
-   29 through the school's form; two families with two children. 14 of the
-   children have an earlier skolebegynder case (step 6d).
+   Skoleskiftere og tilflyttere (migrations 004-007), 42 cases shaped like
+   the OS2Forms submissions, fitted to the two flows in step 6e. Expected
+   after step 7:
+     Intern  (19)  Ny 9, Afventer sprogvurdering 2, Klar til afgørelse 5,
+                   Sendt til PPR 1, Afsluttet 2
+     Ekstern (23)  Ny 5, Indkaldt til sprogscreening 5, Sendt til PPR 3,
+                   Afventer skoletilbud 1, Afventer skolens svar 2,
+                   Partshøring 1, Skoletilbud afsendt 3, Afsluttet 3
+   13 straight from modtagelsesklasse, 29 through the school's form; two
+   families with two children. 14 of the children have an earlier
+   skolebegynder case (step 6d). Three test caseworkers.
 
    Dates are not hardcoded: every date, school year and child's birth year
    is derived from the run date (see "Datoankre" in step 2), as in
@@ -90,7 +94,7 @@
    "Potentiel skolestarter" and usp_recalculate_skolebegynder_status derives the rest,
    so this file also exercises the status rule.
 
-   Requires migrations 001-006, seed_lookup_data.sql (including
+   Requires migrations 001-007, seed_lookup_data.sql (including
    Skolematrikel) and the stored procedures. The preview in step 8 reads the
    tables, not the views, so it works whichever version of the views is in
    place.
@@ -158,6 +162,13 @@ IF OBJECT_ID(N'[dsa].[Elev_Sprogstoettebehov]', N'U') IS NULL
    OR COL_LENGTH(N'dsa.Elev', N'modersmaal') IS NOT NULL
 BEGIN
     RAISERROR('STOPPET: databasen mangler migration 006 (Elev_*-tabellerne). Koer 006_elev_historik.sql foerst.', 16, 1);
+    RETURN;
+END;
+
+IF OBJECT_ID(N'[dsa].[Sagsbehandler]', N'U') IS NULL
+   OR COL_LENGTH(N'dsa.Skoleskifter', N'skolens_sprogvurdering') IS NULL
+BEGIN
+    RAISERROR('STOPPET: databasen mangler migration 007 (de to forloeb). Koer 007_skoleskifter_forloeb.sql foerst.', 16, 1);
     RETURN;
 END;
 
@@ -1831,13 +1842,14 @@ PRINT 'Sagsaktivitet seeded.';
    Shaped like the OS2Forms submissions (backend/db/formulars): only cases
    that reach DSA. 13 straight from the parents (modtagelsesklasse), the rest through
    the receiving school's form. 14 tilflyttere, 19 skoleskift internt,
-   9 skoleskift udefra; two families with two children each. The last eight
-   are children who grew up in Aarhus, one in each status; step 6d gives
+   9 skoleskift eksternt; two families with two children each. The last eight
+   are children who grew up in Aarhus; step 6d gives
    them (and the other skoleskiftere who started school here) the
    skolebegynder case they had years ago. Manual
    statuses, and cases closed on "Alderssvarende dansk", are inserted as
-   such; the rest as "Ny" for the procedure in step 7. The assessment
-   results and the ESDH numbers are made up.
+   such; the rest as "Ny" for the procedure in step 7. Step 6e then fits
+   every case to its flow (migration 007). The assessment results and the
+   ESDH numbers are made up.
 ------------------------------------------------------------ */
 
 DECLARE @fagomraade_ss INT = (
@@ -1873,7 +1885,7 @@ FROM (VALUES
      DATEADD(DAY, -3, @i_dag), 21.6, N'Alderssvarende', 11.0, N'Sprogstøttebehov', 11.2, N'Sprogstøttebehov', N'Sprogstøttebehov',
      NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL),
-    (N'0103124349', N'Skoleskift udefra', N'Afsluttet', DATEADD(MINUTE, 494, DATEADD(DAY, -74, @nu)),
+    (N'0103124349', N'Skoleskift eksternt', N'Afsluttet', DATEADD(MINUTE, 494, DATEADD(DAY, -74, @nu)),
      N'os2f-skoleskift-1001', N'{"webform_id": "ansoegning_om_skoleskifte_skole", "sid": 5001, "data": {"navn_mitid": "Amra Karimi", "cpr_nummer_mitid": "1005813574", "adresse": "Egå Havvej 71, 1. tv, 8250 Egå", "telefonnummer": "81659211", "emailadresse_login": "amra80@example.dk", "mit_barn_kommer_ikke_frem_i_listen": false, "barnets_navn_mitid": "Emre Karimi", "cpr_nummer_barn_mitid": "__CPR__", "barnets_adresse_mitid": "Egå Havvej 71, 1. tv, 8250 Egå", "foraeldremyndighedsindehaver_2_cpr_nummer": "2105802513", "nuvaerende_kommune": "Silkeborg Kommune", "barnets_nuvaerende_skole": "Rønbæk Skole", "gaar_barnet_i_en_normal_klasse": "Almen klasse", "nuvaerende_klasse": "7.C", "registreret_modersmaal": "None", "hvilket_sprog_er_barnets_modersmaal_01": "Farsi", "soeger_i_skole_inden_for_eller_uden_for_skoledistriktet": "Nej", "skoleaar_valg": "kommende", "du_soeger_skoleskift_for_skoleaaret": "__SKOLEAAR__", "modtagende_skole": "Sølystskolen", "er_der_soeskende_paa_denne_skole": "Nej", "hvilket_klassetrin_soeskende": "", "begrund_oenske_om_skoleskift": "", "kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma": "Ja", "navn_foraeldre_2": "Omar Karimi", "adresse_foraeldre_2": "Egå Havvej 71, 1. tv, 8250 Egå", "telefonnummer_foraeldre_2": "79771381", "emailadresse_foraeldre_2": "omar88@example.dk", "skolens_vurdering": "Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang", "elevens_modersmaal": "Farsi"}}', N'26-178936',
      @skoleaar, N'Almen klasse', NULL, N'Silkeborg Kommune',
      751043, NULL, N'Rønbæk Skole', N'7.C',
@@ -1909,7 +1921,7 @@ FROM (VALUES
      NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL),
-    (N'1604164634', N'Skoleskift udefra', N'Afventer sprogvurdering', DATEADD(MINUTE, 494, DATEADD(DAY, -7, @nu)),
+    (N'1604164634', N'Skoleskift eksternt', N'Afventer sprogvurdering', DATEADD(MINUTE, 494, DATEADD(DAY, -7, @nu)),
      N'os2f-skoleskift-1005', N'{"webform_id": "ansoegning_om_skoleskifte_skole", "sid": 5005, "data": {"navn_mitid": "Shirin Petrenko", "cpr_nummer_mitid": "2503891590", "adresse": "Strandvejen 179, 1. tv, 8240 Risskov", "telefonnummer": "95767044", "emailadresse_login": "shirin90@example.dk", "mit_barn_kommer_ikke_frem_i_listen": false, "barnets_navn_mitid": "Noor Petrenko", "cpr_nummer_barn_mitid": "__CPR__", "barnets_adresse_mitid": "Strandvejen 179, 1. tv, 8240 Risskov", "foraeldremyndighedsindehaver_2_cpr_nummer": "0308931163", "nuvaerende_kommune": "Odder Kommune", "barnets_nuvaerende_skole": "Parkvejens Skole", "gaar_barnet_i_en_normal_klasse": "Almen klasse", "nuvaerende_klasse": "3.C", "registreret_modersmaal": "None", "hvilket_sprog_er_barnets_modersmaal_01": "Ukrainsk", "soeger_i_skole_inden_for_eller_uden_for_skoledistriktet": "Nej", "skoleaar_valg": "indevaerende", "du_soeger_skoleskift_for_skoleaaret": "__SKOLEAAR__", "modtagende_skole": "Ellevangskolen", "er_der_soeskende_paa_denne_skole": "Nej", "hvilket_klassetrin_soeskende": "", "begrund_oenske_om_skoleskift": "Vores barn trives ikke i den nuværende klasse.", "kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma": "Ja", "navn_foraeldre_2": "Tarik Petrenko", "adresse_foraeldre_2": "Strandvejen 179, 1. tv, 8240 Risskov", "telefonnummer_foraeldre_2": "90462369", "emailadresse_foraeldre_2": "tarik1@example.dk", "skolens_vurdering": "Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang", "elevens_modersmaal": "Ukrainsk"}}', N'26-380210',
      @skoleaar - 1, N'Almen klasse', NULL, N'Odder Kommune',
      751003, NULL, N'Parkvejens Skole', N'3.C',
@@ -1927,7 +1939,7 @@ FROM (VALUES
      NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL),
-    (N'0309164265', N'Skoleskift udefra', N'Ny', DATEADD(MINUTE, 825, DATEADD(DAY, -46, @nu)),
+    (N'0309164265', N'Skoleskift eksternt', N'Ny', DATEADD(MINUTE, 825, DATEADD(DAY, -46, @nu)),
      N'os2f-skoleskift-1007', N'{"webform_id": "ansoegning_om_skoleskifte_skole", "sid": 5007, "data": {"navn_mitid": "Halima Petrenko", "cpr_nummer_mitid": "2702922398", "adresse": "Kirketorvet 59, 2. th, 8310 Tranbjerg J", "telefonnummer": "20219938", "emailadresse_login": "halima90@example.dk", "mit_barn_kommer_ikke_frem_i_listen": false, "barnets_navn_mitid": "Nuh Petrenko", "cpr_nummer_barn_mitid": "__CPR__", "barnets_adresse_mitid": "Kirketorvet 59, 2. th, 8310 Tranbjerg J", "foraeldremyndighedsindehaver_2_cpr_nummer": "1401913193", "nuvaerende_kommune": "Silkeborg Kommune", "barnets_nuvaerende_skole": "Rønbæk Skole", "gaar_barnet_i_en_normal_klasse": "Almen klasse", "nuvaerende_klasse": "3.C", "registreret_modersmaal": "None", "hvilket_sprog_er_barnets_modersmaal_01": "Ukrainsk", "soeger_i_skole_inden_for_eller_uden_for_skoledistriktet": "Nej", "skoleaar_valg": "kommende", "du_soeger_skoleskift_for_skoleaaret": "__SKOLEAAR__", "modtagende_skole": "Tranbjergskolen", "er_der_soeskende_paa_denne_skole": "Nej", "hvilket_klassetrin_soeskende": "", "begrund_oenske_om_skoleskift": "", "kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma": "Ja", "navn_foraeldre_2": "Karim Petrenko", "adresse_foraeldre_2": "Kirketorvet 59, 2. th, 8310 Tranbjerg J", "telefonnummer_foraeldre_2": "58777191", "emailadresse_foraeldre_2": "karim14@example.dk", "skolens_vurdering": "Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang", "elevens_modersmaal": "Ukrainsk"}}', N'26-103301',
      @skoleaar, N'Almen klasse', NULL, N'Silkeborg Kommune',
      280458, NULL, N'Rønbæk Skole', N'3.C',
@@ -2008,7 +2020,7 @@ FROM (VALUES
      DATEADD(DAY, 10, @i_dag), NULL, NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL),
-    (N'0605144607', N'Skoleskift udefra', N'Ny', DATEADD(MINUTE, 602, DATEADD(DAY, -48, @nu)),
+    (N'0605144607', N'Skoleskift eksternt', N'Ny', DATEADD(MINUTE, 602, DATEADD(DAY, -48, @nu)),
      N'os2f-skoleskift-1016', N'{"webform_id": "ansoegning_om_skoleskifte", "sid": 5016, "data": {"navn_mitid": "Hodan Jama", "cpr_nummer_mitid": "0306923124", "adresse": "Hasselvej 169, st., 8260 Viby J", "telefonnummer": "73293077", "emailadresse_login": "hodan1@example.dk", "mit_barn_kommer_ikke_frem_i_listen": false, "barnets_navn_mitid": "Maksym Jama", "cpr_nummer_barn_mitid": "__CPR__", "barnets_adresse_mitid": "Hasselvej 169, st., 8260 Viby J", "foraeldremyndighedsindehaver_2_cpr_nummer": "", "nuvaerende_kommune": "Københavns Kommune", "barnets_nuvaerende_skole": "Tingbjerg Skole", "gaar_barnet_i_en_normal_klasse": "Modtagelsesklasse", "nuvaerende_klasse": "5.C", "registreret_modersmaal": "None", "hvilket_sprog_er_barnets_modersmaal_01": "Somali", "soeger_i_skole_inden_for_eller_uden_for_skoledistriktet": "Nej", "skoleaar_valg": "indevaerende", "du_soeger_skoleskift_for_skoleaaret": "__SKOLEAAR__", "modtagende_skole": "Højvangskolen", "er_der_soeskende_paa_denne_skole": "Ja", "hvilket_klassetrin_soeskende": "5.A", "begrund_oenske_om_skoleskift": "", "kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma": "Ja", "skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas": "__UDSLUSNING__"}}', N'26-753248',
      @skoleaar - 1, N'Modtagelsesklasse', DATEADD(DAY, -27, @i_dag), N'Københavns Kommune',
      751018, NULL, N'Tingbjerg Skole', N'5.C',
@@ -2017,7 +2029,7 @@ FROM (VALUES
      DATEADD(DAY, -42, @i_dag), 18.7, N'Sprogstøttebehov', 20.4, N'Alderssvarende', 8.0, N'Intet dansk sprog', N'Sprogstøttebehov',
      N'Rosenvangskolen', N'Henvist til anden skole end distriktsskolen', DATEADD(DAY, 8, @i_dag), NULL, N'5.', N'5.C',
      NULL, NULL, NULL),
-    (N'1401184139', N'Skoleskift udefra', N'Ny', DATEADD(MINUTE, 825, DATEADD(DAY, -18, @nu)),
+    (N'1401184139', N'Skoleskift eksternt', N'Ny', DATEADD(MINUTE, 825, DATEADD(DAY, -18, @nu)),
      N'os2f-skoleskift-1017', N'{"webform_id": "ansoegning_om_skoleskifte_skole", "sid": 5017, "data": {"navn_mitid": "Halima Rostami", "cpr_nummer_mitid": "2004931642", "adresse": "Vorregårds Allé 83, st., 8200 Aarhus N", "telefonnummer": "91297517", "emailadresse_login": "halima56@example.dk", "mit_barn_kommer_ikke_frem_i_listen": false, "barnets_navn_mitid": "Adam Rostami", "cpr_nummer_barn_mitid": "__CPR__", "barnets_adresse_mitid": "Vorregårds Allé 83, st., 8200 Aarhus N", "foraeldremyndighedsindehaver_2_cpr_nummer": "1102932315", "nuvaerende_kommune": "Odense Kommune", "barnets_nuvaerende_skole": "Vollsmose Skole", "gaar_barnet_i_en_normal_klasse": "Almen klasse", "nuvaerende_klasse": "1.B", "registreret_modersmaal": "None", "hvilket_sprog_er_barnets_modersmaal_01": "Farsi", "soeger_i_skole_inden_for_eller_uden_for_skoledistriktet": "Nej", "skoleaar_valg": "kommende", "du_soeger_skoleskift_for_skoleaaret": "__SKOLEAAR__", "modtagende_skole": "Katrinebjergskolen", "er_der_soeskende_paa_denne_skole": "Nej", "hvilket_klassetrin_soeskende": "", "begrund_oenske_om_skoleskift": "Kortere skolevej – vi har fået ny bolig.", "kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma": "Ja", "navn_foraeldre_2": "Abdullahi Rostami", "adresse_foraeldre_2": "Vorregårds Allé 83, st., 8200 Aarhus N", "telefonnummer_foraeldre_2": "74279120", "emailadresse_foraeldre_2": "abdullahi84@example.dk", "skolens_vurdering": "Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang", "elevens_modersmaal": "Farsi"}}', N'26-292384',
      @skoleaar, N'Almen klasse', NULL, N'Odense Kommune',
      751019, NULL, N'Vollsmose Skole', N'1.B',
@@ -2053,7 +2065,7 @@ FROM (VALUES
      NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL),
-    (N'0206164236', N'Skoleskift udefra', N'Sendt til PPR', DATEADD(MINUTE, 825, DATEADD(DAY, -12, @nu)),
+    (N'0206164236', N'Skoleskift eksternt', N'Sendt til PPR', DATEADD(MINUTE, 825, DATEADD(DAY, -12, @nu)),
      N'os2f-skoleskift-1021', N'{"webform_id": "ansoegning_om_skoleskifte", "sid": 5021, "data": {"navn_mitid": "Nadia Rostami", "cpr_nummer_mitid": "1504872074", "adresse": "Frederiks Allé 96, 1. tv, 8000 Aarhus C", "telefonnummer": "94609953", "emailadresse_login": "nadia37@example.dk", "mit_barn_kommer_ikke_frem_i_listen": false, "barnets_navn_mitid": "Salma Rostami", "cpr_nummer_barn_mitid": "__CPR__", "barnets_adresse_mitid": "Frederiks Allé 96, 1. tv, 8000 Aarhus C", "foraeldremyndighedsindehaver_2_cpr_nummer": "", "nuvaerende_kommune": "Københavns Kommune", "barnets_nuvaerende_skole": "Tingbjerg Skole", "gaar_barnet_i_en_normal_klasse": "Modtagelsesklasse", "nuvaerende_klasse": "3.A", "registreret_modersmaal": "None", "hvilket_sprog_er_barnets_modersmaal_01": "Farsi", "soeger_i_skole_inden_for_eller_uden_for_skoledistriktet": "Nej", "skoleaar_valg": "kommende", "du_soeger_skoleskift_for_skoleaaret": "__SKOLEAAR__", "modtagende_skole": "Frederiksbjerg skole", "er_der_soeskende_paa_denne_skole": "Nej", "hvilket_klassetrin_soeskende": "", "begrund_oenske_om_skoleskift": "", "kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma": "Ja", "skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas": "__UDSLUSNING__"}}', N'26-201854',
      @skoleaar, N'Modtagelsesklasse', DATEADD(DAY, 35, @i_dag), N'Københavns Kommune',
      751027, NULL, N'Tingbjerg Skole', N'3.A',
@@ -2080,7 +2092,7 @@ FROM (VALUES
      DATEADD(DAY, 13, @i_dag), NULL, NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL),
-    (N'2305134483', N'Skoleskift udefra', N'Ny', DATEADD(MINUTE, 1290, DATEADD(DAY, -41, @nu)),
+    (N'2305134483', N'Skoleskift eksternt', N'Ny', DATEADD(MINUTE, 1290, DATEADD(DAY, -41, @nu)),
      N'os2f-skoleskift-1024', N'{"webform_id": "ansoegning_om_skoleskifte", "sid": 5024, "data": {"navn_mitid": "Leila Yilmaz", "cpr_nummer_mitid": "0608873158", "adresse": "Kirketorvet 20, st., 8310 Tranbjerg J", "telefonnummer": "44984147", "emailadresse_login": "leila91@example.dk", "mit_barn_kommer_ikke_frem_i_listen": false, "barnets_navn_mitid": "Duc Yilmaz", "cpr_nummer_barn_mitid": "__CPR__", "barnets_adresse_mitid": "Kirketorvet 20, st., 8310 Tranbjerg J", "foraeldremyndighedsindehaver_2_cpr_nummer": "", "nuvaerende_kommune": "Horsens Kommune", "barnets_nuvaerende_skole": "Lundskolen", "gaar_barnet_i_en_normal_klasse": "Modtagelsesklasse", "nuvaerende_klasse": "6.C", "registreret_modersmaal": "None", "hvilket_sprog_er_barnets_modersmaal_01": "Tyrkisk", "soeger_i_skole_inden_for_eller_uden_for_skoledistriktet": "Nej", "skoleaar_valg": "indevaerende", "du_soeger_skoleskift_for_skoleaaret": "__SKOLEAAR__", "modtagende_skole": "Tranbjergskolen", "er_der_soeskende_paa_denne_skole": "Nej", "hvilket_klassetrin_soeskende": "", "begrund_oenske_om_skoleskift": "Skolen er anbefalet af modtagelsesklassens lærer.", "kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma": "Ja", "skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas": "__UDSLUSNING__"}}', N'26-922248',
      @skoleaar - 1, N'Modtagelsesklasse', DATEADD(DAY, -27, @i_dag), N'Horsens Kommune',
      280458, NULL, N'Lundskolen', N'6.C',
@@ -2098,7 +2110,7 @@ FROM (VALUES
      DATEADD(DAY, -20, @i_dag), 6.3, N'Intet dansk sprog', 10.7, N'Sprogstøttebehov', 5.1, N'Intet dansk sprog', N'Sprogstøttebehov',
      N'Ellevangskolen', N'Afslag ønsket skole', DATEADD(DAY, 6, @i_dag), DATEADD(DAY, -15, @i_dag), N'3.', N'3.B',
      NULL, NULL, NULL),
-    (N'1204184594', N'Skoleskift udefra', N'Ny', DATEADD(MINUTE, 494, DATEADD(DAY, -31, @nu)),
+    (N'1204184594', N'Skoleskift eksternt', N'Ny', DATEADD(MINUTE, 494, DATEADD(DAY, -31, @nu)),
      N'os2f-skoleskift-1026', N'{"webform_id": "ansoegning_om_skoleskifte_skole", "sid": 5026, "data": {"navn_mitid": "Zahra Ibrahim", "cpr_nummer_mitid": "1607893486", "adresse": "Vestergade 14, 8000 Aarhus C", "telefonnummer": "26505342", "emailadresse_login": "zahra55@example.dk", "mit_barn_kommer_ikke_frem_i_listen": false, "barnets_navn_mitid": "Elif Ibrahim", "cpr_nummer_barn_mitid": "__CPR__", "barnets_adresse_mitid": "Vestergade 14, 8000 Aarhus C", "foraeldremyndighedsindehaver_2_cpr_nummer": "1902901261", "nuvaerende_kommune": "Favrskov Kommune", "barnets_nuvaerende_skole": "Hadsten Skole", "gaar_barnet_i_en_normal_klasse": "Almen klasse", "nuvaerende_klasse": "1.A", "registreret_modersmaal": "None", "hvilket_sprog_er_barnets_modersmaal_01": "Arabisk", "soeger_i_skole_inden_for_eller_uden_for_skoledistriktet": "Nej", "skoleaar_valg": "kommende", "du_soeger_skoleskift_for_skoleaaret": "__SKOLEAAR__", "modtagende_skole": "Samsøgades Skole", "er_der_soeskende_paa_denne_skole": "Ja", "hvilket_klassetrin_soeskende": "9.B", "begrund_oenske_om_skoleskift": "", "kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma": "Ja", "navn_foraeldre_2": "Mohamed Ibrahim", "adresse_foraeldre_2": "Vestergade 14, 8000 Aarhus C", "telefonnummer_foraeldre_2": "43869310", "emailadresse_foraeldre_2": "mohamed26@example.dk", "skolens_vurdering": "Skolen har jf. reglerne om det frie skolevalg ledig plads på den pågældende årgang", "elevens_modersmaal": "Arabisk"}}', N'26-594739',
      @skoleaar, N'Almen klasse', NULL, N'Favrskov Kommune',
      751036, NULL, N'Hadsten Skole', N'1.A',
@@ -2107,7 +2119,7 @@ FROM (VALUES
      DATEADD(DAY, -26, @i_dag), 15.6, N'Sprogstøttebehov', 16.8, N'Sprogstøttebehov', 6.1, N'Intet dansk sprog', N'Sprogstøttebehov',
      NULL, NULL, NULL, NULL, NULL, NULL,
      NULL, NULL, NULL),
-    (N'0103144254', N'Skoleskift udefra', N'Afventer sprogvurdering', DATEADD(MINUTE, 602, DATEADD(DAY, -13, @nu)),
+    (N'0103144254', N'Skoleskift eksternt', N'Afventer sprogvurdering', DATEADD(MINUTE, 602, DATEADD(DAY, -13, @nu)),
      N'os2f-skoleskift-1027', N'{"webform_id": "ansoegning_om_skoleskifte", "sid": 5027, "data": {"navn_mitid": "Fadumo Saleh", "cpr_nummer_mitid": "0506922948", "adresse": "Nørregade 42, 8000 Aarhus C", "telefonnummer": "29303425", "emailadresse_login": "fadumo35@example.dk", "mit_barn_kommer_ikke_frem_i_listen": false, "barnets_navn_mitid": "Maryam Saleh", "cpr_nummer_barn_mitid": "__CPR__", "barnets_adresse_mitid": "Nørregade 42, 8000 Aarhus C", "foraeldremyndighedsindehaver_2_cpr_nummer": "0901873261", "nuvaerende_kommune": "Odense Kommune", "barnets_nuvaerende_skole": "Vollsmose Skole", "gaar_barnet_i_en_normal_klasse": "Modtagelsesklasse", "nuvaerende_klasse": "5.C", "registreret_modersmaal": "None", "hvilket_sprog_er_barnets_modersmaal_01": "Arabisk", "soeger_i_skole_inden_for_eller_uden_for_skoledistriktet": "Nej", "skoleaar_valg": "kommende", "du_soeger_skoleskift_for_skoleaaret": "__SKOLEAAR__", "modtagende_skole": "Læssøesgades Skole", "er_der_soeskende_paa_denne_skole": "Ja", "hvilket_klassetrin_soeskende": "7.A", "begrund_oenske_om_skoleskift": "Hans storebror går på skolen, og vi vil gerne have børnene samme sted.", "kommunen_vil_i_henhold_til_foraeldreansvarsloven_ss_3_goere_opma": "Ja", "skolen_har_vurderet_at_mit_barn_kan_udsluses_fra_modtagelsesklas": "__UDSLUSNING__", "navn_foraeldre_2": "Kofi Saleh", "adresse_foraeldre_2": "Kirketorvet 6, 2. th, 8310 Tranbjerg J", "telefonnummer_foraeldre_2": "21395893", "emailadresse_foraeldre_2": "kofi46@example.dk"}}', N'26-174852',
      @skoleaar, N'Modtagelsesklasse', DATEADD(DAY, 22, @i_dag), N'Odense Kommune',
      751023, NULL, N'Vollsmose Skole', N'5.C',
@@ -2712,6 +2724,177 @@ WHERE  t.resultat = N'Sprogstøttebehov'
                      AND x.slutdato  >= t.sagsbeh_dato);
 
 PRINT CONCAT('Elev_Sprogstoettebehov (fra tidligere screening): ', @@ROWCOUNT, ' row(s).');
+
+
+/* ------------------------------------------------------------
+   6e. The two flows (migration 007)
+
+   Fits the cases above to the flows PUF described (2026-11), and gives
+   them caseworkers. Written as plain UPDATEs on the inserted rows, after
+   6c and 6d because whether an intern case can move on depends on the
+   child's language support (Elev_Sprogstoettebehov).
+
+     Intern (Skoleskift internt) — the school assesses the Danish, so PUF's
+       screening and offer fields are cleared. A child with a current
+       sprogstøttebehov: the school has been asked; where the old data had
+       a result, it has replied ("Fortsat behov for sprogstøtte" for
+       Sprogstøttebehov, else "Afventer optagelse i Sprog+"), and every
+       other one with continued support has had the letter. A child without
+       one stays Ny — the case to close as "intet sprogstøttebehov".
+     Ekstern (Skoleskift eksternt, Tilflytter) — andet modersmål and an
+       invitation date on every case. A result without an offer: a free
+       place, an alternative school contacted (deadline running), or the
+       partshøringsbrev sent — picked by n, so each occurs. An offer: the
+       letter the outcome calls for.
+
+   Three test caseworkers (Testsagsbehandler A-C) — no real names, as the
+   repository is public. n is the CPR's serial digits, as in 6c.
+------------------------------------------------------------ */
+
+INSERT INTO [dsa].[Sagsbehandler] (sagsbehandler_tekst, beskrivelse, aktiv)
+SELECT v.navn, 'Testdata', 1
+FROM (VALUES ('Testsagsbehandler A'), ('Testsagsbehandler B'), ('Testsagsbehandler C')) AS v (navn)
+WHERE NOT EXISTS (SELECT 1 FROM [dsa].[Sagsbehandler] x WHERE x.sagsbehandler_tekst = v.navn);
+
+-- Intern: the school replied (the old data had a result).
+UPDATE [dsa].[Skoleskifter]
+SET    dato_forespoergsel_skole = DATEADD(DAY, 5, modtaget_tidspunkt),
+       dato_svar_skole = CASE WHEN DATEADD(DAY, 14, modtaget_tidspunkt) < @i_dag
+                              THEN DATEADD(DAY, 14, modtaget_tidspunkt) ELSE @i_dag END,
+       skolens_sprogvurdering = CASE WHEN samlet_resultat = N'Sprogstøttebehov'
+                                     THEN N'Fortsat behov for sprogstøtte'
+                                     ELSE N'Afventer optagelse i Sprog+' END
+WHERE  variant = N'Skoleskift internt'
+  AND  samlet_resultat IS NOT NULL
+  AND  (status_id = (SELECT st.status_id FROM [dsa].[Status] st
+                     WHERE st.status_tekst = N'Afsluttet' AND st.fagomraade_id = @fagomraade_ss)
+        OR EXISTS (SELECT 1 FROM [dsa].[Elev_Sprogstoettebehov] p
+                   WHERE p.cpr = [dsa].[Skoleskifter].cpr AND p.startdato <= @i_dag AND p.slutdato >= @i_dag));
+
+-- Intern: the school has been asked, no reply yet.
+UPDATE [dsa].[Skoleskifter]
+SET    dato_forespoergsel_skole = DATEADD(DAY, 4, modtaget_tidspunkt)
+WHERE  variant = N'Skoleskift internt'
+  AND  skolens_sprogvurdering IS NULL
+  AND  (screeningsdato IS NOT NULL
+        OR status_id = (SELECT st.status_id FROM [dsa].[Status] st
+                        WHERE st.status_tekst = N'Afventer sprogvurdering' AND st.fagomraade_id = @fagomraade_ss))
+  AND  DATEADD(DAY, 4, modtaget_tidspunkt) <= @i_dag
+  AND  EXISTS (SELECT 1 FROM [dsa].[Elev_Sprogstoettebehov] p
+               WHERE p.cpr = [dsa].[Skoleskifter].cpr AND p.startdato <= @i_dag AND p.slutdato >= @i_dag);
+
+-- Intern: the letter about continued support, on every other such case.
+UPDATE [dsa].[Skoleskifter]
+SET    sprogstoettebrev_sendt = DATEADD(DAY, 2, dato_svar_skole)
+WHERE  variant = N'Skoleskift internt'
+  AND  skolens_sprogvurdering = N'Fortsat behov for sprogstøtte'
+  AND  CAST(SUBSTRING(cpr, 7, 3) AS INT) % 2 = 0
+  AND  DATEADD(DAY, 2, dato_svar_skole) <= @i_dag;
+
+-- Intern: no PUF screening and no offer in this flow.
+UPDATE [dsa].[Skoleskifter]
+SET    screeningsdato = NULL, point_1 = NULL, resultat_1 = NULL, point_2 = NULL, resultat_2 = NULL,
+       point_3 = NULL, resultat_3 = NULL, samlet_resultat = NULL,
+       skoletilbud_matrikel_id = NULL, skoletilbudstype_id = NULL, dato_skoletilbud = NULL,
+       klassetrin = NULL, spor = NULL, start_visitationsklasse = NULL
+WHERE  variant = N'Skoleskift internt';
+
+-- Ekstern: andet modersmål end dansk (every case here reached DSA for it),
+-- and the invitation to the screening.
+UPDATE [dsa].[Skoleskifter]
+SET    andet_modersmaal = 1
+WHERE  variant <> N'Skoleskift internt';
+
+UPDATE [dsa].[Skoleskifter]
+SET    dato_indkaldelse_screening =
+           CASE WHEN screeningsdato IS NULL THEN DATEADD(DAY, 3, modtaget_tidspunkt)
+                WHEN screeningsdato > @i_dag THEN DATEADD(DAY, -2, @i_dag)
+                WHEN DATEADD(DAY, -10, screeningsdato) > modtaget_tidspunkt THEN DATEADD(DAY, -10, screeningsdato)
+                ELSE DATEADD(DAY, 1, modtaget_tidspunkt) END
+WHERE  variant <> N'Skoleskift internt'
+  AND  (screeningsdato IS NOT NULL
+        OR status_id = (SELECT st.status_id FROM [dsa].[Status] st
+                        WHERE st.status_tekst = N'Afventer sprogvurdering' AND st.fagomraade_id = @fagomraade_ss));
+
+-- Ekstern, Sprogstøttebehov, no offer yet: a free place (n % 5 = 0, 4), an
+-- alternative school contacted yesterday (1, 3), or contacted six days ago
+-- with the partshøringsbrev sent since (2).
+UPDATE [dsa].[Skoleskifter]
+SET    ledig_plads = CASE WHEN CAST(SUBSTRING(cpr, 7, 3) AS INT) % 5 IN (0, 4) THEN 1 ELSE 0 END,
+       kontaktet_skole_matrikel_id =
+           CASE WHEN CAST(SUBSTRING(cpr, 7, 3) AS INT) % 5 NOT IN (0, 4)
+                THEN (SELECT m.matrikel_id FROM [dsa].[Skolematrikel] m
+                      WHERE m.er_matrikel_hovedadresse = 1
+                        AND m.skolekode = CASE WHEN [dsa].[Skoleskifter].oensket_skolekode = 751014 THEN 751044 ELSE 751014 END) END,
+       dato_kontakt_skole =
+           CASE CAST(SUBSTRING(cpr, 7, 3) AS INT) % 5 WHEN 1 THEN DATEADD(DAY, -1, @i_dag)
+                                                      WHEN 3 THEN DATEADD(DAY, -1, @i_dag)
+                                                      WHEN 2 THEN DATEADD(DAY, -6, @i_dag) END,
+       partshoeringsbrev_sendt =
+           CASE WHEN CAST(SUBSTRING(cpr, 7, 3) AS INT) % 5 = 2 THEN DATEADD(DAY, -3, @i_dag) END
+WHERE  variant <> N'Skoleskift internt'
+  AND  samlet_resultat = N'Sprogstøttebehov'
+  AND  skoletilbud_matrikel_id IS NULL
+  AND  status_id NOT IN (SELECT st.status_id FROM [dsa].[Status] st
+                         WHERE st.status_tekst IN (N'Afsluttet', N'Sendt til PPR') AND st.fagomraade_id = @fagomraade_ss);
+
+-- Ekstern with an offer: free place or not, and the letter the outcome calls
+-- for — sent on or before the offer date, so not yet where that is ahead.
+UPDATE [dsa].[Skoleskifter]
+SET    ledig_plads = CASE WHEN (SELECT m.skolekode FROM [dsa].[Skolematrikel] m
+                                WHERE m.matrikel_id = [dsa].[Skoleskifter].skoletilbud_matrikel_id) = oensket_skolekode
+                          THEN 1 ELSE 0 END
+WHERE  variant <> N'Skoleskift internt'
+  AND  skoletilbud_matrikel_id IS NOT NULL;
+
+UPDATE [dsa].[Skoleskifter]
+SET    optagelsesbrev_sendt = CASE WHEN samlet_resultat = N'Alderssvarende dansk' OR ledig_plads = 1
+                                   THEN dato_skoletilbud END,
+       sprogstoettebrev_sendt = CASE WHEN samlet_resultat = N'Sprogstøttebehov' AND ledig_plads = 1
+                                     THEN dato_skoletilbud END,
+       partshoeringsbrev_sendt = CASE WHEN ledig_plads = 0 THEN DATEADD(DAY, -6, dato_skoletilbud) END
+WHERE  variant <> N'Skoleskift internt'
+  AND  skoletilbud_matrikel_id IS NOT NULL
+  AND  dato_skoletilbud <= @i_dag;
+
+-- Ekstern, closed on "Alderssvarende dansk": the admission letter went first.
+UPDATE [dsa].[Skoleskifter]
+SET    optagelsesbrev_sendt = afsluttet_dato
+WHERE  variant <> N'Skoleskift internt'
+  AND  samlet_resultat = N'Alderssvarende dansk'
+  AND  afsluttet_dato IS NOT NULL;
+
+-- Ekstern: a screening date still ahead was the agreed date in the old data,
+-- not one carried out — the case is invited, not screened.
+UPDATE [dsa].[Skoleskifter]
+SET    screeningsdato = NULL
+WHERE  variant <> N'Skoleskift internt'
+  AND  screeningsdato > @i_dag;
+
+-- Caseworkers: every case with work done on it, and every other new one.
+-- From the data, not the status: step 7 has not derived it yet.
+UPDATE [dsa].[Skoleskifter]
+SET    sagsbehandler_id = (SELECT sb.sagsbehandler_id FROM [dsa].[Sagsbehandler] sb
+                           WHERE sb.sagsbehandler_tekst = CASE CAST(SUBSTRING([dsa].[Skoleskifter].cpr, 7, 3) AS INT) % 3
+                                                              WHEN 0 THEN 'Testsagsbehandler A'
+                                                              WHEN 1 THEN 'Testsagsbehandler B'
+                                                              ELSE 'Testsagsbehandler C' END)
+WHERE  dato_forespoergsel_skole IS NOT NULL
+   OR  dato_indkaldelse_screening IS NOT NULL
+   OR  ppr_sendt_dato IS NOT NULL
+   OR  afsluttet_dato IS NOT NULL
+   OR  status_id <> (SELECT st.status_id FROM [dsa].[Status] st
+                     WHERE st.status_tekst = N'Ny' AND st.fagomraade_id = @fagomraade_ss)
+   OR  CAST(SUBSTRING(cpr, 7, 3) AS INT) % 2 = 0;
+
+-- Befordring, assessed on about half of the cases with an offer or closed.
+UPDATE [dsa].[Skoleskifter]
+SET    krav_paa_befordring = CASE CAST(SUBSTRING(cpr, 7, 3) AS INT) % 4 WHEN 0 THEN 1 WHEN 1 THEN 0 END,
+       befordring_bemaerkning = CASE WHEN CAST(SUBSTRING(cpr, 7, 3) AS INT) % 4 = 0
+                                     THEN N'Skolevejen er over afstandskriteriet – befordring orienteret.' END
+WHERE  skoletilbud_matrikel_id IS NOT NULL OR afsluttet_dato IS NOT NULL;
+
+PRINT 'Skoleskifter: fitted to the two flows (6e).';
 
 
 /* ------------------------------------------------------------

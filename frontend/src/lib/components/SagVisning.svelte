@@ -30,6 +30,9 @@
     lookups={skoleskifter.lookups}
     sagsforloeb={skoleskifter.sagsforloeb}
     fagomraadeId={skoleskifter.fagomraadeId}
+    screeninger={skoleskifter.screeninger ?? []}
+    sprogstoette={skoleskifter.sprogstoette ?? []}
+    sprogstoettebehovNu={skoleskifter.sprogstoettebehovNu ?? false}
     {kanRedigere}
   />
 {/if}
