@@ -293,3 +293,99 @@ class CitizenService:
             ))
 
         return soeskende
+
+
+    # DSA: not in befordringssystemet.
+    def get_historik(self, cpr: str) -> dict:
+        """The child's history from the Elev_* tables (migration 006).
+
+        What the student page's Skolehistorik and Sprog og støtte tabs show.
+        Read-only: LIS fills these tables, the backend never writes them (see
+        models/elev_historik.py).
+
+        Each list is newest period first. Open periods come back as they are
+        stored: gyldig_til NULL in Elev_Skolehistorik, 9999-12-31 in the
+        others. The frontend reads both as "open".
+
+        Returns:
+            A dict with skolehistorik, modersmaal, sprogstoettebehov and ppr
+            (lists), and indrejse (one dict, or None when the child has no row).
+        """
+
+        params = {"cpr": cpr}
+
+        skolehistorik = self._rows_to_dicts(self.db.execute(
+            text("""
+                SELECT
+                    h.skolehistorik_id,
+                    h.gyldig_fra,
+                    h.gyldig_til,
+                    h.skolekode,
+                    sk.skolenavn          AS skole_navn,
+                    h.elevklassetrin,
+                    h.klassebetegnelse,
+                    h.distriktsskolekode,
+                    ds.skolenavn          AS distriktsskole,
+                    h.kilde
+                FROM
+                    [dsa].[Elev_Skolehistorik] h
+                LEFT JOIN
+                    [dsa].[view_Skoler] sk
+                    ON sk.skolekode = h.skolekode
+                LEFT JOIN
+                    [dsa].[view_Skoler] ds
+                    ON ds.skolekode = h.distriktsskolekode
+                WHERE
+                    h.cpr = :cpr
+                ORDER BY
+                    h.gyldig_fra DESC
+            """),
+            params,
+        ))
+
+        modersmaal = self._rows_to_dicts(self.db.execute(
+            text("""
+                SELECT modersmaal, gyldig_fra, gyldig_til
+                FROM [dsa].[Elev_Modersmaal]
+                WHERE cpr = :cpr
+                ORDER BY gyldig_fra DESC
+            """),
+            params,
+        ))
+
+        sprogstoettebehov = self._rows_to_dicts(self.db.execute(
+            text("""
+                SELECT startdato, slutdato
+                FROM [dsa].[Elev_Sprogstoettebehov]
+                WHERE cpr = :cpr
+                ORDER BY startdato DESC
+            """),
+            params,
+        ))
+
+        ppr = self._rows_to_dicts(self.db.execute(
+            text("""
+                SELECT startdato, slutdato
+                FROM [dsa].[Elev_PPR]
+                WHERE cpr = :cpr
+                ORDER BY startdato DESC
+            """),
+            params,
+        ))
+
+        indrejse = self._rows_to_dicts(self.db.execute(
+            text("""
+                SELECT foerste_indrejse, seneste_indrejse
+                FROM [dsa].[Elev_Indrejse]
+                WHERE cpr = :cpr
+            """),
+            params,
+        ))
+
+        return {
+            "skolehistorik": skolehistorik,
+            "modersmaal": modersmaal,
+            "sprogstoettebehov": sprogstoettebehov,
+            "ppr": ppr,
+            "indrejse": indrejse[0] if indrejse else None,
+        }

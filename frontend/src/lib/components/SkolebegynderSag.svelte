@@ -17,24 +17,31 @@
     tidspunkt,
     type AendringRow,
     type SkolebegynderDetail,
-    type SkolebegynderFelter,
-    type SkolebegynderRow
+    type Lookups,
+    type SkolebegynderFelter
   } from "$lib/skolebegynder";
   import { getStatusBadgeClass } from "$lib/tableColumnConfig";
 
-  export let data;
+  /**
+   * One skolebegynder case, on the student page.
+   *
+   * Shown in two places: the "Aktiv sag" tab while the case is open, and
+   * Tidligere afgørelser once it is closed. A closed case renders read-only
+   * (the form is disabled) with "Genåbn sag" for those who may edit.
+   *
+   * Moved out of the old Skolebegynder tab route (/elev/[cpr]/skolebegynder)
+   * when the student page dropped its per-area tabs. The child, their stamdata
+   * and the protection warnings are the page's, above; this is the case.
+   */
+  export let sag: SkolebegynderDetail;
+  export let lookups: Lookups;
+  export let sagsforloeb: any[] = [];
+  export let aendringer: AendringRow[] = [];
+  export let kanRedigere = false;
+  export let fagomraadeId: number | null = null;
+  export let brugerNavn: string | null = null;
 
-  // The Skolebegynder tab of the student page (/elev/[cpr]). The child, their
-  // stamdata and the protection warnings are the page's, above; this is the
-  // case. sag is null when the child has no skolebegynder case.
-  $: sag = data.sag as SkolebegynderDetail | null;
-  $: sager = data.skolebegynderSager as SkolebegynderRow[];
-  $: lookups = data.lookups;
-  $: sagsforloeb = data.sagsforloeb as any[];
-  $: aendringer = data.aendringer as AendringRow[];
-  $: kanRedigere = data.user?.can_edit === true;
-  $: afsluttet = sag?.status_tekst === "Afsluttet";
-  $: brugerNavn = data.user?.name ?? null;
+  $: afsluttet = sag.status_tekst === "Afsluttet";
 
 
   // -----------------------------
@@ -57,7 +64,7 @@
   let form: Form;
   let formFor = "";
 
-  $: if (sag && `${sag.skolebegynder_id}-${sag.updated_at}` !== formFor) {
+  $: if (`${sag.skolebegynder_id}-${sag.updated_at}` !== formFor) {
     formFor = `${sag.skolebegynder_id}-${sag.updated_at}`;
     form = {
       puf_screeningsresultat: sag.puf_screeningsresultat ?? "",
@@ -120,7 +127,7 @@
     }
 
     kald(
-      `/skolebegynder/${sag!.skolebegynder_id}`,
+      `/skolebegynder/${sag.skolebegynder_id}`,
       { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(felter) },
       (svar) => `Gemt — status: ${svar.status_tekst}.`
     );
@@ -128,12 +135,12 @@
 
   function afslut() {
     if (!confirm("Afslut sagen? Gør det, når afgørelsesbrevet er sendt.")) return;
-    kald(`/skolebegynder/${sag!.skolebegynder_id}/afslut`, { method: "POST" }, () => "Sagen er afsluttet.");
+    kald(`/skolebegynder/${sag.skolebegynder_id}/afslut`, { method: "POST" }, () => "Sagen er afsluttet.");
   }
 
   function genaabn() {
     if (!confirm("Genåbn sagen, så den kan ændres?")) return;
-    kald(`/skolebegynder/${sag!.skolebegynder_id}/genaabn`, { method: "POST" }, (svar) => `Sagen er genåbnet — status: ${svar.status_tekst}.`);
+    kald(`/skolebegynder/${sag.skolebegynder_id}/genaabn`, { method: "POST" }, (svar) => `Sagen er genåbnet — status: ${svar.status_tekst}.`);
   }
 
   function haandter(a: AendringRow) {
@@ -151,15 +158,15 @@
     const tekst = kommentar.trim();
     if (!tekst) return;
     kald(
-      `/aktivitet/${sag!.cpr}`,
+      `/aktivitet/${sag.cpr}`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           aktivitetstype: "Kommentar",
           kommentar: tekst,
-          fagomraade_id: data.fagomraadeId,
-          relateret_sag_id: sag!.skolebegynder_id
+          fagomraade_id: fagomraadeId,
+          relateret_sag_id: sag.skolebegynder_id
         })
       },
       () => {
@@ -214,14 +221,6 @@
 
 <section class="w-full">
 
-  {#if !sag}
-
-    <div class="rounded-2xl px-6 py-10 text-center text-gray-500 kort">
-      Barnet har ingen skolebegyndersager.
-    </div>
-
-  {:else}
-
   <!-- Case strip: which case, its status, and closing it -->
   <div class="flex items-center justify-between gap-4 mb-5 flex-wrap">
     <div class="flex items-center gap-3 flex-wrap">
@@ -235,23 +234,6 @@
       <h2 class="text-[18px] font-bold" style="color: #271347;">Skolebegynder {skoleaarTekst(sag.skoleaar)}</h2>
       <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold {getStatusBadgeClass(sag.status_tekst)}">{sag.status_tekst}</span>
 
-      <!-- A postponed child has a case per school year -->
-      {#if sager.length > 1}
-        <div class="flex items-center gap-1 ml-2 text-[13px]">
-          <span class="text-gray-500 mr-1">Sager:</span>
-          {#each sager as s (s.skolebegynder_id)}
-            <a
-              href="?sag={s.skolebegynder_id}"
-              class="px-2.5 py-1 rounded-full border {s.skolebegynder_id === sag.skolebegynder_id
-                ? 'border-dsa-600 bg-dsa-50 text-dsa-800 font-semibold'
-                : 'border-gray-200 text-gray-600 hover:bg-gray-50'}"
-              aria-current={s.skolebegynder_id === sag.skolebegynder_id ? "page" : undefined}
-            >
-              {skoleaarTekst(s.skoleaar)} · {s.status_tekst}
-            </a>
-          {/each}
-        </div>
-      {/if}
     </div>
 
     {#if kanRedigere}
@@ -557,8 +539,6 @@
   </div>
 
   </div>
-
-  {/if}
 
 </section>
 

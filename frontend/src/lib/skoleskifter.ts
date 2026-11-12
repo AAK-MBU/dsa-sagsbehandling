@@ -1,6 +1,8 @@
 // Skoleskiftere og tilflyttere (draft) — types and the rules the overview and
 // the case share. The types mirror backend/app/schemas/skoleskifter.py.
 
+import { sagHref as elevSagHref } from "$lib/elevsag";
+
 export type SkoleskifterRow = {
   skoleskifter_id: number;
   cpr: string;
@@ -144,7 +146,7 @@ export function faneFraQuery(value: string | null): Fane {
   return FANER.some((f) => f.id === value) ? (value as Fane) : "skoleskiftere";
 }
 
-/** Where a case opens: on the child's page. */
-export function sagHref(row: { skoleskifter_id: number; cpr: string }): string {
-  return `/elev/${row.cpr}/skoleskiftere?sag=${row.skoleskifter_id}`;
+/** Where a case opens: the child's "Aktiv sag" tab while open, else its afgørelse. */
+export function sagHref(row: { skoleskifter_id: number; cpr: string; status_tekst: string }): string {
+  return elevSagHref(row.cpr, "skoleskifter", row.skoleskifter_id, row.status_tekst);
 }

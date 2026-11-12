@@ -1,25 +1,32 @@
-import { redirect } from "@sveltejs/kit";
-
-import { areas } from "$lib/areas";
+import { hentSkolebegynderSag } from "$lib/server/skolebegynderSag";
+import { hentSkoleskifterSag } from "$lib/server/skoleskifterSag";
 
 import type { PageServerLoad } from "./$types";
 
 
 /**
- * /elev/{cpr} on its own: open the area the child has an open case in, else
- * one with any case, else the first built area. A link from an area's
- * overview goes straight to /elev/{cpr}/<area> and never comes through here.
+ * /elev/{cpr} — the student page's first tab, "Aktiv sag": the child's open
+ * case, whichever area it is in. A child has at most one (PUF's rule); if the
+ * data ever holds more, this shows the newest and the page lists the others,
+ * each reachable as ?sag={omraade}-{id}.
+ *
+ * No active case: the page says so and points to Tidligere afgørelser. It used
+ * to redirect to an area tab instead; there are no area tabs any more.
  */
-export const load: PageServerLoad = async ({ params, parent }) => {
-  const { sagsantal } = await parent();
+export const load: PageServerLoad = async (event) => {
+  const { aktiveSager } = await event.parent();
+  const valgt = event.url.searchParams.get("sag");
+  const aktiv = aktiveSager.find((s) => `${s.omraade}-${s.id}` === valgt) ?? aktiveSager[0];
 
-  const bygget = areas.filter((a) => a.enabled && a.elevside).map((a) => a.elevside as string);
+  if (!aktiv) {
+    return { skolebegynder: null, skoleskifter: null, vist: null };
+  }
 
-  const fane =
-    bygget.find((k) => (sagsantal[k]?.aabne ?? 0) > 0) ??
-    bygget.find((k) => (sagsantal[k]?.alle ?? 0) > 0) ??
-    bygget[0] ??
-    "foraeldremyndighed";
+  const vist = `${aktiv.omraade}-${aktiv.id}`;
 
-  throw redirect(307, `/elev/${params.cpr}/${fane}`);
+  if (aktiv.omraade === "skolebegynder") {
+    return { skolebegynder: await hentSkolebegynderSag(event, aktiv.id), skoleskifter: null, vist };
+  }
+
+  return { skolebegynder: null, skoleskifter: await hentSkoleskifterSag(event, aktiv.id), vist };
 };

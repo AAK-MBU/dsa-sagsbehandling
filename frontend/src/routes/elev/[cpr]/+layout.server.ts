@@ -1,23 +1,26 @@
 import { error } from "@sveltejs/kit";
 
+import { afgoerelser, alleSager, erAktiv } from "$lib/elevsag";
 import { backendUserFetcher } from "$lib/server/backendApi";
 import type { SkolebegynderRow } from "$lib/skolebegynder";
-import type { SkoleskifterRow } from "$lib/skoleskifter";
+import type { SkoleskifterRow, Soeskende } from "$lib/skoleskifter";
 
 import type { LayoutServerLoad } from "./$types";
 
 
 /**
  * The student page: what every tab of it shows — the child's stamdata, the
- * custody holders, and each built area's cases (for the counts on the area
- * tabs, and for the area's own page, which reads them through parent()).
+ * custody holders, the siblings, and every case the child has in every built
+ * area. From the cases it works out the one ACTIVE case (the "Aktiv sag" tab)
+ * and the closed ones (Tidligere afgørelser), so the tab bar can label and
+ * count them on every tab.
  *
  * Loaded as befordringssystemet's /sag/[cpr] loads its sag: stamdata and
  * parents from /citizen, the cases from the area's own route, side by side
  * in one Promise.all. Keyed by CPR in the URL — the backend calls carry it in
  * their path, which is what puts "who looked up whom" in PortalAuditLog.
  *
- * A new area adds its case list here, and its count to `sagsantal`.
+ * A new area adds its case list here and to alleSager in $lib/elevsag.
  */
 export const load: LayoutServerLoad = async (event) => {
   const cpr = event.params.cpr;
@@ -28,11 +31,12 @@ export const load: LayoutServerLoad = async (event) => {
 
   const api = backendUserFetcher(event);
 
-  const [stamdataRes, parentsRes, skolebegynderRes, skoleskifterRes] = await Promise.all([
+  const [stamdataRes, parentsRes, skolebegynderRes, skoleskifterRes, soeskendeRes] = await Promise.all([
     api(`/citizen/stamdata/${cpr}`),
     api(`/citizen/stamdata/${cpr}/parents`),
     api(`/skolebegynder/elev/${cpr}`),
-    api(`/skoleskifter/elev/${cpr}`)
+    api(`/skoleskifter/elev/${cpr}`),
+    api(`/citizen/stamdata/${cpr}/soeskende`)
   ]);
 
   if (!stamdataRes.ok) {
@@ -49,21 +53,17 @@ export const load: LayoutServerLoad = async (event) => {
   const skolebegynderSager: SkolebegynderRow[] = skolebegynderRes.ok ? await skolebegynderRes.json() : [];
   const skoleskifterSager: SkoleskifterRow[] = skoleskifterRes.ok ? await skoleskifterRes.json() : [];
 
+  const sager = alleSager(skolebegynderSager, skoleskifterSager);
+
   return {
     stamdata,
     parents: (parentsRes.ok ? await parentsRes.json() : []) as any[],
+    soeskende: (soeskendeRes.ok ? await soeskendeRes.json() : []) as Soeskende[],
     skolebegynderSager,
     skoleskifterSager,
-    // Per area tab (keyed by Area.elevside): all cases, and the open ones.
-    sagsantal: {
-      skolebegynder: {
-        alle: skolebegynderSager.length,
-        aabne: skolebegynderSager.filter((s) => s.status_tekst !== "Afsluttet").length
-      },
-      skoleskiftere: {
-        alle: skoleskifterSager.length,
-        aabne: skoleskifterSager.filter((s) => s.status_tekst !== "Afsluttet").length
-      }
-    } as Record<string, { alle: number; aabne: number }>
+    // Newest first. PUF's rule is one open case per child; should the data
+    // ever hold two, the first tab shows the newest and says so.
+    aktiveSager: sager.filter(erAktiv),
+    afgoerelser: afgoerelser(sager)
   };
 };

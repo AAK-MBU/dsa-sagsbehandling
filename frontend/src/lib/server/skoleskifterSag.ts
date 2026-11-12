@@ -2,13 +2,14 @@ import { error, type RequestEvent } from "@sveltejs/kit";
 
 import { backendUserFetcher } from "$lib/server/backendApi";
 import { TOMME_LOOKUPS, type Lookups } from "$lib/skolebegynder";
-import type { SkoleskifterDetail, Soeskende } from "$lib/skoleskifter";
+import type { SkoleskifterDetail } from "$lib/skoleskifter";
 
 
 /**
- * Everything the student page's Skoleskiftere tab needs for one case: the
- * case, the lookups for the decision form, the case's own log entries and
- * the child's siblings.
+ * Everything SkoleskifterSag needs for one case: the case, the lookups for
+ * the decision form and the case's own log entries. Shared by the student
+ * page's "Aktiv sag" tab and its afgørelse page. (The siblings used to come
+ * with it; they are the student page's own Søskende tab now.)
  */
 export async function hentSkoleskifterSag(event: RequestEvent, id: number) {
   const api = backendUserFetcher(event);
@@ -26,16 +27,12 @@ export async function hentSkoleskifterSag(event: RequestEvent, id: number) {
   const lookups: Lookups = lookupsRes.ok ? { ...TOMME_LOOKUPS, ...(await lookupsRes.json()) } : TOMME_LOOKUPS;
   const fagomraadeId = lookups.fagomraader.find((f) => f.label === "Skoleskiftere og tilflyttere")?.id ?? null;
 
-  const [aktivitetRes, soeskendeRes] = await Promise.all([
-    api(`/aktivitet/${sag.cpr}`),
-    api(`/citizen/stamdata/${sag.cpr}/soeskende`)
-  ]);
+  const aktivitetRes = await api(`/aktivitet/${sag.cpr}`);
   // The child's log holds every area and case; this page shows this case's.
   const aktivitet: any[] = aktivitetRes.ok ? await aktivitetRes.json() : [];
   const sagsforloeb = aktivitet.filter(
     (a) => a.relateret_sag_id === id && (fagomraadeId === null || a.fagomraade_id === fagomraadeId)
   );
-  const soeskende: Soeskende[] = soeskendeRes.ok ? await soeskendeRes.json() : [];
 
-  return { sag, lookups, sagsforloeb, soeskende, fagomraadeId };
+  return { sag, lookups, sagsforloeb, fagomraadeId };
 }
