@@ -453,8 +453,8 @@
 
 
     <!-- ================= 1. Ansøgning ================= -->
-    <section class="sektion">
-      <h3 class="sektionstitel"><span class="nr">1</span> Ansøgning</h3>
+    <section class="sektion" class:faerdig={aktueltTrin > 0}>
+      <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 0 ? "✓" : 1}</span> Ansøgning{#if aktueltTrin > 0}<span class="udfoert">Udført</span>{/if}</h3>
       <div class="felter">
         <Felt label="Indgang">{sag.indgang === "Modtagelsesklasse" ? "Fra forældre (modtagelsesklasse)" : "Via skolens afgørelse"}</Felt>
         <Felt label="Skoleår">{sag.skoleaar === null ? "—" : skoleaarTekst(sag.skoleaar)}</Felt>
@@ -495,8 +495,8 @@
     {#if intern}
 
       <!-- ================= 2. Sprogvurdering på skolen (intern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 1}>
-        <h3 class="sektionstitel"><span class="nr">2</span> Sprogvurdering på skolen</h3>
+      <section class="sektion" class:aktuel={aktueltTrin === 1} class:faerdig={aktueltTrin > 1}>
+        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 1 ? "✓" : 2}</span> Sprogvurdering på skolen{#if aktueltTrin > 1}<span class="udfoert">Udført</span>{/if}</h3>
         <div class="felter">
           <Felt label="Sprogstøttebehov (TEA)">
             <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {sprogstoettebehovNu ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}">
@@ -542,8 +542,8 @@
       </section>
 
       <!-- ================= 3. Breve (intern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 2}>
-        <h3 class="sektionstitel"><span class="nr">3</span> Breve</h3>
+      <section class="sektion" class:aktuel={aktueltTrin === 2} class:faerdig={aktueltTrin > 2}>
+        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 2 ? "✓" : 3}</span> Breve{#if aktueltTrin > 2}<span class="udfoert">Udført</span>{/if}</h3>
         <div class="felter">
           <Felt label="Brev om fortsat sprogstøtte">
             {#if redigerer}<DateInput min={MIN_DATE} max={iDag} class={input} bind:value={form.sprogstoettebrev_sendt} />
@@ -556,8 +556,8 @@
       </section>
 
       <!-- ================= 4. Afgørelse (intern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 3}>
-        <h3 class="sektionstitel"><span class="nr">4</span> Afgørelse</h3>
+      <section class="sektion" class:aktuel={aktueltTrin === 3} class:faerdig={aktueltTrin > 3}>
+        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 3 ? "✓" : 4}</span> Afgørelse{#if aktueltTrin > 3}<span class="udfoert">Udført</span>{/if}</h3>
         <div class="felter">
           <Felt label="Udfald">
             {#if sag.skolens_sprogvurdering === "Afventer optagelse i Sprog+"}Eleven afventer optagelse i Sprog+
@@ -573,8 +573,8 @@
     {:else}
 
       <!-- ================= 2. Sprogscreening (ekstern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 1}>
-        <h3 class="sektionstitel"><span class="nr">2</span> Sprogscreening</h3>
+      <section class="sektion" class:aktuel={aktueltTrin === 1} class:faerdig={aktueltTrin > 1}>
+        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 1 ? "✓" : 2}</span> Sprogscreening{#if aktueltTrin > 1}<span class="udfoert">Udført</span>{/if}</h3>
         <div class="felter">
           <Felt label="Indkaldt til screening">
             {#if redigerer}<DateInput min={MIN_DATE} max={iDag} class={input} bind:value={form.dato_indkaldelse_screening} />
@@ -627,8 +627,8 @@
       </section>
 
       <!-- ================= 3. Skoletilbud (ekstern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 2}>
-        <h3 class="sektionstitel"><span class="nr">3</span> Skoletilbud</h3>
+      <section class="sektion" class:aktuel={aktueltTrin === 2} class:faerdig={aktueltTrin > 2}>
+        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 2 ? "✓" : 3}</span> Skoletilbud{#if aktueltTrin > 2}<span class="udfoert">Udført</span>{/if}</h3>
         <div class="felter">
           <Felt label="Ledig plads på ønsket skole">
             {#if redigerer}
@@ -719,8 +719,8 @@
       </section>
 
       <!-- ================= 4. Breve (ekstern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 3}>
-        <h3 class="sektionstitel"><span class="nr">4</span> Breve</h3>
+      <section class="sektion" class:aktuel={aktueltTrin === 3} class:faerdig={aktueltTrin > 3}>
+        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 3 ? "✓" : 4}</span> Breve{#if aktueltTrin > 3}<span class="udfoert">Udført</span>{/if}</h3>
         <div class="felter">
           <Felt label="Optagelsesbrev">
             {#if redigerer}<DateInput min={MIN_DATE} max={iDag} class={input} bind:value={form.optagelsesbrev_sendt} />
@@ -824,8 +824,9 @@
 <style>
   /* A step of the case: its title, then a grid of fields — the bevilling
      card's grid, five across on wide screens. */
+  /* Steps are divided by a clear rule, so each reads as its own stage. */
   .sektion {
-    border-top: 1px solid #f3f4f6;
+    border-top: 1px solid #e5e7eb;
     padding-top: 1.1rem;
   }
   .sektion:first-of-type {
@@ -835,6 +836,27 @@
   .sektion.aktuel {
     box-shadow: inset 4px 0 0 #6a3fb5;
     background-color: #fbfaff;
+  }
+  /* A step already done: a grey tint and muted text, so the eye goes past it
+     to the step being worked on. Still fully readable — and editable. */
+  .sektion.faerdig {
+    background-color: #f5f5f6;
+  }
+  .sektion.faerdig .sektionstitel {
+    color: #6b7280;
+  }
+  .sektion.faerdig .nr {
+    background-color: #d1d5db;
+    color: #374151;
+  }
+  .sektion.faerdig :global(.text-gray-800) {
+    color: #4b5563;
+  }
+  .udfoert {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #6b7280;
   }
   .sektionstitel {
     display: flex;
