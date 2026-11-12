@@ -4,6 +4,9 @@
   import { backendFetch } from "$lib/client/backendFetch";
   import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate } from "$lib/dates";
   import DateInput from "$lib/components/DateInput.svelte";
+  import Felt from "$lib/components/Felt.svelte";
+  import SagSektion from "$lib/components/SagSektion.svelte";
+  import SagTrin from "$lib/components/SagTrin.svelte";
   import { erEgenKommentar } from "$lib/kommentarEjer";
   import {
     EJ_SPROGSCREENET,
@@ -16,22 +19,29 @@
     skoleaarTekst,
     tidspunkt,
     type AendringRow,
-    type SkolebegynderDetail,
     type Lookups,
+    type SkolebegynderDetail,
     type SkolebegynderFelter
   } from "$lib/skolebegynder";
   import { getStatusBadgeClass } from "$lib/tableColumnConfig";
 
   /**
-   * One skolebegynder case, on the student page.
+   * One skolebegynder case, as ONE card — the same layout as the skoleskifter
+   * card (and befordringssystemet's bevilling card): a header row with the
+   * actions, a step bar, then the case top to bottom in the order it is
+   * worked, a section per step. Values are read-only until "Redigér"; the
+   * case log sits beside the card.
    *
-   * Shown in two places: the "Aktiv sag" tab while the case is open, and
-   * Tidligere afgørelser once it is closed. A closed case renders read-only
-   * (the form is disabled) with "Genåbn sag" for those who may edit.
+   *   1 Liste og ønsker      from the cohort list: dagtilbud, wishes (always done)
+   *   2 Screening            SX: booking and result (read-only)
+   *   3 Afgørelse            PUF's result, the school offer — current while
+   *                          the case is "Screening afviklet"
+   *   4 Brev og afslutning   the letter, then "Afslut sag" — current once
+   *                          "Skoleplaceret"
    *
-   * Moved out of the old Skolebegynder tab route (/elev/[cpr]/skolebegynder)
-   * when the student page dropped its per-area tabs. The child, their stamdata
-   * and the protection warnings are the page's, above; this is the case.
+   * Shown on the student page: the "Aktiv sag" tab while open, Tidligere
+   * afgørelser once closed (read-only, with "Genåbn sag"). Moved out of the
+   * old Skolebegynder tab route when the student page dropped its area tabs.
    */
   export let sag: SkolebegynderDetail;
   export let lookups: Lookups;
@@ -42,11 +52,26 @@
   export let brugerNavn: string | null = null;
 
   $: afsluttet = sag.status_tekst === "Afsluttet";
+  $: kanHandle = kanRedigere && !afsluttet;
 
 
   // -----------------------------
-  // Case-work form — a copy of the editable fields, reset whenever the case
-  // is reloaded (after a save, close or reopen).
+  // Steps — from the status, which the procedure derives from the data
+  // -----------------------------
+
+  const TRIN = ["Liste og ønsker", "Screening", "Afgørelse", "Brev og afslutning"];
+
+  $: aktueltTrin = afsluttet
+    ? TRIN.length
+    : sag.status_tekst === "Skoleplaceret"
+      ? 3
+      : sag.status_tekst === "Screening afviklet"
+        ? 2
+        : 1;
+
+
+  // -----------------------------
+  // Editing — a copy of the editable fields while "Redigér" is on
   // -----------------------------
 
   type Form = {
@@ -61,11 +86,10 @@
     bemaerkning: string;
   };
 
+  let redigerer = false;
   let form: Form;
-  let formFor = "";
 
-  $: if (`${sag.skolebegynder_id}-${sag.updated_at}` !== formFor) {
-    formFor = `${sag.skolebegynder_id}-${sag.updated_at}`;
+  function startRedigering() {
     form = {
       puf_screeningsresultat: sag.puf_screeningsresultat ?? "",
       skoletilbud_matrikel_id: sag.skoletilbud_matrikel_id ?? "",
@@ -77,9 +101,28 @@
       afklaring: sag.afklaring ?? "",
       bemaerkning: sag.bemaerkning ?? ""
     };
+    besked = null;
+    redigerer = true;
+  }
+
+  function annullerRedigering() {
+    redigerer = false;
+    besked = null;
+  }
+
+  // A reloaded case (after a save, close or reopen) ends editing.
+  let viserFor = "";
+  $: if (`${sag.skolebegynder_id}-${sag.updated_at}` !== viserFor) {
+    viserFor = `${sag.skolebegynder_id}-${sag.updated_at}`;
+    redigerer = false;
   }
 
   const idEllerNull = (v: number | "") => (v === "" ? null : Number(v));
+
+
+  // -----------------------------
+  // Talking to the API
+  // -----------------------------
 
   let besked: { type: "ok" | "fejl"; tekst: string } | null = null;
   let arbejder = false;
@@ -115,9 +158,8 @@
       bemaerkning: form.bemaerkning.trim() || null
     };
 
-    // As befordringssystemet's forms: min/max on the input only bound the
-    // picker; a typed or pasted value still reaches bind:value, so the check
-    // that actually stops a "202365" year is this one.
+    // As befordringssystemet's forms: the picker's bounds do not stop a typed
+    // or pasted value; this check is what stops a "202365" year.
     const ugyldig =
       firstInvalidDate(felter, ["sagsbehandlingsdato"]) ??
       firstOutOfRangeDate(felter, ["sagsbehandlingsdato"]);
@@ -214,308 +256,311 @@
     }
   }
 
+
+  // -----------------------------
+  // Display helpers
+  // -----------------------------
+
+  const vis = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));
   const procent = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)} %`);
   const tal = (v: number | null) => (v === null ? "—" : String(v));
+  const km = (v: number | null) => (v === null ? "" : `${String(v.toFixed(1)).replace(".", ",")} km`);
+
+  const input = "w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm bg-white";
 </script>
 
 
-<section class="w-full">
+<div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem] gap-5 items-start">
 
-  <!-- Case strip: which case, its status, and closing it -->
-  <div class="flex items-center justify-between gap-4 mb-5 flex-wrap">
-    <div class="flex items-center gap-3 flex-wrap">
-      <a href="/skolebegynder?aar={sag.skoleaar}" class="inline-flex items-center gap-1 text-[13px] text-dsa-600 hover:text-dsa-800 mr-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-        Overblik
-      </a>
+  <article class="rounded-lg overflow-hidden kort">
 
-      <h2 class="text-[18px] font-bold" style="color: #271347;">Skolebegynder {skoleaarTekst(sag.skoleaar)}</h2>
-      <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold {getStatusBadgeClass(sag.status_tekst)}">{sag.status_tekst}</span>
+    <!-- ================= Header ================= -->
+    <header class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="font-mono text-xs rounded px-2 py-0.5 text-white" style="background-color: #3b2168;">Skolebegynder {skoleaarTekst(sag.skoleaar)}</span>
+        <span class="inline-block px-2 py-0.5 rounded text-xs font-medium {getStatusBadgeClass(sag.status_tekst)}">{sag.status_tekst}</span>
+        <span class="text-gray-300 select-none">|</span>
+        <span class="text-sm text-gray-500">På listen siden {dato(sag.modtaget_tidspunkt)}</span>
+      </div>
 
-    </div>
+      {#if kanRedigere}
+        <div class="flex flex-wrap items-center gap-2">
+          {#if afsluttet}
+            <button type="button" class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50" disabled={arbejder} on:click={genaabn}>
+              Genåbn sag
+            </button>
+          {:else if redigerer}
+            <button type="button" class="px-3 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded disabled:opacity-50" disabled={arbejder} on:click={gem}>
+              {arbejder ? "Gemmer…" : "Gem"}
+            </button>
+            <button type="button" class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded hover:bg-gray-50" disabled={arbejder} on:click={annullerRedigering}>
+              Annullér
+            </button>
+          {:else}
+            <button type="button" class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50" disabled={arbejder} on:click={startRedigering}>
+              Redigér
+            </button>
+            <span class="w-px h-5 bg-gray-200 mx-1"></span>
+            <button
+              type="button"
+              class="px-3 py-1.5 text-sm font-medium rounded text-white bg-dsa-700 hover:bg-dsa-800 disabled:bg-white disabled:text-gray-400 disabled:border disabled:border-gray-300 disabled:cursor-not-allowed"
+              disabled={arbejder || sag.status_tekst !== "Skoleplaceret"}
+              title={sag.status_tekst !== "Skoleplaceret" ? "Kun sager med et skoletilbud kan afsluttes" : "Afslut, når brevet er sendt"}
+              on:click={afslut}
+            >
+              Afslut sag
+            </button>
+          {/if}
+        </div>
+      {/if}
+    </header>
 
-    {#if kanRedigere}
-      <div class="flex gap-2">
-        {#if afsluttet}
-          <button type="button" class="px-4 py-2 rounded-full text-sm font-medium bg-white border border-dsa-200 text-dsa-800 hover:bg-dsa-50 disabled:opacity-50" disabled={arbejder} on:click={genaabn}>
-            Genåbn sag
-          </button>
-        {:else}
-          <button
-            type="button"
-            class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-white disabled:text-gray-400 disabled:border disabled:border-gray-300 disabled:cursor-not-allowed"
-            disabled={arbejder || sag.status_tekst !== "Skoleplaceret"}
-            title={sag.status_tekst !== "Skoleplaceret" ? "Kun sager med et skoletilbud kan afsluttes" : "Afslut, når brevet er sendt"}
-            on:click={afslut}
-          >
-            Afslut sag
-          </button>
-        {/if}
+    <SagTrin trin={TRIN} {aktueltTrin} />
+
+    {#if besked}
+      <div
+        class="mx-6 mt-4 px-3 py-2 text-sm rounded border {besked.type === 'ok' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-red-50 text-red-700 border-red-200'}"
+        role={besked.type === "fejl" ? "alert" : "status"}
+      >{besked.tekst}</div>
+    {/if}
+
+    {#if afsluttet}
+      <p class="mx-6 mt-4 text-sm text-gray-500">Afsluttet {dato(sag.afsluttet_dato)} — genåbn sagen for at ændre den.</p>
+    {/if}
+
+    <!-- Unhandled changes to the child's data — above the steps, as they can
+         change the decision. -->
+    {#if aendringer.length > 0}
+      <div class="mx-6 mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-amber-900 mb-2">Uhåndterede ændringer</p>
+        <ul class="space-y-2">
+          {#each aendringer as a (a.aendring_id)}
+            <li class="flex items-center justify-between gap-4 text-sm">
+              <span>
+                <span class="font-semibold">{a.aendringsaarsag_tekst}</span>
+                {#if a.beskrivelse}<span class="text-gray-700"> — {a.beskrivelse}</span>{/if}
+                <span class="text-gray-500 text-xs ml-1">({tidspunkt(a.registreret_tidspunkt)})</span>
+              </span>
+              {#if kanRedigere}
+                <button type="button" class="px-3 py-1 rounded text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50" disabled={arbejder} on:click={() => haandter(a)}>
+                  Markér som håndteret
+                </button>
+              {/if}
+            </li>
+          {/each}
+        </ul>
       </div>
     {/if}
-  </div>
+
+    <div class="h-4"></div>
 
 
-  {#if besked}
-    <div
-      class="mb-5 px-4 py-2.5 rounded-lg text-sm {besked.type === 'ok'
-        ? 'bg-emerald-50 text-emerald-800 border border-emerald-100'
-        : 'bg-red-50 text-red-800 border border-red-100'}"
-      role={besked.type === "fejl" ? "alert" : "status"}
-    >
-      {besked.tekst}
-    </div>
-  {/if}
-
-
-  {#if aendringer.length > 0}
-    <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
-      <h2 class="font-bold text-[15px] text-amber-900 mb-2">Uhåndterede ændringer</h2>
-      <ul class="space-y-2">
-        {#each aendringer as a (a.aendring_id)}
-          <li class="flex items-center justify-between gap-4 text-sm">
-            <span>
-              <span class="font-semibold">{a.aendringsaarsag_tekst}</span>
-              {#if a.beskrivelse}<span class="text-gray-700"> — {a.beskrivelse}</span>{/if}
-              <span class="text-gray-500 text-xs ml-1">({tidspunkt(a.registreret_tidspunkt)})</span>
-            </span>
-            {#if kanRedigere}
-              <button type="button" class="px-3 py-1 rounded-full text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50" disabled={arbejder} on:click={() => haandter(a)}>
-                Markér som håndteret
-              </button>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    </div>
-  {/if}
-
-
-  <!-- Full width from xl: the facts (screening, wishes) side by side with the
-       case work under them, and the case log running down the right, where
-       it stays in view while the form is filled in. Below xl the cards stack
-       in reading order. -->
-  <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-5 items-start">
-
-    <!-- Screening -->
-    <div class="rounded-2xl overflow-hidden kort" style="border-left: 5px solid #2c7d90;">
-      <div class="px-6 py-4 border-b border-gray-100">
-        <h2 class="font-bold text-[15px]" style="color: #1f5d6e;">Screening</h2>
-      </div>
-      {#if !erScreenet(sag) && sag.screeningsdato === null}
-        <p class="px-6 py-5 text-sm text-gray-500">
-          {#if sag.samlet_resultat === EJ_SPROGSCREENET}
-            <span class="block mb-1">SX: <span class="font-medium text-gray-700">{EJ_SPROGSCREENET}</span>.</span>
-          {/if}
-          {#if sag.screening_booket_tidspunkt}
-            Ikke screenet endnu. Tid booket: <span class="font-medium text-gray-700">{tidspunkt(sag.screening_booket_tidspunkt)}</span>
-          {:else}
-            Barnet er ikke screenet endnu, og der er ikke booket en tid.
-          {/if}
-        </p>
-      {:else}
-        <dl class="px-6 py-5 grid grid-cols-[170px_1fr] gap-y-2.5 gap-x-4 text-[13px]">
-          <dt class="text-gray-500">Screeningsdato</dt><dd>{dato(sag.screeningsdato)}</dd>
-          <dt class="text-gray-500">Konsulent</dt><dd>{sag.navn_konsulent ?? "—"}</dd>
-          <dt class="text-gray-500">Testtype</dt><dd>{sag.testtype ?? "—"}</dd>
-          <dt class="text-gray-500">Alder ved screening</dt><dd>{sag.alder_mdr !== null ? `${sag.alder_mdr} mdr.` : "—"}</dd>
-          <dt class="text-gray-500">Gennemført / afbrudt</dt><dd>{jaNej(sag.gennemfoert)} / {jaNej(sag.afbrudt)}</dd>
-          <dt class="text-gray-500">Samlet resultat</dt><dd class="font-semibold">{sag.samlet_resultat ?? "—"}</dd>
-          <dt class="text-gray-500">Sprogstøttebehov</dt><dd>{jaNej(sag.sprogstoettebehov)}</dd>
-          {#if sag.screening_noter}
-            <dt class="text-gray-500">Noter</dt><dd>{sag.screening_noter}</dd>
-          {/if}
-        </dl>
-
-        <div class="mx-6 mb-5 overflow-x-auto">
-        <table class="screeningstabel w-full border-collapse text-[13px]">
-          <thead>
-            <tr class="text-left text-gray-500 border-b border-gray-100">
-              <th class="py-1.5 font-medium"></th>
-              <th class="py-1.5 font-medium">Percentil</th>
-              <th class="py-1.5 font-medium">Korrekt</th>
-              <th class="py-1.5 font-medium">Forkert</th>
-              <th class="py-1.5 font-medium">Besvaret</th>
-              <th class="py-1.5 font-medium">Korrekt-ratio</th>
-              <th class="py-1.5 font-medium">Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="border-b border-gray-50">
-              <td class="py-1.5 font-medium">Ordforråd</td>
-              <td>{percentil(sag.of_percentil)}</td><td>{tal(sag.of_korrekt)}</td><td>{tal(sag.of_forkert)}</td>
-              <td>{tal(sag.of_besvaret)}</td><td>{procent(sag.of_korrekt_ratio)}</td><td>{tal(sag.of_score)}</td>
-            </tr>
-            <tr>
-              <td class="py-1.5 font-medium">Sprogforståelse</td>
-              <td>{percentil(sag.sf_percentil)}</td><td>{tal(sag.sf_korrekt)}</td><td>{tal(sag.sf_forkert)}</td>
-              <td>{tal(sag.sf_besvaret)}</td><td>{procent(sag.sf_korrekt_ratio)}</td><td>{tal(sag.sf_score)}</td>
-            </tr>
-          </tbody>
-        </table>
-        </div>
-      {/if}
-    </div>
-
-    <!-- Wishes and daycare -->
-    <div class="rounded-2xl overflow-hidden kort" style="border-left: 5px solid #4e7c3a;">
-      <div class="px-6 py-4 border-b border-gray-100">
-        <h2 class="font-bold text-[15px]" style="color: #2f5325;">Skoleønsker og dagtilbud</h2>
-      </div>
-      <dl class="px-6 py-5 grid grid-cols-[170px_1fr] gap-y-2.5 gap-x-4 text-[13px]">
-        <dt class="text-gray-500">Distriktsskole</dt><dd>{sag.distriktsskole ?? "—"}</dd>
-        <dt class="text-gray-500">Ønsket skole 1</dt><dd>{sag.oensket_skole ?? "—"}</dd>
-        <dt class="text-gray-500">Ønsket skole 2</dt><dd>{sag.oensket_skole_2 ?? "—"}</dd>
-        <dt class="text-gray-500">Søskende på skolen</dt><dd>{sag.soeskende_skole ?? "—"}</dd>
-        <dt class="text-gray-500">Ansøgt anden skole</dt><dd>{jaNej(sag.ansoeger_anden_skole)}</dd>
+    <!-- ================= 1. Liste og ønsker ================= -->
+    <SagSektion nr={1} titel="Liste og ønsker" trin={0} {aktueltTrin}>
+      <div class="sag-felter">
+        <Felt label="Dagtilbud">
+          {vis(sag.dagtilbud)}
+          {#if sag.dagtilbud_afdeling}<span class="block text-gray-500 text-xs">{sag.dagtilbud_afdeling}</span>{/if}
+        </Felt>
+        <Felt label="Distriktsskole">
+          {vis(sag.distriktsskole)}
+          {#if sag.gaaafstand_distriktsskole_km !== null}<span class="block text-gray-500 text-xs">Gåafstand {km(sag.gaaafstand_distriktsskole_km)}</span>{/if}
+        </Felt>
+        <Felt label="Ønsket skole 1">
+          {vis(sag.oensket_skole)}
+          {#if sag.gaaafstand_oensket_skole_km !== null}<span class="block text-gray-500 text-xs">Gåafstand {km(sag.gaaafstand_oensket_skole_km)}</span>{/if}
+        </Felt>
+        <Felt label="Ønsket skole 2">{vis(sag.oensket_skole_2)}</Felt>
+        <Felt label="Søskende på skolen">{vis(sag.soeskende_skole)}</Felt>
+        <Felt label="Ansøgt anden skole">{jaNej(sag.ansoeger_anden_skole)}</Felt>
+        <Felt label="E-mail (PL)">{vis(sag.email_pl)}</Felt>
+        <Felt label="E-mail distriktsskole">{vis(sag.email_distriktsskole)}</Felt>
         {#if sag.skoler_afviger}
-          <dt></dt>
-          <dd><span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-fuchsia-100 text-fuchsia-800">Skolerne afviger fra hinanden</span></dd>
+          <Felt label="Bemærk" bred>
+            <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-fuchsia-100 text-fuchsia-800">Distriktsskole, ønsket skole og skoletilbud er ikke den samme skole</span>
+          </Felt>
         {/if}
-        <dt class="text-gray-500">Dagtilbud</dt>
-        <dd>
-          {sag.dagtilbud ?? "—"}
-          {#if sag.dagtilbud_afdeling}<br /><span class="text-gray-500">{sag.dagtilbud_afdeling}</span>{/if}
-        </dd>
-        <dt class="text-gray-500">E-mail (PL)</dt><dd>{sag.email_pl ?? "—"}</dd>
-        <dt class="text-gray-500">E-mail distriktsskole</dt><dd>{sag.email_distriktsskole ?? "—"}</dd>
-      </dl>
-    </div>
+      </div>
+    </SagSektion>
 
 
-  <!-- Case work -->
-  <div class="rounded-2xl overflow-hidden xl:col-span-2 kort" style="border-left: 5px solid #6a3fb5;">
-    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
-      <h2 class="font-bold text-[15px]" style="color: #3b2168;">Sagsbehandling</h2>
-      {#if afsluttet}
-        <span class="text-xs text-gray-500">Afsluttet {dato(sag.afsluttet_dato)} — genåbn sagen for at ændre den.</span>
-      {/if}
-    </div>
-
-    <!-- Placement first: skoletilbud + type is what moves the case on. -->
-    <form class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4 text-[13px]" on:submit|preventDefault={gem}>
-      <fieldset class="contents" disabled={!kanRedigere || afsluttet || arbejder}>
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Skoletilbud (matrikel)</span>
-          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.skoletilbud_matrikel_id}>
-            <option value="">— Vælg —</option>
-            {#each lookups.skolematrikel as o}
-              <option value={o.id}>{o.label}</option>
-            {/each}
-          </select>
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Skoletilbudstype</span>
-          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.skoletilbudstype_id}>
-            <option value="">— Vælg —</option>
-            {#each lookups.skoletilbudstyper as o}
-              <option value={o.id}>{o.label}</option>
-            {/each}
-          </select>
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Skoleplaceringsårsag</span>
-          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.skoleplaceringsaarsag_id}>
-            <option value="">{lookups.skoleplaceringsaarsager.length ? "— Vælg —" : "Ingen værdier oprettet endnu"}</option>
-            {#each lookups.skoleplaceringsaarsager as o}
-              <option value={o.id}>{o.label}</option>
-            {/each}
-          </select>
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">PUF-screeningsresultat</span>
-          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.puf_screeningsresultat}>
-            <option value="">— Vælg —</option>
-            {#each PUF_RESULTATER as r}
-              <option value={r}>{r}</option>
-            {/each}
-          </select>
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Sagsbehandlingsdato</span>
-          <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 rounded px-2.5 py-1.5" bind:value={form.sagsbehandlingsdato} />
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Krav på befordring</span>
-          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.krav_paa_befordring}>
-            <option value="">— Ikke angivet —</option>
-            <option value="ja">Ja</option>
-            <option value="nej">Nej</option>
-          </select>
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-gray-600">Skabelon (til brev)</span>
-          <select class="border border-gray-300 rounded px-2.5 py-1.5 bg-white" bind:value={form.brevskabelon_id}>
-            <option value="">{lookups.brevskabeloner.length ? "— Vælg —" : "Ingen skabeloner oprettet endnu"}</option>
-            {#each lookups.brevskabeloner as o}
-              <option value={o.id}>{o.label}</option>
-            {/each}
-          </select>
-        </label>
-
-        <label class="flex flex-col gap-1 md:col-span-2 xl:col-span-3">
-          <span class="text-gray-600">Afklaring</span>
-          <textarea class="border border-gray-300 rounded px-2.5 py-1.5 min-h-16" placeholder="Hvis screeningsresultatet ikke er entydigt" bind:value={form.afklaring}></textarea>
-        </label>
-
-        <label class="flex flex-col gap-1 md:col-span-2 xl:col-span-3">
-          <span class="text-gray-600">Bemærkning</span>
-          <textarea class="border border-gray-300 rounded px-2.5 py-1.5 min-h-20" bind:value={form.bemaerkning}></textarea>
-        </label>
-      </fieldset>
-
-      {#if kanRedigere && !afsluttet}
-        <div class="md:col-span-2 xl:col-span-3 flex items-center justify-between gap-4">
-          <p class="text-xs text-gray-500">
-            Status følger felterne: skoletilbud + skoletilbudstype giver "Skoleplaceret".
-          </p>
-          <button type="submit" class="px-5 py-2 rounded-full text-sm font-semibold text-white bg-dsa-600 hover:bg-dsa-700 disabled:opacity-40" disabled={arbejder}>
-            {arbejder ? "Gemmer…" : "Gem"}
-          </button>
+    <!-- ================= 2. Screening (SX, read-only) ================= -->
+    <SagSektion nr={2} titel="Screening" trin={1} {aktueltTrin}>
+      {#if !erScreenet(sag) && sag.screeningsdato === null}
+        <div class="sag-felter">
+          <Felt label="Tid booket">{sag.screening_booket_tidspunkt ? tidspunkt(sag.screening_booket_tidspunkt) : "Ingen tid booket"}</Felt>
+          {#if sag.samlet_resultat === EJ_SPROGSCREENET}
+            <Felt label="SX">{EJ_SPROGSCREENET}</Felt>
+          {/if}
+          {#if sag.screening_noter}<Felt label="Noter" bred>{sag.screening_noter}</Felt>{/if}
         </div>
+        {#if !afsluttet}
+          <p class="sag-naeste">
+            {sag.screening_booket_tidspunkt
+              ? "Barnet er ikke screenet endnu — resultatet kommer fra SX efter screeningen."
+              : "Barnet er ikke screenet, og der er ikke booket en tid."}
+          </p>
+        {/if}
+      {:else}
+        <div class="sag-felter">
+          <Felt label="Screeningsdato">{dato(sag.screeningsdato)}</Felt>
+          <Felt label="Konsulent">{vis(sag.navn_konsulent)}</Felt>
+          <Felt label="Testtype">{vis(sag.testtype)}</Felt>
+          <Felt label="Alder ved screening">{sag.alder_mdr !== null ? `${sag.alder_mdr} mdr.` : "—"}</Felt>
+          <Felt label="Samlet resultat (SX)"><span class="font-semibold">{vis(sag.samlet_resultat)}</span></Felt>
+          <Felt label="Sprogstøttebehov">{jaNej(sag.sprogstoettebehov)}</Felt>
+          <Felt label="Gennemført / afbrudt">{jaNej(sag.gennemfoert)} / {jaNej(sag.afbrudt)}</Felt>
+          {#if sag.screening_noter}<Felt label="Noter">{sag.screening_noter}</Felt>{/if}
+        </div>
+
+        <div class="mx-6 mb-4 overflow-x-auto">
+          <table class="screeningstabel text-[13px] border-collapse">
+            <thead>
+              <tr class="text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                <th></th><th>Percentil</th><th>Korrekt</th><th>Forkert</th><th>Besvaret</th><th>Korrekt-ratio</th><th>Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="font-medium text-gray-700">Ordforråd</td>
+                <td>{percentil(sag.of_percentil)}</td><td>{tal(sag.of_korrekt)}</td><td>{tal(sag.of_forkert)}</td>
+                <td>{tal(sag.of_besvaret)}</td><td>{procent(sag.of_korrekt_ratio)}</td><td>{tal(sag.of_score)}</td>
+              </tr>
+              <tr>
+                <td class="font-medium text-gray-700">Sprogforståelse</td>
+                <td>{percentil(sag.sf_percentil)}</td><td>{tal(sag.sf_korrekt)}</td><td>{tal(sag.sf_forkert)}</td>
+                <td>{tal(sag.sf_besvaret)}</td><td>{procent(sag.sf_korrekt_ratio)}</td><td>{tal(sag.sf_score)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Screened, but no usable result yet (e.g. "Ej sprogscreenet", an
+             interrupted screening): still the step being worked on. -->
+        {#if !afsluttet && aktueltTrin === 1}
+          <p class="sag-naeste">
+            {sag.screening_booket_tidspunkt
+              ? `Screeningen gav intet resultat — ny tid booket ${tidspunkt(sag.screening_booket_tidspunkt)}.`
+              : "Screeningen gav intet resultat — book en ny tid."}
+          </p>
+        {/if}
       {/if}
-    </form>
-  </div>
+    </SagSektion>
 
 
-  <!-- Sagsforløb — the right-hand column from xl -->
-  <div class="rounded-2xl overflow-hidden xl:col-start-3 xl:row-start-1 xl:row-span-2 kort" style="border-left: 5px solid #bd9b16;">
-    <div class="px-6 py-4 border-b border-gray-100">
-      <h2 class="font-bold text-[15px]" style="color: #8a7210;">Sagsforløb</h2>
+    <!-- ================= 3. Afgørelse ================= -->
+    <SagSektion nr={3} titel="Afgørelse" trin={2} {aktueltTrin}>
+      <div class="sag-felter">
+        <Felt label="PUF-screeningsresultat">
+          {#if redigerer}
+            <select class={input} bind:value={form.puf_screeningsresultat}>
+              <option value="">— Vælg —</option>
+              {#each PUF_RESULTATER as r}<option value={r}>{r}</option>{/each}
+            </select>
+          {:else}<span class={sag.puf_screeningsresultat ? "font-semibold" : ""}>{vis(sag.puf_screeningsresultat)}</span>{/if}
+        </Felt>
+        <Felt label="Skoletilbud">
+          {#if redigerer}
+            <select class={input} bind:value={form.skoletilbud_matrikel_id}>
+              <option value="">— Vælg —</option>
+              {#each lookups.skolematrikel as o}<option value={o.id}>{o.label}</option>{/each}
+            </select>
+          {:else}
+            {vis(sag.skoletilbud_matrikel)}
+            {#if sag.gaaafstand_skoletilbud_km !== null}<span class="block text-gray-500 text-xs">Gåafstand {km(sag.gaaafstand_skoletilbud_km)}</span>{/if}
+          {/if}
+        </Felt>
+        <Felt label="Skoletilbudstype">
+          {#if redigerer}
+            <select class={input} bind:value={form.skoletilbudstype_id}>
+              <option value="">— Vælg —</option>
+              {#each lookups.skoletilbudstyper as o}<option value={o.id}>{o.label}</option>{/each}
+            </select>
+          {:else}{vis(sag.skoletilbudstype_tekst)}{/if}
+        </Felt>
+        <Felt label="Skoleplaceringsårsag">
+          {#if redigerer}
+            <select class={input} bind:value={form.skoleplaceringsaarsag_id}>
+              <option value="">{lookups.skoleplaceringsaarsager.length ? "— Vælg —" : "Ingen værdier oprettet endnu"}</option>
+              {#each lookups.skoleplaceringsaarsager as o}<option value={o.id}>{o.label}</option>{/each}
+            </select>
+          {:else}{vis(sag.skoleplaceringsaarsag_tekst)}{/if}
+        </Felt>
+        <Felt label="Krav på befordring">
+          {#if redigerer}
+            <select class={input} bind:value={form.krav_paa_befordring}>
+              <option value="">— Ikke angivet —</option><option value="ja">Ja</option><option value="nej">Nej</option>
+            </select>
+          {:else}{sag.krav_paa_befordring === null ? "Ikke angivet" : jaNej(sag.krav_paa_befordring)}{/if}
+        </Felt>
+        <Felt label="Sagsbehandlingsdato">
+          {#if redigerer}<DateInput min={MIN_DATE} max={MAX_DATE} class={input} bind:value={form.sagsbehandlingsdato} />
+          {:else}{dato(sag.sagsbehandlingsdato)}{/if}
+        </Felt>
+        <Felt label="Afklaring" bred>
+          {#if redigerer}<textarea class="{input} min-h-14" placeholder="Hvis screeningsresultatet ikke er entydigt" bind:value={form.afklaring}></textarea>
+          {:else}<span class="whitespace-pre-line">{vis(sag.afklaring)}</span>{/if}
+        </Felt>
+      </div>
+      {#if kanHandle && !redigerer && aktueltTrin === 2}
+        <p class="sag-naeste">
+          {sag.samlet_resultat === "Nærmere afklaring" && !sag.puf_screeningsresultat
+            ? "Resultatet kræver nærmere afklaring — skriv afklaringen, og vælg PUF-screeningsresultat."
+            : "Vælg skoletilbud og skoletilbudstype — så bliver sagen skoleplaceret."}
+        </p>
+      {/if}
+    </SagSektion>
+
+
+    <!-- ================= 4. Brev og afslutning ================= -->
+    <SagSektion nr={4} titel="Brev og afslutning" trin={3} {aktueltTrin}>
+      <div class="sag-felter">
+        <Felt label="Skabelon (til brev)">
+          {#if redigerer}
+            <select class={input} bind:value={form.brevskabelon_id}>
+              <option value="">{lookups.brevskabeloner.length ? "— Vælg —" : "Ingen skabeloner oprettet endnu"}</option>
+              {#each lookups.brevskabeloner as o}<option value={o.id}>{o.label}</option>{/each}
+            </select>
+          {:else}{vis(sag.brevskabelon_tekst)}{/if}
+        </Felt>
+        <Felt label="Afsluttet">{dato(sag.afsluttet_dato)}</Felt>
+      </div>
+      {#if kanHandle && !redigerer && aktueltTrin === 3}
+        <p class="sag-naeste">Barnet er skoleplaceret — send afgørelsesbrevet, og afslut sagen.</p>
+      {/if}
+    </SagSektion>
+
+
+    <!-- ================= Bemærkning (not a step) ================= -->
+    <SagSektion nr="·" titel="Bemærkning">
+      <div class="sag-felter">
+        <Felt label="Bemærkning" bred>
+          {#if redigerer}<textarea class="{input} min-h-16" bind:value={form.bemaerkning}></textarea>
+          {:else}<span class="whitespace-pre-line">{vis(sag.bemaerkning)}</span>{/if}
+        </Felt>
+      </div>
+    </SagSektion>
+
+  </article>
+
+
+  <!-- ================= Sagsforløb, beside the card ================= -->
+  <aside class="rounded-lg overflow-hidden kort xl:sticky xl:top-4">
+    <div class="px-5 py-3 border-b border-gray-100">
+      <h3 class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Sagsforløb</h3>
     </div>
-
-    <form class="px-6 pt-4 flex gap-3" on:submit|preventDefault={tilfoejKommentar}>
-      <input
-        class="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm"
-        placeholder="Skriv en kommentar…"
-        bind:value={kommentar}
-        disabled={arbejder}
-      />
-      <button type="submit" class="px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-dsa-200 text-dsa-800 hover:bg-dsa-50 disabled:opacity-40" disabled={arbejder || !kommentar.trim()}>
-        Tilføj
-      </button>
+    <form class="px-5 pt-4 flex gap-2" on:submit|preventDefault={tilfoejKommentar}>
+      <input class="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm" placeholder="Skriv en kommentar…" bind:value={kommentar} disabled={arbejder} />
+      <button type="submit" class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40" disabled={arbejder || !kommentar.trim()}>Tilføj</button>
     </form>
-
     {#if sagsforloeb.length === 0}
-      <p class="px-6 py-5 text-sm text-gray-500">Ingen hændelser endnu.</p>
+      <p class="px-5 py-4 text-sm text-gray-500">Ingen hændelser endnu.</p>
     {:else}
-      <ol class="px-6 py-4 space-y-3">
+      <ol class="px-5 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
         {#each sagsforloeb as a (a.aktivitet_id)}
-          <li class="flex gap-3 text-[13px]">
-            <span class="w-28 shrink-0 text-gray-500">{tidspunkt(a.oprettet_tidspunkt)}</span>
+          <li class="flex gap-2 text-[13px]">
             <div class="flex-1">
-              <p>
-                <span class="font-semibold {a.type_kode === 'kommentar' ? 'text-dsa-800' : 'text-gray-800'}">{a.aktivitetstype}</span>
-                <span class="text-gray-500"> · {a.udfoert_af ?? "—"}</span>
-              </p>
+              <p><span class="font-semibold {a.type_kode === 'kommentar' ? 'text-dsa-800' : 'text-gray-800'}">{a.aktivitetstype}</span></p>
+              <p class="text-[11px] text-gray-500">{tidspunkt(a.oprettet_tidspunkt)} · {a.udfoert_af ?? "—"}</p>
               {#if a.kommentar}<p class="text-gray-700 mt-0.5 whitespace-pre-line">{a.kommentar}</p>{/if}
             </div>
             <!-- Only comments can be deleted, and only your own — erEgenKommentar
@@ -536,11 +581,9 @@
         {/each}
       </ol>
     {/if}
-  </div>
+  </aside>
 
-  </div>
-
-</section>
+</div>
 
 
 <!-- Delete kommentar confirmation modal — markup from befordringssystemet's
@@ -602,10 +645,11 @@
 
 <style>
   /* The global td/th rule (app.css, from befordringssystemet) pads every cell
-     0.75rem — too much for a seven-column table inside a column-wide card.
-     Compact here, as DataTable does for its own cells. */
+     0.75rem — too much for a seven-column table inside a step. */
   .screeningstabel :global(th),
   .screeningstabel :global(td) {
-    padding: 0.375rem 0.4rem;
+    padding: 0.3rem 1rem 0.3rem 0;
+    border: none;
+    font-weight: inherit;
   }
 </style>

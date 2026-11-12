@@ -5,6 +5,8 @@
   import { MAX_DATE, MIN_DATE, firstInvalidDate, firstOutOfRangeDate, iDagISO } from "$lib/dates";
   import DateInput from "$lib/components/DateInput.svelte";
   import Felt from "$lib/components/Felt.svelte";
+  import SagSektion from "$lib/components/SagSektion.svelte";
+  import SagTrin from "$lib/components/SagTrin.svelte";
   import { erAabenPeriode } from "$lib/elevsag";
   import { dato, fejltekst, PUF_RESULTATER, skoleaarTekst, tidspunkt, type Lookups } from "$lib/skolebegynder";
   import {
@@ -410,23 +412,8 @@
       {/if}
     </header>
 
-    <!-- Caseworker, and where the case is in its flow -->
-    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50/60">
-      <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]" aria-label="Sagens forløb">
-        {#each trin as t, i}
-          <li class="flex items-center gap-2">
-            <span
-              class="inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-bold
-                {i < aktueltTrin ? 'bg-dsa-600 text-white' : i === aktueltTrin ? 'bg-white border-2 border-dsa-600 text-dsa-700' : 'bg-white border border-gray-300 text-gray-400'}"
-              aria-current={i === aktueltTrin ? "step" : undefined}
-            >{i < aktueltTrin ? "✓" : i + 1}</span>
-            <span class={i === aktueltTrin ? "font-semibold text-dsa-800" : i < aktueltTrin ? "text-gray-700" : "text-gray-400"}>{t}</span>
-            {#if i < trin.length - 1}<span class="text-gray-300">›</span>{/if}
-          </li>
-        {/each}
-        <li class="ml-2 text-gray-400">{intern ? "Internt forløb" : "Eksternt forløb"}</li>
-      </ol>
-
+    <!-- Where the case is in its flow, and the caseworker -->
+    <SagTrin {trin} {aktueltTrin} etiket={intern ? "Internt forløb" : "Eksternt forløb"}>
       <label class="flex items-center gap-2 text-sm">
         <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Sagsbehandler</span>
         {#if redigerer}
@@ -438,7 +425,7 @@
           <span class="text-gray-800">{sag.sagsbehandler_tekst ?? "Ikke tildelt"}</span>
         {/if}
       </label>
-    </div>
+    </SagTrin>
 
     {#if besked}
       <div
@@ -453,9 +440,8 @@
 
 
     <!-- ================= 1. Ansøgning ================= -->
-    <section class="sektion" class:faerdig={aktueltTrin > 0}>
-      <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 0 ? "✓" : 1}</span> Ansøgning{#if aktueltTrin > 0}<span class="udfoert">Udført</span>{/if}</h3>
-      <div class="felter">
+    <SagSektion nr={1} titel="Ansøgning" trin={0} {aktueltTrin}>
+      <div class="sag-felter">
         <Felt label="Indgang">{sag.indgang === "Modtagelsesklasse" ? "Fra forældre (modtagelsesklasse)" : "Via skolens afgørelse"}</Felt>
         <Felt label="Skoleår">{sag.skoleaar === null ? "—" : skoleaarTekst(sag.skoleaar)}</Felt>
         <Felt label="Nuværende skole">{vis(sag.nuvaerende_skole)}{#if sag.nuvaerende_kommune && sag.nuvaerende_kommune !== "Aarhus Kommune"}<span class="block text-gray-500 text-xs">{sag.nuvaerende_kommune}</span>{/if}</Felt>
@@ -489,15 +475,14 @@
           <Felt label="Forældrenes begrundelse" bred><span class="whitespace-pre-line">{sag.begrundelse}</span></Felt>
         {/if}
       </div>
-    </section>
+    </SagSektion>
 
 
     {#if intern}
 
       <!-- ================= 2. Sprogvurdering på skolen (intern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 1} class:faerdig={aktueltTrin > 1}>
-        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 1 ? "✓" : 2}</span> Sprogvurdering på skolen{#if aktueltTrin > 1}<span class="udfoert">Udført</span>{/if}</h3>
-        <div class="felter">
+      <SagSektion nr={2} titel="Sprogvurdering på skolen" trin={1} {aktueltTrin}>
+        <div class="sag-felter">
           <Felt label="Sprogstøttebehov (TEA)">
             <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {sprogstoettebehovNu ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}">
               {sprogstoettebehovNu ? "Ja" : "Nej"}
@@ -526,7 +511,7 @@
         <!-- What to do now, while this is the step -->
         {#if kanHandle && !redigerer && aktueltTrin === 1}
           {#if !sprogstoettebehovNu && !sag.dato_forespoergsel_skole}
-            <div class="naeste">
+            <div class="sag-naeste">
               <p>Barnet har intet registreret sprogstøttebehov, så sagen er ikke DSA's.</p>
               <button type="button" class="px-3 py-1.5 text-sm font-medium rounded text-white bg-dsa-700 hover:bg-dsa-800 disabled:opacity-50" disabled={arbejder}
                 on:click={() => afslut("Intet sprogstøttebehov — ikke relevant for DSA", "Afslut sagen? Barnet har intet registreret sprogstøttebehov.")}>
@@ -534,31 +519,29 @@
               </button>
             </div>
           {:else if !sag.dato_forespoergsel_skole}
-            <p class="naeste">Kontakt skolen, bed om en sprogvurdering, og registrér datoen for henvendelsen.</p>
+            <p class="sag-naeste">Kontakt skolen, bed om en sprogvurdering, og registrér datoen for henvendelsen.</p>
           {:else}
-            <p class="naeste">Afventer skolens svar — registrér resultatet, når skolen melder tilbage.</p>
+            <p class="sag-naeste">Afventer skolens svar — registrér resultatet, når skolen melder tilbage.</p>
           {/if}
         {/if}
-      </section>
+      </SagSektion>
 
       <!-- ================= 3. Breve (intern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 2} class:faerdig={aktueltTrin > 2}>
-        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 2 ? "✓" : 3}</span> Breve{#if aktueltTrin > 2}<span class="udfoert">Udført</span>{/if}</h3>
-        <div class="felter">
+      <SagSektion nr={3} titel="Breve" trin={2} {aktueltTrin}>
+        <div class="sag-felter">
           <Felt label="Brev om fortsat sprogstøtte">
             {#if redigerer}<DateInput min={MIN_DATE} max={iDag} class={input} bind:value={form.sprogstoettebrev_sendt} />
             {:else}{sendt(sag.sprogstoettebrev_sendt)}{/if}
           </Felt>
         </div>
         {#if kanHandle && !redigerer && aktueltTrin === 2}
-          <p class="naeste">Eleven har fortsat behov for sprogstøtte: send brev til forældrene, og registrér datoen.</p>
+          <p class="sag-naeste">Eleven har fortsat behov for sprogstøtte: send brev til forældrene, og registrér datoen.</p>
         {/if}
-      </section>
+      </SagSektion>
 
       <!-- ================= 4. Afgørelse (intern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 3} class:faerdig={aktueltTrin > 3}>
-        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 3 ? "✓" : 4}</span> Afgørelse{#if aktueltTrin > 3}<span class="udfoert">Udført</span>{/if}</h3>
-        <div class="felter">
+      <SagSektion nr={4} titel="Afgørelse" trin={3} {aktueltTrin}>
+        <div class="sag-felter">
           <Felt label="Udfald">
             {#if sag.skolens_sprogvurdering === "Afventer optagelse i Sprog+"}Eleven afventer optagelse i Sprog+
             {:else if sag.skolens_sprogvurdering}Eleven har fortsat behov for sprogstøtte
@@ -566,16 +549,15 @@
           </Felt>
         </div>
         {#if kanHandle && !redigerer && aktueltTrin === 3}
-          <p class="naeste">Skolens vurdering foreligger{sag.sprogstoettebrev_sendt ? ", og brevet er sendt" : ""} — afslut sagen.</p>
+          <p class="sag-naeste">Skolens vurdering foreligger{sag.sprogstoettebrev_sendt ? ", og brevet er sendt" : ""} — afslut sagen.</p>
         {/if}
-      </section>
+      </SagSektion>
 
     {:else}
 
       <!-- ================= 2. Sprogscreening (ekstern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 1} class:faerdig={aktueltTrin > 1}>
-        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 1 ? "✓" : 2}</span> Sprogscreening{#if aktueltTrin > 1}<span class="udfoert">Udført</span>{/if}</h3>
-        <div class="felter">
+      <SagSektion nr={2} titel="Sprogscreening" trin={1} {aktueltTrin}>
+        <div class="sag-felter">
           <Felt label="Indkaldt til screening">
             {#if redigerer}<DateInput min={MIN_DATE} max={iDag} class={input} bind:value={form.dato_indkaldelse_screening} />
             {:else}{dato(sag.dato_indkaldelse_screening)}{/if}
@@ -620,16 +602,15 @@
         </table>
 
         {#if kanHandle && !redigerer && aktueltTrin === 1}
-          <p class="naeste">
+          <p class="sag-naeste">
             {sag.dato_indkaldelse_screening ? "Registrér screeningen og resultatet, når den er gennemført." : "Indkald barnet til sprogscreening, og registrér datoen."}
           </p>
         {/if}
-      </section>
+      </SagSektion>
 
       <!-- ================= 3. Skoletilbud (ekstern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 2} class:faerdig={aktueltTrin > 2}>
-        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 2 ? "✓" : 3}</span> Skoletilbud{#if aktueltTrin > 2}<span class="udfoert">Udført</span>{/if}</h3>
-        <div class="felter">
+      <SagSektion nr={3} titel="Skoletilbud" trin={2} {aktueltTrin}>
+        <div class="sag-felter">
           <Felt label="Ledig plads på ønsket skole">
             {#if redigerer}
               <select class={input} bind:value={form.ledig_plads}>
@@ -657,7 +638,7 @@
             </Felt>
           {/if}
         </div>
-        <div class="felter border-t border-dashed border-gray-200 pt-4">
+        <div class="sag-felter border-t border-dashed border-gray-200 pt-4">
           <Felt label="Skoletilbud">
             {#if redigerer}
               <select class={input} bind:value={form.skoletilbud_matrikel_id}>
@@ -700,7 +681,7 @@
           </Felt>
         </div>
         {#if kanHandle && !redigerer && aktueltTrin === 2}
-          <p class="naeste">
+          <p class="sag-naeste">
             {#if sag.samlet_resultat === ALDERSSVARENDE}
               Alderssvarende dansk: giv skoletilbuddet, send optagelsesbrev til skole og forældre, og afslut sagen.
             {:else if sag.ledig_plads === null}
@@ -716,12 +697,11 @@
             {/if}
           </p>
         {/if}
-      </section>
+      </SagSektion>
 
       <!-- ================= 4. Breve (ekstern) ================= -->
-      <section class="sektion" class:aktuel={aktueltTrin === 3} class:faerdig={aktueltTrin > 3}>
-        <h3 class="sektionstitel"><span class="nr">{aktueltTrin > 3 ? "✓" : 4}</span> Breve{#if aktueltTrin > 3}<span class="udfoert">Udført</span>{/if}</h3>
-        <div class="felter">
+      <SagSektion nr={4} titel="Breve" trin={3} {aktueltTrin}>
+        <div class="sag-felter">
           <Felt label="Optagelsesbrev">
             {#if redigerer}<DateInput min={MIN_DATE} max={iDag} class={input} bind:value={form.optagelsesbrev_sendt} />
             {:else}{sendt(sag.optagelsesbrev_sendt)}{/if}
@@ -736,17 +716,16 @@
           </Felt>
         </div>
         {#if kanHandle && !redigerer && aktueltTrin === 3}
-          <p class="naeste">Skoletilbuddet er givet — sagen afsluttes automatisk dagen efter datoen for skoletilbud, eller afslut den nu.</p>
+          <p class="sag-naeste">Skoletilbuddet er givet — sagen afsluttes automatisk dagen efter datoen for skoletilbud, eller afslut den nu.</p>
         {/if}
-      </section>
+      </SagSektion>
 
     {/if}
 
 
     <!-- ================= Befordring and notes (both flows) ================= -->
-    <section class="sektion">
-      <h3 class="sektionstitel"><span class="nr">·</span> Befordring og bemærkning</h3>
-      <div class="felter">
+    <SagSektion nr="·" titel="Befordring og bemærkning">
+      <div class="sag-felter">
         <Felt label="Krav på befordring">
           {#if redigerer}
             <select class={input} bind:value={form.krav_paa_befordring}>
@@ -763,7 +742,7 @@
           {:else}<span class="whitespace-pre-line">{vis(sag.bemaerkning)}</span>{/if}
         </Felt>
       </div>
-    </section>
+    </SagSektion>
 
 
     <!-- ================= Earlier assessments (read-only) ================= -->
@@ -822,89 +801,6 @@
 
 
 <style>
-  /* A step of the case: its title, then a grid of fields — the bevilling
-     card's grid, five across on wide screens. */
-  /* Steps are divided by a clear rule, so each reads as its own stage. */
-  .sektion {
-    border-top: 1px solid #e5e7eb;
-    padding-top: 1.1rem;
-  }
-  .sektion:first-of-type {
-    border-top: none;
-  }
-  /* The step being worked on now: a lavender edge, as a quiet pointer. */
-  .sektion.aktuel {
-    box-shadow: inset 4px 0 0 #6a3fb5;
-    background-color: #fbfaff;
-  }
-  /* A step already done: a grey tint and muted text, so the eye goes past it
-     to the step being worked on. Still fully readable — and editable. */
-  .sektion.faerdig {
-    background-color: #f5f5f6;
-  }
-  .sektion.faerdig .sektionstitel {
-    color: #6b7280;
-  }
-  .sektion.faerdig .nr {
-    background-color: #d1d5db;
-    color: #374151;
-  }
-  .sektion.faerdig :global(.text-gray-800) {
-    color: #4b5563;
-  }
-  .udfoert {
-    margin-left: auto;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #6b7280;
-  }
-  .sektionstitel {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0 1.5rem;
-    margin-bottom: 0.9rem;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #3b2168;
-  }
-  .nr {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.25rem;
-    height: 1.25rem;
-    border-radius: 9999px;
-    background-color: #ece8f7;
-    color: #4a2b80;
-    font-size: 0.7rem;
-  }
-  .felter {
-    display: grid;
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-    gap: 1.1rem 1.5rem;
-    padding: 0 1.5rem 1.1rem;
-  }
-  @media (min-width: 640px) {
-    .felter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
-  @media (min-width: 1024px) {
-    .felter { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  }
-  /* What to do next, under the step it concerns. */
-  .naeste {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin: 0 1.5rem 1.1rem;
-    padding: 0.6rem 0.9rem;
-    border-radius: 0.375rem;
-    background-color: #f6f4fb;
-    color: #3b2168;
-    font-size: 0.8125rem;
-  }
   /* The global td/th rule pads 0.75rem; the materials table is compact. */
   .materialer :global(th),
   .materialer :global(td) {
