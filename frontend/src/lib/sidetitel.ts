@@ -31,8 +31,12 @@ const FASTE_TITLER: Record<string, string> = {
 // DSA: the student page (/elev/[cpr]) is named after its child, as
 // befordringssystemet names a sag; a tab other than an area's says what it is.
 const SAGS_HANDLINGER: Record<string, string> = {
-  "/elev/[cpr]/skolebegynder": "",
-  "/elev/[cpr]/skoleskiftere": "Skoleskiftere",
+  "/elev/[cpr]": "",
+  "/elev/[cpr]/skolehistorik": "Skolehistorik",
+  "/elev/[cpr]/soeskende": "Søskende",
+  "/elev/[cpr]/afgoerelser": "Tidligere afgørelser",
+  "/elev/[cpr]/afgoerelser/[omraade]/[id]": "Afgørelse",
+  "/elev/[cpr]/sprog-og-stoette": "Sprog og støtte",
   "/elev/[cpr]/foraeldremyndighed": "Forældremyndighed",
 };
 

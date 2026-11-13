@@ -7,6 +7,7 @@
   import DataTable, { type DataTableColumn } from "$lib/components/DataTable.svelte";
   import ReadOnlyNotice from "$lib/components/ReadOnlyNotice.svelte";
   import { backendFetch } from "$lib/client/backendFetch";
+  import { sagHref } from "$lib/elevsag";
   import { esc } from "$lib/html";
   import {
     FANER,
@@ -132,7 +133,7 @@
             : ""
         ].filter(Boolean);
         return ombryd(
-          `<a href="/elev/${esc(row.cpr)}/skolebegynder?sag=${row.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
+          `<a href="${esc(sagHref(row.cpr, "skolebegynder", row.skolebegynder_id, row.status_tekst))}" class="font-semibold text-dsa-700 hover:underline">${esc(row.navn)}</a>` +
             `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(row.cpr))}</span>` +
             (maerker.length ? `<span class="mt-1 flex flex-wrap gap-1">${maerker.join("")}</span>` : ""),
           12
@@ -581,7 +582,7 @@
       filterValues: (a: AendringRow) => [a.navn ?? "", a.cpr, formatCpr(a.cpr)],
       render: (a: AendringRow) =>
         ombryd(
-          `<a href="/elev/${esc(a.cpr)}/skolebegynder?sag=${a.skolebegynder_id}" class="font-semibold text-dsa-700 hover:underline">${esc(a.navn ?? "—")}</a>` +
+          `<a href="${esc(sagHref(a.cpr, "skolebegynder", a.skolebegynder_id, a.status_tekst))}" class="font-semibold text-dsa-700 hover:underline">${esc(a.navn ?? "—")}</a>` +
             `<span class="block font-mono text-[12px] text-gray-500">${esc(formatCpr(a.cpr))}</span>`,
           12
         )

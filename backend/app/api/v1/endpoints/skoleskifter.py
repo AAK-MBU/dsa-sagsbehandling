@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from app.api.dependencies import CurrentUser, DbSession, RequireEdit
 from app.schemas.skoleskifter import (
+    SkoleskifterAfslutRequest,
     SkoleskifterDetail,
     SkoleskifterOverviewRecord,
     SkoleskifterUpdateRequest,
@@ -57,10 +58,24 @@ def update_skoleskifter(
 
 
 @router.post("/{skoleskifter_id}/afslut", response_model=SkoleskifterDetail, dependencies=[RequireEdit])
-def afslut(skoleskifter_id: int, db: DbSession, udfoert_af: CurrentUser):
-    """Close a case by hand (the normal close is automatic)."""
+def afslut(
+    skoleskifter_id: int,
+    db: DbSession,
+    udfoert_af: CurrentUser,
+    request: SkoleskifterAfslutRequest | None = None,
+):
+    """Close a case by hand, optionally saying why (written to the case log).
 
-    return SkoleskifterService(db=db).afslut(skoleskifter_id=skoleskifter_id, udfoert_af=udfoert_af)
+    Migration 007: how most cases end — an intern case without a
+    sprogstøttebehov, or with the school's reply and letter done; an ekstern
+    case with "Alderssvarende dansk" once the admission letter is out.
+    """
+
+    return SkoleskifterService(db=db).afslut(
+        skoleskifter_id=skoleskifter_id,
+        udfoert_af=udfoert_af,
+        begrundelse=request.begrundelse if request else None,
+    )
 
 
 @router.post("/{skoleskifter_id}/genaabn", response_model=SkoleskifterDetail, dependencies=[RequireEdit])

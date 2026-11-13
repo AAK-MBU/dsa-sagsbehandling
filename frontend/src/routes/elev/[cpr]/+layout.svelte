@@ -3,7 +3,8 @@
 
   import Elevoplysninger from "$lib/components/Elevoplysninger.svelte";
   import ReadOnlyNotice from "$lib/components/ReadOnlyNotice.svelte";
-  import { areas } from "$lib/areas";
+  import type { ElevSag } from "$lib/elevsag";
+  import { skoleaarTekst } from "$lib/skolebegynder";
   import { formatCpr } from "$lib/tableColumnConfig";
 
   /**
@@ -11,10 +12,18 @@
    *
    * Laid out as befordringssystemet's /sag/[cpr]: a person header with the
    * protection warnings above it and Elev / Forældremyndighed on the right,
-   * then the stamdata card. Under the card, DSA's own part: a tab per area,
-   * each its own route (/elev/{cpr}/<area>), so a link from an area's
-   * overview lands on that area's tab, and the back button and a reload stay
-   * on it.
+   * then the stamdata card. Under the card, DSA's own part: tabs about the
+   * child, each its own route, so the back button and a reload stay on it.
+   *
+   *   Aktiv sag              /elev/{cpr}               the open case, any area
+   *   Skolehistorik          /elev/{cpr}/skolehistorik
+   *   Søskende               /elev/{cpr}/soeskende
+   *   Tidligere afgørelser   /elev/{cpr}/afgoerelser   closed cases, any area
+   *   Sprog og støtte        /elev/{cpr}/sprog-og-stoette
+   *
+   * (Until the 2026-11 feedback round these were one tab per area, most of
+   * them empty for any given child. A child has one open case at a time, so
+   * the page opens on it and the tabs carry the history instead.)
    */
   let { data, children } = $props();
 
@@ -24,8 +33,29 @@
 
   const paaForaeldre = $derived(($page.route.id ?? "").endsWith("/foraeldremyndighed"));
 
-  const elevFaner = areas.filter((a) => a.elevside);
-  const aktivFane = $derived(elevFaner.find((a) => ($page.route.id ?? "").includes(`/${a.elevside}`))?.elevside ?? null);
+  const aktiv = $derived((data.aktiveSager as ElevSag[])[0] ?? null);
+
+  // Shown in the first tab's label, so the caseworker sees what is open
+  // without opening it.
+  const aktivTekst = $derived(
+    aktiv ? `${aktiv.type}${aktiv.omraade === "skolebegynder" && aktiv.skoleaar ? ` ${skoleaarTekst(aktiv.skoleaar)}` : ""}` : null
+  );
+
+  type Fane = { href: string; label: string; route: string; antal?: number; detalje?: string | null };
+
+  const faner = $derived<Fane[]>([
+    { href: `/elev/${cpr}`, label: "Aktiv sag", route: "/elev/[cpr]", detalje: aktivTekst },
+    { href: `/elev/${cpr}/skolehistorik`, label: "Skolehistorik", route: "/elev/[cpr]/skolehistorik" },
+    { href: `/elev/${cpr}/soeskende`, label: "Søskende", route: "/elev/[cpr]/soeskende", antal: data.soeskende.length },
+    { href: `/elev/${cpr}/afgoerelser`, label: "Tidligere afgørelser", route: "/elev/[cpr]/afgoerelser", antal: data.afgoerelser.length },
+    { href: `/elev/${cpr}/sprog-og-stoette`, label: "Sprog og støtte", route: "/elev/[cpr]/sprog-og-stoette" }
+  ]);
+
+  // An afgørelse's own page (afgoerelser/{omraade}/{id}) keeps its list's tab lit.
+  const erAktivFane = (f: Fane) => {
+    const r = $page.route.id ?? "";
+    return f.route === "/elev/[cpr]" ? r === f.route : r === f.route || r.startsWith(`${f.route}/`);
+  };
 
   const initial = $derived((stamdata?.adresseringsnavn ?? "?").charAt(0).toUpperCase());
 
@@ -129,30 +159,27 @@
         <Elevoplysninger elev={stamdata} />
       </div>
 
-      <!-- Area tabs. Each is a route; areas not built yet are shown, dimmed
-           ("Kommer snart" on hover), so the page reads as the child's page in
-           every area. -->
-      <nav class="flex gap-1 border-b border-dsa-100 mb-5 flex-wrap" aria-label="Områder">
-        {#each elevFaner as a}
-          {#if a.enabled}
-            {@const antal = data.sagsantal[a.elevside ?? ""]?.alle ?? 0}
-            <a
-              href="/elev/{cpr}/{a.elevside}"
-              class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition-colors {aktivFane === a.elevside
-                ? 'border-dsa-600 text-dsa-800'
-                : 'border-transparent text-gray-500 hover:text-dsa-700'}"
-              aria-current={aktivFane === a.elevside ? "page" : undefined}
-            >
-              {a.short}
-              <span class="ml-1.5 inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1.5 rounded-full text-[11px] font-bold {antal > 0 ? 'bg-dsa-100 text-dsa-800' : 'bg-gray-100 text-gray-400'}">
-                {antal}
+      <!-- The child's tabs. Each is a route. -->
+      <nav class="flex gap-1 border-b border-dsa-100 mb-5 flex-wrap" aria-label="Elevens faner">
+        {#each faner as f (f.route)}
+          {@const valgt = erAktivFane(f)}
+          <a
+            href={f.href}
+            class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition-colors {valgt
+              ? 'border-dsa-600 text-dsa-800'
+              : 'border-transparent text-gray-500 hover:text-dsa-700'}"
+            aria-current={valgt ? "page" : undefined}
+          >
+            {f.label}
+            {#if f.detalje}
+              <span class="ml-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-dsa-100 text-dsa-800">{f.detalje}</span>
+            {/if}
+            {#if f.antal !== undefined}
+              <span class="ml-1.5 inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1.5 rounded-full text-[11px] font-bold {f.antal > 0 ? 'bg-dsa-100 text-dsa-800' : 'bg-gray-100 text-gray-400'}">
+                {f.antal}
               </span>
-            </a>
-          {:else}
-            <span class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 border-transparent text-gray-400 cursor-default" title="Kommer snart">
-              {a.short}
-            </span>
-          {/if}
+            {/if}
+          </a>
         {/each}
       </nav>
 
