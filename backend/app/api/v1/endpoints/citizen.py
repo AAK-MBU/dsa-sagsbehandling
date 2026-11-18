@@ -65,6 +65,15 @@ def get_soeskende(cpr: str, db: DbSession):
     return CitizenService(db=db).get_soeskende(cpr=cpr)
 
 
+# DSA: the Elev_* history (migration 006) — not in befordringssystemet. Read
+# by the student page's Skolehistorik and Sprog og støtte tabs.
+@router.get("/stamdata/{cpr}/historik")
+def get_historik(cpr: str, db: DbSession):
+    """The child's school history, mother tongue, language support, PPR and arrival."""
+
+    return CitizenService(db=db).get_historik(cpr=cpr)
+
+
 @router.get("/stamdata/{cpr}/parents")
 def get_parent_data(cpr: str, db: DbSession):
     """Get parent/guardian data for a citizen/student.

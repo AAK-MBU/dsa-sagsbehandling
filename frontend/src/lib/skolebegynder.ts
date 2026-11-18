@@ -121,6 +121,8 @@ export type Lookups = {
   aendringsaarsager: LookupOption[];
   skolematrikel: LookupOption[];
   skoler: LookupOption[];
+  /** Caseworkers a case can be assigned to (migration 007). */
+  sagsbehandlere: LookupOption[];
 };
 
 export const TOMME_LOOKUPS: Lookups = {
@@ -131,7 +133,8 @@ export const TOMME_LOOKUPS: Lookups = {
   brevskabeloner: [],
   aendringsaarsager: [],
   skolematrikel: [],
-  skoler: []
+  skoler: [],
+  sagsbehandlere: []
 };
 
 /** The fields a caseworker may edit — SkolebegynderUpdateRequest. */

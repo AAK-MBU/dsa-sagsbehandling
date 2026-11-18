@@ -25,6 +25,7 @@ from app.models.lookup import (
     Aendringsaarsag,
     Brevskabelon,
     Fagomraade,
+    Sagsbehandler,
     Skolematrikel,
     Skoleplaceringsaarsag,
     Skoletilbudstype,
@@ -142,6 +143,7 @@ class LookupService:
             "aendringsaarsager": self.get_aendringsaarsager(),
             "skolematrikel": self.get_skolematrikel(),
             "skoler": self.get_skoler(),
+            "sagsbehandlere": self.get_sagsbehandlere(),
         }
 
 
@@ -243,3 +245,18 @@ class LookupService:
         """)).mappings().all()
 
         return [dict(row) for row in rows]
+
+
+    # DSA: from befordringssystemet's lookup_service (migration 007).
+    def get_sagsbehandlere(self):
+        """Get available sagsbehandlere.
+
+        Returns:
+            A list of sagsbehandler records as id/label dictionaries.
+        """
+
+        return self._get_lookup_records(
+            model=Sagsbehandler,
+            id_column=Sagsbehandler.sagsbehandler_id,
+            label_column=Sagsbehandler.sagsbehandler_tekst,
+        )

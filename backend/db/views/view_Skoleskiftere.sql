@@ -29,7 +29,11 @@ GO
     The child's columns come from view_Elev_Aktuel (migration 006): Elev
     plus the current period of each Elev_* history table.
 
-    Depends on view_Skoler and view_Elev_Aktuel: create those first.
+    forloeb (migration 007) is the case's flow: Intern for skoleskift internt,
+    Ekstern for skoleskift eksternt and tilflyttere.
+
+    Depends on view_Skoler and view_Elev_Aktuel: create those first, and on
+    the columns migration 007 adds.
 */
 
 CREATE OR ALTER VIEW [dsa].[view_Skoleskiftere]
@@ -45,6 +49,11 @@ SELECT
     e.distriktsskolekode,
     ds.skolenavn                                            AS distriktsskole,
     ss.variant,
+    -- The two flows (migration 007): internt between two Aarhus folkeskoler
+    -- (the school assesses the Danish); everything else is PUF's screening.
+    CASE WHEN ss.variant = N'Skoleskift internt' THEN N'Intern' ELSE N'Ekstern' END AS forloeb,
+    ss.sagsbehandler_id,
+    sb.sagsbehandler_tekst,
 
     -- Status
     ss.status_id,
@@ -75,12 +84,24 @@ SELECT
     ss.soeskende_paa_skolen,
     ss.soeskende_klasse,
     ss.skolens_afgoerelse,
+    ss.andet_modersmaal,
 
-    -- Language assessment
+    -- Language assessment: the school's (intern) or PUF's screening (ekstern)
+    ss.dato_forespoergsel_skole,
+    ss.dato_svar_skole,
+    ss.skolens_sprogvurdering,
+    ss.dato_indkaldelse_screening,
     ss.screeningsdato,
     ss.samlet_resultat,
 
     -- Decision
+    ss.ledig_plads,
+    ss.kontaktet_skole_matrikel_id,
+    km.matrikel_navn                                        AS kontaktet_skole,
+    ss.dato_kontakt_skole,
+    ss.midlertidigt_skoletilbud_matrikel_id,
+    mm.matrikel_navn                                        AS midlertidigt_skoletilbud,
+    ss.start_visitationsklasse,
     ss.skoletilbud_matrikel_id,
     tm.matrikel_navn                                        AS skoletilbud_matrikel,
     ss.skoletilbudstype_id,
@@ -90,6 +111,13 @@ SELECT
     ss.bemaerkning,
     ss.ppr_sendt_dato,
     ss.afsluttet_dato,
+
+    -- Letters, and befordring
+    ss.optagelsesbrev_sendt,
+    ss.sprogstoettebrev_sendt,
+    ss.partshoeringsbrev_sendt,
+    ss.krav_paa_befordring,
+    ss.befordring_bemaerkning,
 
     -- Derived
     DATEDIFF(DAY, CAST(ss.modtaget_tidspunkt AS DATE),
@@ -125,6 +153,15 @@ LEFT JOIN
 LEFT JOIN
     [dsa].[Skoletilbudstype] stt
     ON stt.skoletilbudstype_id = ss.skoletilbudstype_id
+LEFT JOIN
+    [dsa].[Skolematrikel] km
+    ON km.matrikel_id = ss.kontaktet_skole_matrikel_id
+LEFT JOIN
+    [dsa].[Skolematrikel] mm
+    ON mm.matrikel_id = ss.midlertidigt_skoletilbud_matrikel_id
+LEFT JOIN
+    [dsa].[Sagsbehandler] sb
+    ON sb.sagsbehandler_id = ss.sagsbehandler_id
 WHERE
     ss.aktiv = 1;
 GO

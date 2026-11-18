@@ -25,9 +25,12 @@ export const statusBadgeClasses: Record<string, string> = {
   // Skoleskiftere og tilflyttere
   ny: "bg-slate-100 text-slate-700",
   "afventer sprogvurdering": "bg-amber-100 text-amber-800",
-  "aftalt sprogscreening": "bg-amber-100 text-amber-800",
+  "indkaldt til sprogscreening": "bg-amber-100 text-amber-800",
+  "klar til afgørelse": "bg-dsa-100 text-dsa-800",
   "sendt til ppr": "bg-rose-100 text-rose-800",
   "afventer skoletilbud": "bg-dsa-100 text-dsa-800",
+  "afventer skolens svar": "bg-orange-100 text-orange-800",
+  "partshøring": "bg-orange-100 text-orange-800",
   "skoletilbud afsendt": "bg-sky-100 text-sky-800",
   default: "bg-slate-100 text-slate-700"
 };

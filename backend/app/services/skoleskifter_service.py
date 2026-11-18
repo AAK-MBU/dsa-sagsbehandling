@@ -3,15 +3,18 @@
 The same split as SkolebegynderService: reads through view_Skoleskiftere,
 writes through the ORM, status through usp_recalculate_skoleskifter_status.
 
-Unlike skolebegyndere, part of the status is a caseworker's choice: Ny,
-Afventer sprogvurdering and Sendt til PPR are set by hand (manuel_status on
-an update), and Afsluttet can also be set by hand (afslut). The procedure
-derives the rest and closes a case the day after its offer date.
+Unlike skolebegyndere, part of the status is a caseworker's choice: Ny and
+Sendt til PPR are set by hand (manuel_status on an update), and Afsluttet
+by hand too (afslut). The procedure derives the rest and closes a case the
+day after its offer date.
 
-A screening result of "Alderssvarende dansk" closes the case here, on the
-save: the child has age-appropriate Danish and is not DSA's (PUF,
-2026-10-28). Not in the procedure, so a caseworker can reopen such a case
-without the next run closing it again.
+Two flows (migration 007): Intern for "Skoleskift internt" (the school
+assesses the Danish), Ekstern for the rest (PUF screens the child); the
+procedure tells them apart by variant. Most cases end with afslut, by hand:
+an intern case without a sprogstøttebehov or with its letter done, an
+ekstern case with "Alderssvarende dansk" once the admission letter is out.
+("Alderssvarende dansk" used to close the case on save; PUF wants the
+letter sent first — 2026-11.)
 """
 
 from datetime import date
@@ -21,7 +24,7 @@ from sqlalchemy import Date, cast, func, select, text
 from sqlalchemy.orm import Session
 
 from app.models.citizen import Sagsaktivitet, SagsaktivitetType
-from app.models.lookup import Fagomraade, Skolematrikel, Skoletilbudstype, Status
+from app.models.lookup import Fagomraade, Sagsbehandler, Skolematrikel, Skoletilbudstype, Status
 from app.models.skoleskifter import Skoleskifter
 
 
@@ -29,12 +32,13 @@ FAGOMRAADE_TEKST = "Skoleskiftere og tilflyttere"
 
 STATUS_AFSLUTTET = "Afsluttet"
 STATUS_PPR = "Sendt til PPR"
-# The screening result that closes a case on save.
-ALDERSSVARENDE = "Alderssvarende dansk"
 # Placeholder when a case is reopened; the procedure replaces it at once.
 STATUS_NY = "Ny"
 
 _REFERENCER = {
+    "sagsbehandler_id": (Sagsbehandler, Sagsbehandler.sagsbehandler_id, "sagsbehandler"),
+    "kontaktet_skole_matrikel_id": (Skolematrikel, Skolematrikel.matrikel_id, "kontaktet skole"),
+    "midlertidigt_skoletilbud_matrikel_id": (Skolematrikel, Skolematrikel.matrikel_id, "midlertidigt skoletilbud"),
     "skoletilbud_matrikel_id": (Skolematrikel, Skolematrikel.matrikel_id, "skoletilbud"),
     "skoletilbudstype_id": (Skoletilbudstype, Skoletilbudstype.skoletilbudstype_id, "skoletilbudstype"),
 }
@@ -275,8 +279,7 @@ class SkoleskifterService:
 
     def update_skoleskifter(self, skoleskifter_id: int, data: dict, udfoert_af: str = "System") -> dict:
         """Change a case's editable fields and/or its manual status, then
-        recalculate — or close the case, when the screening result is newly
-        "Alderssvarende dansk".
+        recalculate.
 
         Raises:
             HTTPException: 400 nothing to change / bad lookup id; 404 no such
@@ -294,7 +297,6 @@ class SkoleskifterService:
 
         manuel_status = data.pop("manuel_status", None)
         old_status = case.status_id
-        lukkes = data.get("samlet_resultat") == ALDERSSVARENDE and case.samlet_resultat != ALDERSSVARENDE
         old_skoletilbud = tuple(getattr(case, f) for f in _SKOLETILBUD_FELTER)
 
         try:
@@ -309,15 +311,7 @@ class SkoleskifterService:
 
             case.updated_by = udfoert_af[:100]
             self.db.flush()
-
-            if lukkes:
-                # SQL Server's date, not Python's: the container clock is UTC.
-                today = self.db.execute(select(cast(func.sysdatetime(), Date))).scalar_one()
-                case.status_id = self._status_id(STATUS_AFSLUTTET)
-                case.status_dato = today
-                case.afsluttet_dato = today
-            else:
-                self._execute_recalculate_status_procedure(skoleskifter_id=skoleskifter_id)
+            self._execute_recalculate_status_procedure(skoleskifter_id=skoleskifter_id)
 
             self.db.commit()
         except Exception:
@@ -340,15 +334,7 @@ class SkoleskifterService:
                 udfoert_af=udfoert_af,
             )
 
-        if lukkes:
-            self._log_event(
-                case,
-                type_kode="sag_afsluttet",
-                aktivitetstype="Sag afsluttet",
-                kommentar="Alderssvarende dansk — ikke relevant for DSA",
-                udfoert_af=udfoert_af,
-            )
-        elif case.status_id != old_status:
+        if case.status_id != old_status:
             self._log_event(
                 case,
                 type_kode="status_opdateret",
@@ -359,9 +345,14 @@ class SkoleskifterService:
         return self.get_skoleskifter(skoleskifter_id)
 
 
-    def afslut(self, skoleskifter_id: int, udfoert_af: str = "System") -> dict:
-        """Close a case by hand — e.g. an application withdrawn. The normal
-        close is automatic, the day after the offer date."""
+    def afslut(self, skoleskifter_id: int, udfoert_af: str = "System", begrundelse: str | None = None) -> dict:
+        """Close a case by hand, with an optional reason for the case log.
+
+        The usual end of a case (migration 007): no sprogstøttebehov, the
+        school's reply and letter done, "Alderssvarende dansk" with the
+        admission letter out, a withdrawn application. A case with a school
+        offer also closes by itself, the day after the offer date.
+        """
 
         case = self._get_open_case(skoleskifter_id)
 
@@ -377,7 +368,13 @@ class SkoleskifterService:
             self.db.rollback()
             raise
 
-        self._log_event(case, type_kode="sag_afsluttet", aktivitetstype="Sag afsluttet", udfoert_af=udfoert_af)
+        self._log_event(
+            case,
+            type_kode="sag_afsluttet",
+            aktivitetstype="Sag afsluttet",
+            kommentar=(begrundelse or "").strip() or None,
+            udfoert_af=udfoert_af,
+        )
 
         return self.get_skoleskifter(skoleskifter_id)
 

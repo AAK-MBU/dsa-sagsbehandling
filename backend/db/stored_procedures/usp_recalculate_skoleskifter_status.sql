@@ -15,36 +15,42 @@ GO
     (@skoleskifter_id) or all of them, @today overridable for testing,
     @dry_run to preview. The result set lists every case considered.
 
-    Unlike skolebegyndere, part of this area's status is a caseworker's
-    choice — whether the language assessment has been ordered, whether the
-    case has gone to PPR — so the rule keeps those and derives the rest
-    (draft, 2026-10-27):
+    Two flows (migration 007), told apart by variant: Intern for
+    "Skoleskift internt", Ekstern for "Skoleskift eksternt" and "Tilflytter".
+    Checked in this order — the first that holds wins, so a later step always
+    beats an earlier one:
 
         Afsluttet               never moved by this procedure once set — by
                                 hand, or by the rule below. Reopening is a
                                 caseworker's act.
 
-        Afsluttet (automatic)   offer, skoletilbudstype and dato_skoletilbud
-                                are filled and the date has passed: the field
-                                list closes the case "dagen efter" the offer
-                                date (after the partshøring deadline).
+        Both flows
+          Afsluttet (automatic) offer, skoletilbudstype and dato_skoletilbud
+                                are filled and the date has passed (the
+                                field list closes the case "dagen efter").
+          Skoletilbud afsendt   the same, the date not yet passed.
+          Sendt til PPR         manual, and kept until an offer is given.
 
-        Skoletilbud afsendt     offer, skoletilbudstype and dato_skoletilbud
-                                are filled, the date not yet passed.
+        Intern — the school assesses the Danish
+          Klar til afgørelse    the school's sprogvurdering is in
+                                (skolens_sprogvurdering).
+          Afventer sprogvurdering
+                                the school has been asked
+                                (dato_forespoergsel_skole).
 
-        Sendt til PPR           manual, and kept until an offer is given.
+        Ekstern — PUF screens the child
+          Partshøring           the partshøringsbrev is sent.
+          Afventer skolens svar an alternative school is contacted
+                                (kontaktet_skole_matrikel_id).
+          Afventer skoletilbud  the screening result is in (samlet_resultat).
+          Indkaldt til sprogscreening
+                                an invitation or a screening date.
 
-        Afventer skoletilbud    a samlet_resultat is there. (Every case is
-                                assessed by PUF — migration 005. A result of
-                                "Alderssvarende dansk" closes the case in
-                                SkoleskifterService instead: the child is
-                                not DSA's.)
+        Ny                      none of the above.
 
-        Aftalt sprogscreening   a screening date, no result yet.
-
-        Ny / Afventer           manual; kept as the caseworker set them. A
-        sprogvurdering          case whose derived step is undone (a result
-                                cleared) falls back to Ny.
+    A case without a sprogstøttebehov (intern), or with "Alderssvarende dansk"
+    once the admission letter is out (ekstern), is closed by hand —
+    SkoleskifterService.afslut.
 
     The automatic close depends on time passing, so the procedure should also
     run once a night (without @skoleskifter_id) — not only after a save.
@@ -87,12 +93,13 @@ BEGIN
 
     DECLARE @antal_statusser INT = (
         SELECT COUNT(*) FROM @statuses
-        WHERE status_tekst IN (N'Ny', N'Afventer sprogvurdering', N'Aftalt sprogscreening', N'Sendt til PPR',
-                               N'Afventer skoletilbud', N'Skoletilbud afsendt', N'Afsluttet'));
+        WHERE status_tekst IN (N'Ny', N'Afventer sprogvurdering', N'Klar til afgørelse',
+                               N'Indkaldt til sprogscreening', N'Sendt til PPR', N'Afventer skoletilbud',
+                               N'Afventer skolens svar', N'Partshøring', N'Skoletilbud afsendt', N'Afsluttet'));
 
-    IF @antal_statusser <> 7
+    IF @antal_statusser <> 10
     BEGIN
-        THROW 50003, 'One or more skoleskifter statuses are missing from dsa.Status. Run migration 004.', 1;
+        THROW 50003, 'One or more skoleskifter statuses are missing from dsa.Status. Run migrations 004 and 007.', 1;
     END;
 
     DECLARE @afsluttet_status_id INT =
@@ -123,10 +130,25 @@ BEGIN
                  AND ss.skoletilbudstype_id IS NOT NULL
                  AND ss.dato_skoletilbud IS NOT NULL          THEN N'Skoletilbud afsendt'
             WHEN cur.status_tekst = N'Sendt til PPR'          THEN N'Sendt til PPR'
-            WHEN ss.samlet_resultat IS NOT NULL               THEN N'Afventer skoletilbud'
-            WHEN ss.screeningsdato IS NOT NULL                THEN N'Aftalt sprogscreening'
-            WHEN cur.status_tekst IN (N'Ny', N'Afventer sprogvurdering')
-                                                              THEN cur.status_tekst
+
+            -- Intern
+            WHEN ss.variant = N'Skoleskift internt'
+                 AND ss.skolens_sprogvurdering IS NOT NULL    THEN N'Klar til afgørelse'
+            WHEN ss.variant = N'Skoleskift internt'
+                 AND ss.dato_forespoergsel_skole IS NOT NULL  THEN N'Afventer sprogvurdering'
+
+            -- Ekstern
+            WHEN ss.variant <> N'Skoleskift internt'
+                 AND ss.partshoeringsbrev_sendt IS NOT NULL   THEN N'Partshøring'
+            WHEN ss.variant <> N'Skoleskift internt'
+                 AND ss.kontaktet_skole_matrikel_id IS NOT NULL
+                                                              THEN N'Afventer skolens svar'
+            WHEN ss.variant <> N'Skoleskift internt'
+                 AND ss.samlet_resultat IS NOT NULL           THEN N'Afventer skoletilbud'
+            WHEN ss.variant <> N'Skoleskift internt'
+                 AND (ss.dato_indkaldelse_screening IS NOT NULL OR ss.screeningsdato IS NOT NULL)
+                                                              THEN N'Indkaldt til sprogscreening'
+
             ELSE                                                   N'Ny'
         END AS calculated_status_text
     ) calc

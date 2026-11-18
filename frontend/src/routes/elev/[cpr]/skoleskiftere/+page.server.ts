@@ -1,36 +1,28 @@
-import { error } from "@sveltejs/kit";
+import { error, redirect } from "@sveltejs/kit";
 
-import { hentSkoleskifterSag } from "$lib/server/skoleskifterSag";
-import { TOMME_LOOKUPS } from "$lib/skolebegynder";
+import { sagHref } from "$lib/elevsag";
 
 import type { PageServerLoad } from "./$types";
 
 
 /**
- * The Skoleskiftere tab of the student page (draft): one of the child's
- * skoleskifter cases. ?sag={id} when given (the overview names it), otherwise
- * the newest open case, else the newest. A child can have several — a
- * tilflytter who later changes school, say.
+ * The old Skoleskiftere tab of the student page — see the Skolebegynder one
+ * next door. Kept as a redirect so links and bookmarks to
+ * /elev/{cpr}/skoleskiftere[?sag={id}] still land on the case.
  */
-export const load: PageServerLoad = async (event) => {
-  const { skoleskifterSager } = await event.parent();
+export const load: PageServerLoad = async ({ params, url, parent }) => {
+  const { skoleskifterSager } = await parent();
 
-  if (skoleskifterSager.length === 0) {
-    return { sag: null, lookups: TOMME_LOOKUPS, sagsforloeb: [], soeskende: [], fagomraadeId: null };
+  if (!url.searchParams.has("sag")) {
+    throw redirect(308, `/elev/${params.cpr}`);
   }
 
-  let valgt;
+  const id = Number(url.searchParams.get("sag"));
+  const sag = skoleskifterSager.find((s) => s.skoleskifter_id === id);
 
-  if (event.url.searchParams.has("sag")) {
-    const oensket = Number(event.url.searchParams.get("sag"));
-    valgt = skoleskifterSager.find((s) => s.skoleskifter_id === oensket);
-    if (!valgt) {
-      throw error(404, "Sagen findes ikke for denne elev");
-    }
-  } else {
-    // The cases come newest first.
-    valgt = skoleskifterSager.find((s) => s.status_tekst !== "Afsluttet") ?? skoleskifterSager[0];
+  if (!sag) {
+    throw error(404, "Sagen findes ikke for denne elev");
   }
 
-  return hentSkoleskifterSag(event, valgt.skoleskifter_id);
+  throw redirect(307, sagHref(params.cpr, "skoleskifter", id, sag.status_tekst));
 };

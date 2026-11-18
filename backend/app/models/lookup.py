@@ -130,3 +130,26 @@ class Skolematrikel(Base):
     er_matrikel_hovedadresse: Mapped[bool] = mapped_column(Boolean, nullable=False)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+# DSA: befordringssystemet's Sagsbehandler, as it is there (migration 007) —
+# the caseworkers a skoleskifter case can be assigned to.
+class Sagsbehandler(Base):
+    __tablename__ = "Sagsbehandler"
+    __table_args__ = {"schema": DB_SCHEMA}
+
+    sagsbehandler_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    sagsbehandler_tekst: Mapped[str] = mapped_column(String, nullable=False)
+    # Matched against the signed-in user's OIDC email claim to resolve which
+    # caseworker they are — that is what Min side filters on. Nullable: rows
+    # created before migration 035 have none, and a caseworker without one
+    # simply sees an empty Min side rather than an error.
+    # DSA: there is no Min side yet, and the column came with migration 007.
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
+    beskrivelse: Mapped[str | None] = mapped_column(String, nullable=True)
+    aktiv: Mapped[bool] = mapped_column(Boolean, nullable=False)
