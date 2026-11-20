@@ -32,7 +32,7 @@
     // to assess, then changes to review. Ikke screenet is mostly waiting on SX.
     "/skolebegynder": {
       linjer: sb && [
-        { antal: sb.mangler_skoleplacering, tekst: "mangler skoleplacering", href: "/skolebegynder?fane=overblik" },
+        { antal: sb.mangler_skoleplacering, tekst: "mangler skoletilbud", href: "/skolebegynder?fane=overblik" },
         { antal: sb.naermere_afklaring, tekst: "venter på nærmere afklaring", href: "/skolebegynder?fane=naermere-afklaring" },
         { antal: sb.aendringer, tekst: "ændringer at gennemgå", href: "/skolebegynder?fane=aendringer" },
         { antal: sb.ikke_screenet, tekst: "ikke screenet endnu", href: "/skolebegynder?fane=ikke-screenet" }
