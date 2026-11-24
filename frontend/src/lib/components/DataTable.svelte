@@ -37,6 +37,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { afterNavigate } from "$app/navigation";
+  import { isactive, readfilters, writefilters, type FilterState } from "$lib/tablefilters";
 
   import {
     tablePrimaryActionButtonClass,
@@ -53,6 +54,15 @@
   export let columns: DataTableColumn[] = [];
 
   export let filterable = true;
+
+  /**
+   * DSA: remember the filters between visits, in this browser. Name the view
+   * the table is showing ("skolebegynder.overblik.2026"): every distinct key
+   * keeps its own filters, and a key that changes while the table stays
+   * mounted (a tab or year switch) swaps in that view's filters. Without a
+   * key nothing is remembered and every address change starts clean.
+   */
+  export let storagekey: string | null = null;
 
   /** Hide the pagination bar entirely. For short, fixed-length lists. */
   export let paginated = true;
@@ -162,8 +172,18 @@
   // Table state
   // -----------------------------
 
-  let filters: Record<string, string | string[]> = {};
+  let filters: FilterState = {};
   let currentPage = 1;
+
+  // Remembered filters. They are read after mount, not during setup: the
+  // server renders the table unfiltered, and swapping the stored filters in
+  // before hydration would make the two disagree. `activekey` is the view
+  // whose filters are on screen; only then is a change written back, so a
+  // table never saves over a view it has not loaded. `restored` is true until
+  // the user changes a filter, so the banner can say these came from last time.
+  let mounted = false;
+  let activekey: string | null = null;
+  let restored = false;
 
   // Multi-select filter dropdown. The menu is portalled to <body> and
   // fixed-positioned (see `portal` / `positionMenu`) so it can extend beyond
@@ -173,9 +193,8 @@
   let menuEl: HTMLElement | null = null;
   let menuStyle = "";
 
-  $: hasActiveFilters = Object.values(filters).some((v) =>
-    Array.isArray(v) ? v.length > 0 : v !== ""
-  );
+  $: activecount = Object.values(filters).filter(isactive).length;
+  $: hasActiveFilters = activecount > 0;
 
   function positionMenu() {
     if (!triggerEl) return;
@@ -238,21 +257,60 @@
     ).sort((a, b) => a.localeCompare(b, "da"));
   }
 
+  // Every change to the filters by the user goes through here, so it is also
+  // written to the browser's storage.
+  function setfilters(next: FilterState) {
+    filters = next;
+    restored = false;
+    if (activekey !== null) writefilters(activekey, next);
+  }
+
   function clearFilters() {
-    filters = {};
+    setfilters({});
     currentPage = 1;
   }
 
-  // DSA: a new view starts clean. Pages switch tab or year by changing the
-  // address (?fane=, ?aar=) while this same table stays mounted with new rows,
-  // so without this a filter typed on one tab silently kept narrowing the next
-  // one. Every address change clears filters, page and an open dropdown, on
-  // every page that uses the table. A save does not navigate (it reloads the
-  // data in place), so filters survive saving. `from` is null on first load.
+  // One column's filter: the × in its filter cell.
+  function clearcolumn(key: string) {
+    const next = { ...filters };
+    delete next[key];
+    setfilters(next);
+    currentPage = 1;
+  }
+
+  // Show a view: its remembered filters, or none.
+  function applykey(key: string | null) {
+    activekey = key;
+    currentPage = 1;
+    openDropdown = null;
+    triggerEl = null;
+    filters = key === null ? {} : readfilters(key, columns, getUniqueOptions);
+    restored = hasstored(filters);
+  }
+
+  function hasstored(state: FilterState): boolean {
+    return Object.values(state).some(isactive);
+  }
+
+  onMount(() => {
+    mounted = true;
+  });
+
+  $: if (mounted && storagekey !== activekey) applykey(storagekey);
+
+  // DSA: a new view starts clean, unless the table remembers its filters.
+  // Pages switch tab or year by changing the address (?fane=, ?aar=) while
+  // this same table stays mounted with new rows, so without this a filter
+  // typed on one tab silently kept narrowing the next one. A table with no
+  // storagekey clears filters, page and an open dropdown on every address
+  // change. With a key, the key changing swaps the view's filters in (see
+  // applykey), and clearing here would wipe what was just restored. A save
+  // does not navigate (it reloads the data in place), so filters survive
+  // saving. `from` is null on first load.
   afterNavigate(({ from, to }) => {
     if (!from || !to) return;
     if (from.url.pathname === to.url.pathname && from.url.search === to.url.search) return;
-    clearFilters();
+    if (storagekey === null) clearFilters();
     openDropdown = null;
     triggerEl = null;
   });
@@ -323,11 +381,30 @@
 </script>
 
 
+<!-- The × inside an active column filter: clears that column only. Sits over
+     the right edge of the field (the caller's field leaves room for it). The
+     two offsets are spelled out so Tailwind sees them: right-1 by default,
+     right-6 for a native select, which draws its own arrow at the edge. -->
+{#snippet clearbutton(column: DataTableColumn, right: string = "right-1")}
+  <button
+    type="button"
+    class="absolute top-1/2 -translate-y-1/2 {right} flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-sky-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+    title="Ryd filter"
+    aria-label={`Ryd filter: ${column.label}`}
+    on:click={() => clearcolumn(column.key)}
+  >
+    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  </button>
+{/snippet}
+
+
 <div class="w-full overflow-x-auto">
 
   {#if filterable && hasActiveFilters}
     <div class="flex items-center justify-between px-3 py-1.5 mb-2 rounded-md bg-sky-50 border border-sky-100 text-xs text-sky-700">
-      <span>Aktive filtre</span>
+      <span>Aktive filtre ({activecount}){restored ? " · gemt fra sidst" : ""}</span>
       <button type="button" on:click={clearFilters} class="font-medium hover:underline">
         Ryd filtre
       </button>
@@ -401,7 +478,7 @@
                   <div class="relative">
                     <button
                       type="button"
-                      class="h-7 w-full flex items-center justify-between border border-gray-200 rounded bg-white px-2 text-xs text-left"
+                      class="h-7 w-full flex items-center justify-between border rounded pl-2 text-xs text-left {isactive(filters[column.key]) ? 'border-blue-400 bg-sky-50 pr-8' : 'border-gray-200 bg-white pr-2'}"
                       on:click={(e) => toggleDropdown(column.key, e)}
                     >
                       <span class="truncate text-slate-500">
@@ -413,6 +490,10 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
+
+                    {#if isactive(filters[column.key])}
+                      {@render clearbutton(column)}
+                    {/if}
 
                     {#if openDropdown === column.key}
                       <!-- Portalled to <body> and fixed-positioned so the menu can
@@ -431,12 +512,12 @@
                               checked={isSelected}
                               on:change={() => {
                                 const current = Array.isArray(filters[column.key]) ? (filters[column.key] as string[]) : [];
-                                filters = {
+                                setfilters({
                                   ...filters,
                                   [column.key]: isSelected
                                     ? current.filter((v) => v !== option)
                                     : [...current, option]
-                                };
+                                });
                                 currentPage = 1;
                               }}
                             />
@@ -449,32 +530,47 @@
 
                 {:else if column.filterType === "select"}
 
-                  <select
-                    value={filters[column.key] ?? ""}
-                    on:change={(e) => {
-                      filters = { ...filters, [column.key]: (e.target as HTMLSelectElement).value };
-                      currentPage = 1;
-                    }}
-                    class="h-7 w-full border border-gray-200 rounded px-2 text-xs focus:border-blue-400 focus:ring-0 bg-white"
-                  >
-                    <option value="">Alle</option>
-                    {#each getUniqueOptions(column) as option}
-                      <option value={option}>{option}</option>
-                    {/each}
-                  </select>
+                  <div class="relative">
+                    <select
+                      value={filters[column.key] ?? ""}
+                      on:change={(e) => {
+                        setfilters({ ...filters, [column.key]: (e.target as HTMLSelectElement).value });
+                        currentPage = 1;
+                      }}
+                      class="h-7 w-full border rounded pl-2 text-xs focus:border-blue-400 focus:ring-0 {isactive(filters[column.key]) ? 'border-blue-400 bg-sky-50 pr-10' : 'border-gray-200 bg-white pr-2'}"
+                    >
+                      <option value="">Alle</option>
+                      {#each getUniqueOptions(column) as option}
+                        <option value={option}>{option}</option>
+                      {/each}
+                    </select>
+
+                    {#if isactive(filters[column.key])}
+                      {@render clearbutton(column, "right-6")}
+                    {/if}
+                  </div>
 
                 {:else}
 
-                  <input
-                    type="text"
-                    placeholder="Søg..."
-                    class="h-7 w-full border border-gray-200 rounded px-2 text-xs focus:border-blue-400 focus:ring-0 transition-colors bg-white"
-                    value={typeof filters[column.key] === "string" ? filters[column.key] : ""}
-                    on:input={(e) => {
-                      filters = { ...filters, [column.key]: (e.target as HTMLInputElement).value };
-                      currentPage = 1;
-                    }}
-                  />
+                  <div class="relative">
+                    <input
+                      type="text"
+                      placeholder="Søg..."
+                      class="h-7 w-full border rounded pl-2 text-xs focus:border-blue-400 focus:ring-0 transition-colors {isactive(filters[column.key]) ? 'border-blue-400 bg-sky-50 pr-7' : 'border-gray-200 bg-white pr-2'}"
+                      value={typeof filters[column.key] === "string" ? filters[column.key] : ""}
+                      on:input={(e) => {
+                        setfilters({ ...filters, [column.key]: (e.target as HTMLInputElement).value });
+                        currentPage = 1;
+                      }}
+                      on:keydown={(e) => {
+                        if (e.key === "Escape" && isactive(filters[column.key])) clearcolumn(column.key);
+                      }}
+                    />
+
+                    {#if isactive(filters[column.key])}
+                      {@render clearbutton(column)}
+                    {/if}
+                  </div>
 
                 {/if}
 
