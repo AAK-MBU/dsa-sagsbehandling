@@ -28,10 +28,6 @@
 
   $: sager = data.sager as SkoleskifterRow[];
   $: fane = faneFraQuery($page.url.searchParams.get("fane"));
-
-  // The table remembers its filters per tab.
-  $: filterkey = `skoleskiftere.${fane}`;
-
   $: faneSager = sager.filter((s) => iFane(s, fane));
   $: antal = Object.fromEntries(FANER.map((f) => [f.id, sager.filter((s) => iFane(s, f.id)).length])) as Record<Fane, number>;
 
@@ -155,7 +151,6 @@
       getRowId={(row) => row.skoleskifter_id}
       compact
       stickyFirstColumn
-      storagekey={filterkey}
       bind:filteredCount
       emptyMessage="Ingen sager i denne fane"
     />

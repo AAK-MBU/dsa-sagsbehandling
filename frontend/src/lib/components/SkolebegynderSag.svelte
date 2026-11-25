@@ -407,7 +407,7 @@
           <Felt label="Konsulent">{vis(sag.navn_konsulent)}</Felt>
           <Felt label="Testtype">{vis(sag.testtype)}</Felt>
           <Felt label="Alder ved screening">{sag.alder_mdr !== null ? `${sag.alder_mdr} mdr.` : "—"}</Felt>
-          <Felt label="Screeningsresultat (SX)"><span class="font-semibold">{vis(sag.samlet_resultat)}</span></Felt>
+          <Felt label="Samlet resultat (SX)"><span class="font-semibold">{vis(sag.samlet_resultat)}</span></Felt>
           <Felt label="Sprogstøttebehov">{jaNej(sag.sprogstoettebehov)}</Felt>
           <Felt label="Gennemført / afbrudt">{jaNej(sag.gennemfoert)} / {jaNej(sag.afbrudt)}</Felt>
           {#if sag.screening_noter}<Felt label="Noter">{sag.screening_noter}</Felt>{/if}
@@ -450,7 +450,7 @@
     <!-- ================= 3. Afgørelse ================= -->
     <SagSektion nr={3} titel="Afgørelse" trin={2} {aktueltTrin}>
       <div class="sag-felter">
-        <Felt label="Samlet vurdering">
+        <Felt label="PUF-screeningsresultat">
           {#if redigerer}
             <select class={input} bind:value={form.puf_screeningsresultat}>
               <option value="">— Vælg —</option>
@@ -477,7 +477,7 @@
             </select>
           {:else}{vis(sag.skoletilbudstype_tekst)}{/if}
         </Felt>
-        <Felt label="Skoletilbudsårsag">
+        <Felt label="Skoleplaceringsårsag">
           {#if redigerer}
             <select class={input} bind:value={form.skoleplaceringsaarsag_id}>
               <option value="">{lookups.skoleplaceringsaarsager.length ? "— Vælg —" : "Ingen værdier oprettet endnu"}</option>
@@ -504,7 +504,7 @@
       {#if kanHandle && !redigerer && aktueltTrin === 2}
         <p class="sag-naeste">
           {sag.samlet_resultat === "Nærmere afklaring" && !sag.puf_screeningsresultat
-            ? "Resultatet kræver nærmere afklaring — skriv afklaringen, og vælg samlet vurdering."
+            ? "Resultatet kræver nærmere afklaring — skriv afklaringen, og vælg PUF-screeningsresultat."
             : "Vælg skoletilbud og skoletilbudstype — så bliver sagen skoleplaceret."}
         </p>
       {/if}

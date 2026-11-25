@@ -186,7 +186,7 @@ export const NAERMERE_AFKLARING = "Nærmere afklaring";
  * cases) and is not filtered here.
  *
  * Nærmere afklaring follows the skolebegynder sketch: SX said "Nærmere
- * afklaring" and Samlet vurdering is not filled in yet. Filling it in moves the
+ * afklaring" and PUF-resultat is not filled in yet. Filling it in moves the
  * case to Overblik only ("Alle screenet"). A closed case is done either way.
  */
 export function iFane(row: SkolebegynderRow, fane: Fane): boolean {
@@ -245,7 +245,7 @@ export const EJ_SPROGSCREENET = "Ej sprogscreenet";
 
 /**
  * PUF's assessment after a screening: one of these two, nothing else. Used
- * for Samlet vurdering here and for a skoleskift's samlet_resultat. Keep in step
+ * for PUF-resultat here and for a skoleskift's samlet_resultat. Keep in step
  * with PufResultat in the backend schemas.
  */
 export const PUF_RESULTATER = ["Alderssvarende dansk", "Sprogstøttebehov"] as const;
