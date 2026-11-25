@@ -49,6 +49,9 @@
   $: aar = aarFraQuery($page.url.searchParams.get("aar")) ?? kommendeSkoleaar();
   $: fane = faneFraQuery($page.url.searchParams.get("fane"));
 
+  // The table remembers its filters per tab and per school year.
+  $: filterkey = `skolebegynder.${fane}.${aar}`;
+
   function skiftVisning(nyAar: number | null, nyFane: Fane) {
     const params = new URLSearchParams();
     if (nyAar !== null) params.set("aar", String(nyAar));
@@ -159,14 +162,13 @@
       render: (row: SkolebegynderRow) => esc(row.screening_booket_tidspunkt ? tidspunkt(row.screening_booket_tidspunkt) : "")
     },
     { key: "screeningsdato", class: FAST, label: "Screenet", filterType: "text", render: (row: SkolebegynderRow) => esc(dato(row.screeningsdato)) },
-    { key: "samlet_resultat", label: "Samlet resultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(brydResultat(esc(row.samlet_resultat))) },
+    { key: "samlet_resultat", label: "Screeningsresultat", filterType: "select", multiSelect: true, render: (row: SkolebegynderRow) => ombryd(brydResultat(esc(row.samlet_resultat))) },
     {
       key: "puf_screeningsresultat",
       // Short header labels where the long word would set the column width
-      // (the header does not wrap inside a word): "Screenet" for the date,
-      // "PUF-resultat" for "PUF-screeningsresultat". The export keeps the full
-      // names.
-      label: "PUF-resultat",
+      // (the header does not wrap inside a word): "Screenet" for the date.
+      // The export keeps the full name ("Screeningsdato").
+      label: "Samlet vurdering",
       filterType: "select",
       multiSelect: true,
       editable: true,
@@ -222,7 +224,7 @@
     },
     {
       key: "skoleplaceringsaarsag_id",
-      label: "Skoleplaceringsårsag",
+      label: "Skoletilbudsårsag",
       filterType: "select",
       multiSelect: true,
       editable: true,
@@ -292,7 +294,7 @@
   // in play and what was decided — and fits a normal screen without
   // scrolling. Letter-step fields (skabelon, krav på befordring), daycare and
   // remarks are one click away in "Kolonner" and on the case page.
-  // Nærmere afklaring follows the sketch (Navn, CPR, PUF-resultat,
+  // Nærmere afklaring follows the sketch (Navn, CPR, Samlet vurdering,
   // Bemærkning, Tilflyttet DK), plus when the child was screened — the tab is
   // sorted by it — the school the case is about, and the Afklaring note, which
   // belongs to exactly this step. CPR sits under the name. Ikke screenet shows
@@ -767,6 +769,7 @@
           getRowId={(row) => row.aendring_id}
           compact
           stickyFirstColumn
+          storagekey={filterkey}
           bind:filteredCount={aendringerFiltreret}
           emptyMessage="Ingen uhåndterede ændringer"
         />
@@ -839,7 +842,7 @@
 
           {#if lookups.skoleplaceringsaarsager.length > 0}
             <label class="flex flex-col text-xs text-gray-600">
-              Skoleplaceringsårsag
+              Skoletilbudsårsag
               <select class="mt-1 border border-gray-300 rounded px-2 py-1 text-sm bg-white min-w-40" bind:value={masse.skoleplaceringsaarsag_id}>
                 <option value="">— uændret —</option>
                 {#each lookups.skoleplaceringsaarsager as o}
@@ -886,6 +889,7 @@
           bind:selectedIds={valgte}
           compact
           stickyFirstColumn
+          storagekey={filterkey}
           alwaysEditable={kanRedigere}
           drafts={kladder}
           isRowEditable={(row) => row.status_tekst !== "Afsluttet"}
