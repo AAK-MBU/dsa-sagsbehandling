@@ -278,25 +278,26 @@
     currentPage = 1;
   }
 
-  // Show a view: its remembered filters, or none.
-  function applykey(key: string | null) {
-    activekey = key;
-    currentPage = 1;
-    openDropdown = null;
-    triggerEl = null;
-    filters = key === null ? {} : readfilters(key, columns, getUniqueOptions);
-    restored = hasstored(filters);
-  }
-
-  function hasstored(state: FilterState): boolean {
-    return Object.values(state).some(isactive);
-  }
-
   onMount(() => {
     mounted = true;
   });
 
-  $: if (mounted && storagekey !== activekey) applykey(storagekey);
+  // Show a view: its remembered filters, or none. The assignments are written
+  // out in the statement on purpose, not hidden in a function: Svelte orders
+  // `$:` statements by what each one assigns, so this one runs BEFORE the
+  // statements that read `filters` (filteredData, the banner count). From a
+  // function the order is just source order, and when the page changed data or
+  // columns in the same update, the table showed the restored filters while
+  // still listing every row.
+  $: if (mounted && storagekey !== activekey) {
+    const next: FilterState = storagekey === null ? {} : readfilters(storagekey, columns, getUniqueOptions);
+    activekey = storagekey;
+    filters = next;
+    restored = Object.values(next).some(isactive);
+    currentPage = 1;
+    openDropdown = null;
+    triggerEl = null;
+  }
 
   // DSA: a new view starts clean, unless the table remembers its filters.
   // Pages switch tab or year by changing the address (?fane=, ?aar=) while
