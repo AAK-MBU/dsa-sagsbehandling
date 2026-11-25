@@ -49,6 +49,9 @@
   $: aar = aarFraQuery($page.url.searchParams.get("aar")) ?? kommendeSkoleaar();
   $: fane = faneFraQuery($page.url.searchParams.get("fane"));
 
+  // The table remembers its filters per tab and per school year.
+  $: filterkey = `skolebegynder.${fane}.${aar}`;
+
   function skiftVisning(nyAar: number | null, nyFane: Fane) {
     const params = new URLSearchParams();
     if (nyAar !== null) params.set("aar", String(nyAar));
@@ -766,6 +769,7 @@
           getRowId={(row) => row.aendring_id}
           compact
           stickyFirstColumn
+          storagekey={filterkey}
           bind:filteredCount={aendringerFiltreret}
           emptyMessage="Ingen uhåndterede ændringer"
         />
@@ -885,6 +889,7 @@
           bind:selectedIds={valgte}
           compact
           stickyFirstColumn
+          storagekey={filterkey}
           alwaysEditable={kanRedigere}
           drafts={kladder}
           isRowEditable={(row) => row.status_tekst !== "Afsluttet"}
